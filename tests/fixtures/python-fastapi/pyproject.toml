@@ -1,0 +1,7 @@
+[project]
+name = "my-fastapi-app"
+description = "A FastAPI backend service"
+dependencies = ["fastapi>=0.115.0", "sqlalchemy>=2.0.0", "uvicorn>=0.30.0"]
+
+[tool.pytest]
+testpaths = ["tests"]

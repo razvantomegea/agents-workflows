@@ -1,0 +1,34 @@
+## Code Style
+
+<% if (isTypescript) { -%>
+- Always add explicit type annotations to function parameters — never rely on implicit inference.
+<% } -%>
+<% if (conventions.strictTypes) { -%>
+- No `any` types — use explicit types, discriminated unions, or generics.
+<% } -%>
+<% if (isReact) { -%>
+- Use `<%= conventions.componentStyle === 'arrow' ? 'const arrow functions' : 'function declarations' %>` for all React components.
+<% if (conventions.propsStyle === 'readonly') { -%>
+- Wrap all component props in `Readonly<>` to prevent accidental mutation.
+<% } -%>
+- Extract large render blocks (>30 lines of JSX) into separate component files.
+- Use `useCallback` for all event handlers passed as props to child components.
+- Use `useMemo` for derived/computed values that create a new reference on every render.
+<% } -%>
+- Functions with more than 2 parameters must use a single object parameter.
+- Name module-level constants in UPPER_SNAKE_CASE.
+- Do not create thin wrapper components that only forward props.
+- Avoid redundant type aliases.
+- Use descriptive variable names in `.map()` callbacks.
+- Avoid hardcoded styling — use theme variables or design tokens.
+<% if (conventions.maxFileLength) { -%>
+- Keep files under <%= conventions.maxFileLength %> lines.
+<% } -%>
+<% if (localeRules.length > 0) { -%>
+
+### Locale Rules
+
+<% localeRules.forEach(function(rule) { -%>
+- <%= rule %>
+<% }); -%>
+<% } -%>

@@ -1,0 +1,9 @@
+## Review Checklist
+
+Every review **must** verify each applicable rule. Violations are **critical** when they cause bugs or data loss, **warning** otherwise, **suggestion** for style/maintainability.
+
+| # | Rule | How to verify | Severity |
+|---|------|---------------|----------|
+<% reviewChecklist.forEach(function(rule, i) { -%>
+| <%= i + 1 %> | **<%= rule.name %>** | <%= rule.howToVerify %> | <%= rule.severity %> |
+<% }); -%>

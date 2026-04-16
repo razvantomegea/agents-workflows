@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COPY_SKILLS=0
+if [[ "${1:-}" == "--copy-skills" ]]; then
+  COPY_SKILLS=1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+CODEX_ROOT="${REPO_ROOT}/.codex"
+PROJECT_SKILLS="${CODEX_ROOT}/skills"
+PROJECT_PROMPTS="${CODEX_ROOT}/prompts"
+AGENTS_ROOT="${REPO_ROOT}/.agents"
+AGENTS_SKILLS="${AGENTS_ROOT}/skills"
+USER_PROMPTS="${HOME}/.codex/prompts"
+
+if [[ ! -d "$PROJECT_SKILLS" ]]; then
+  echo "Missing project skills directory: $PROJECT_SKILLS" >&2
+  exit 1
+fi
+
+if [[ ! -d "$PROJECT_PROMPTS" ]]; then
+  echo "Missing project prompts directory: $PROJECT_PROMPTS" >&2
+  exit 1
+fi
+
+mkdir -p "$USER_PROMPTS"
+cp "$PROJECT_PROMPTS"/*.md "$USER_PROMPTS"/
+
+mkdir -p "$AGENTS_ROOT"
+
+if [[ -e "$AGENTS_SKILLS" || -L "$AGENTS_SKILLS" ]]; then
+  if [[ -L "$AGENTS_SKILLS" ]]; then
+    CURRENT_TARGET="$(readlink "$AGENTS_SKILLS")"
+    EXPECTED_TARGET="../.codex/skills"
+    if [[ "$CURRENT_TARGET" != "$EXPECTED_TARGET" && "$CURRENT_TARGET" != "$PROJECT_SKILLS" ]]; then
+      echo "Existing .agents/skills points to '$CURRENT_TARGET', expected '$EXPECTED_TARGET'." >&2
+      exit 1
+    fi
+  elif [[ "$COPY_SKILLS" == "1" ]]; then
+    rm -rf "$AGENTS_SKILLS"
+    mkdir -p "$AGENTS_SKILLS"
+    cp -R "$PROJECT_SKILLS"/. "$AGENTS_SKILLS"/
+  fi
+elif [[ "$COPY_SKILLS" == "1" ]]; then
+  mkdir -p "$AGENTS_SKILLS"
+  cp -R "$PROJECT_SKILLS"/. "$AGENTS_SKILLS"/
+else
+  if ! ln -s ../.codex/skills "$AGENTS_SKILLS" 2>/dev/null; then
+    mkdir -p "$AGENTS_SKILLS"
+    cp -R "$PROJECT_SKILLS"/. "$AGENTS_SKILLS"/
+  fi
+fi
+
+PROMPT_COUNT="$(find "$PROJECT_PROMPTS" -mindepth 1 -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')"
+SKILL_COUNT="$(find "$PROJECT_SKILLS" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
+
+echo "Synced ${PROMPT_COUNT} Codex prompt(s) to ${USER_PROMPTS}."
+echo "Wired ${SKILL_COUNT} Codex skill(s) through ${AGENTS_SKILLS}."

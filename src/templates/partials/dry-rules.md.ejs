@@ -1,0 +1,10 @@
+## DRY Enforcement
+
+Before proposing any new component, hook, util, constant, or type:
+
+- Grep for it. If an equivalent exists, extend it via props/params — do not duplicate it.
+- Same function + different appearance = extend via props, not a copy.
+- Shared numeric constants go in a single `*-constants.ts` source-of-truth file.
+- Shared types are defined once and imported everywhere.
+- Any code block, style pattern, or logic appearing in 2+ places must be extracted immediately.
+- Note all DRY risks explicitly in each task's **Notes** field.

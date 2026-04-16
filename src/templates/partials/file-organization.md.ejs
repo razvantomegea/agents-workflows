@@ -1,0 +1,13 @@
+## File Organization
+
+- Keep business logic in `<%= utilsDir %>` and hooks — keep UI components thin.
+<% if (componentsDir) { -%>
+- Prioritize reusable building blocks under `<%= componentsDir %>`.
+<% } -%>
+- One public component/helper per file.
+<% if (conventions.barrelExports) { -%>
+- Use folder-based module organization with colocated tests and `index.ts` barrel exports.
+<% } -%>
+<% if (conventions.testColocation) { -%>
+- Each module lives in its own folder with the implementation file and colocated test.
+<% } -%>

@@ -1,0 +1,77 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code when working with code in this repository.
+
+<!-- agents-workflows:managed-start -->
+
+`<%= project.name %>` — <%= project.description %>.
+
+<%- include('../partials/stack-context.md', { stackItems }) %>
+
+## Sub-agent Routing
+
+| Task | Agent |
+|---|---|
+| Architecture, planning | `architect` (opus) |
+| Implementation | `implementer` |
+| Code review (after every file edit) | `code-reviewer` |
+| Review loop orchestration (post-task) | `reviewer` |
+| Optimization pass | `code-optimizer` |
+| Unit tests | `test-writer` |
+<% if (hasE2eTester) { -%>
+| E2E tests | `e2e-tester` |
+<% } -%>
+<% if (hasUiDesigner) { -%>
+| UI/UX design & review | `ui-designer` |
+<% } -%>
+
+Use sub-agents with independent, single, simple tasks as much as possible.
+<% if (hasUiDesigner) { -%>
+
+**Mandatory ui-designer routing:** every UI/UX implementation must go through the `ui-designer` sub-agent *before* any implementation agent writes code.
+<% } -%>
+
+## Planning Workflow
+
+- For complex work, require a simple, explicit `PLAN.md` task breakdown before any implementation starts.
+- `PLAN.md` is the single source of truth for current work.
+- Each task in `PLAN.md` must name exact file paths, never vague module descriptions.
+- **Always start on a dedicated branch** from up-to-date `main`:
+  - Features: `feature/<short-kebab-name>`
+  - Bug fixes: `fix/<short-kebab-name>`
+- **NEVER commit or push** unless the user explicitly asks.
+
+## Code Review Workflow
+
+After every implementation session, run the following loop before considering the task done:
+
+1. **Launch `code-reviewer` agent** — pass the list of all modified files and the task context.
+2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
+3. **Re-run type-check** — `<%= commands.typeCheck || 'N/A' %>`. Fix any new errors.
+4. **Re-run tests** — `<%= commands.test %>`. All suites must pass.
+
+This loop is mandatory.
+
+<%- include('../partials/code-style.md', { isTypescript, isReact, conventions, localeRules: project.localeRules }) %>
+
+<%- include('../partials/file-organization.md', { utilsDir: paths.utilsDir, componentsDir: paths.componentsDir, conventions }) %>
+
+## DRY and Reusability
+
+DRY and reusability are critical principles — enforced without exception:
+
+- Before writing any component, function, hook, constant, or type, grep the codebase first.
+- Same function + different appearance = extend via props/params, not copy.
+- Any code appearing in 2+ places must be extracted into a shared module.
+
+## Rules
+
+<% if (tooling.packageManagerPrefix) { -%>
+- Always use `<%= tooling.packageManagerPrefix %>` for running scripts.
+<% } -%>
+- Ask clarifying questions when requirements are ambiguous.
+- Prioritize root-cause fixes over superficial patches.
+- Never read `.env` files.
+- Search the web when library behavior or APIs are uncertain.
+
+<!-- agents-workflows:managed-end -->

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.agents-workflows-backup/
+coverage/
+.claude/settings.local.json

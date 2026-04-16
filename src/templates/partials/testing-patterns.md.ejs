@@ -1,0 +1,44 @@
+## Testing Patterns
+
+<% if (testFramework === 'jest' || testFramework === 'vitest') { -%>
+### Core Principles
+
+- **Simplicity first** — tests should be obvious, not clever.
+- **One assertion per test** — each test verifies one behavior.
+- **AAA pattern** — Arrange, Act, Assert in every test.
+- **Deterministic** — no test depends on another test's state.
+<% if (conventions.testColocation) { -%>
+- **Colocated** — test files live next to their source: `foo.ts` → `foo.test.ts`.
+<% } else { -%>
+- **Separate directory** — tests live in `<%= testsDir %>`.
+<% } -%>
+<% if (conventions.maxFileLength) { -%>
+- **File length** — keep test files under <%= conventions.maxFileLength %> lines.
+<% } -%>
+
+### What to Test
+
+- Pure utility functions and helpers
+- State management stores and actions
+<% if (isReact) { -%>
+- React hooks with `renderHook`
+- Components with meaningful logic (conditional rendering, event handlers)
+<% } -%>
+- API/data layer modules
+- Validation schemas
+<% } else if (testFramework === 'pytest') { -%>
+### Core Principles
+
+- **One assertion per test** — each test verifies one behavior.
+- **Arrange-Act-Assert** in every test function.
+- **Use fixtures** for setup and teardown.
+- **Parametrize** for testing multiple inputs.
+- Keep test files under <%= conventions.maxFileLength %> lines.
+<% } else if (testFramework === 'go-test') { -%>
+### Core Principles
+
+- **Table-driven tests** for multiple input scenarios.
+- **Use `t.Helper()`** for test helper functions.
+- **Use `t.Parallel()`** where safe.
+- **`testify/assert`** or standard library assertions.
+<% } -%>

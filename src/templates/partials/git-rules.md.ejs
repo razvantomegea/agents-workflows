@@ -1,0 +1,13 @@
+## Git Rules
+
+- **NEVER commit or push** during the workflow. The user decides when to commit.
+- The only exception: merging `main` into the feature branch to resolve conflicts — you may commit the merge resolution and push.
+- All work stays local on the feature branch until the user explicitly asks to commit or create a PR.
+
+## Branch Convention
+
+Every plan starts on a dedicated branch from `main`. Include the branch name at the top of PLAN.md.
+
+- **Features**: `feature/<short-kebab-name>`
+- **Bug fixes**: `fix/<short-kebab-name>`
+- **Epics**: `feature/epic-<N>-<short-name>`
