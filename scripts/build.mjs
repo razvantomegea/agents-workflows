@@ -1,4 +1,4 @@
-import { cp, rm, access } from 'node:fs/promises';
+import { cp, rm, access, chmod } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -9,6 +9,7 @@ const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST_DIR = join(ROOT_DIR, 'dist');
 const SOURCE_TEMPLATES_DIR = join(ROOT_DIR, 'src', 'templates');
 const DIST_TEMPLATES_DIR = join(DIST_DIR, 'templates');
+const DIST_BIN = join(DIST_DIR, 'index.js');
 const require = createRequire(import.meta.url);
 const TSC_BIN = require.resolve('typescript/bin/tsc');
 
@@ -29,4 +30,6 @@ if (result.status !== 0) {
 }
 
 await cp(SOURCE_TEMPLATES_DIR, DIST_TEMPLATES_DIR, { recursive: true });
+await chmod(DIST_BIN, 0o755);
+await access(DIST_BIN, constants.X_OK);
 await access(join(DIST_TEMPLATES_DIR, 'config', 'AGENTS.md.ejs'), constants.R_OK);

@@ -14,7 +14,9 @@
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
     "check-types": "tsc --noEmit",
     "lint": "oxlint .",
-    "prepublishOnly": "pnpm build"
+    "publish:check": "corepack pnpm build && npm pack --dry-run",
+    "publish:public": "corepack pnpm publish:check && npm publish --access public --ignore-scripts",
+    "prepublishOnly": "corepack pnpm build"
   },
   "keywords": [
     "claude-code",
@@ -31,7 +33,7 @@
     "url": "https://github.com/razvantomegea/agents-workflows.git"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "files": [
     "dist",
