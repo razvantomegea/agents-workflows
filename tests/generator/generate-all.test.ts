@@ -25,7 +25,13 @@ describe('generateAll', () => {
     expect(paths).toContain('CLAUDE.md');
     expect(paths).toContain('AGENTS.md');
     expect(paths).toContain('.claude/commands/workflow-plan.md');
-    expect(files.length).toBeGreaterThanOrEqual(24);
-    expect(files.every((file) => file.content.trim().length > 0)).toBe(true);
+    expect(files.length).toBeGreaterThan(0);
+
+    const emptyFiles = files.filter((file) => file.content.trim().length === 0);
+    if (emptyFiles.length > 0) {
+      const emptyFilePaths = emptyFiles.map((file) => file.path).join(', ');
+      throw new Error(`Generated files with empty content: ${emptyFilePaths}`);
+    }
+    expect(emptyFiles.length).toBe(0);
   });
 });

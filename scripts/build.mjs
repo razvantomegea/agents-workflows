@@ -31,5 +31,20 @@ if (result.status !== 0) {
 
 await cp(SOURCE_TEMPLATES_DIR, DIST_TEMPLATES_DIR, { recursive: true });
 await chmod(DIST_BIN, 0o755);
-await access(DIST_BIN, constants.X_OK);
-await access(join(DIST_TEMPLATES_DIR, 'config', 'AGENTS.md.ejs'), constants.R_OK);
+try {
+  await access(DIST_BIN, constants.X_OK);
+} catch (error) {
+  throw new Error(`Build verification failed: executable bit missing for DIST_BIN at ${DIST_BIN}`, {
+    cause: error,
+  });
+}
+
+const agentsTemplatePath = join(DIST_TEMPLATES_DIR, 'config', 'AGENTS.md.ejs');
+try {
+  await access(agentsTemplatePath, constants.R_OK);
+} catch (error) {
+  throw new Error(
+    `Build verification failed: missing/unreadable template AGENTS.md.ejs under DIST_TEMPLATES_DIR at ${agentsTemplatePath}`,
+    { cause: error },
+  );
+}
