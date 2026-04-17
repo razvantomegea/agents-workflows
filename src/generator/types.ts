@@ -6,7 +6,7 @@ export interface ReviewChecklistItem {
   severity: 'critical' | 'warning' | 'suggestion';
 }
 
-export interface GeneratorContext {
+export interface GeneratorContext extends Record<string, unknown> {
   project: StackConfig['project'];
   stack: StackConfig['stack'];
   tooling: StackConfig['tooling'];

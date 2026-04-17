@@ -53,4 +53,14 @@ describe('buildReviewChecklist', () => {
     const names = rules.map((r) => r.name);
     expect(names).toContain('i18n compliance');
   });
+
+  it('includes stack-specific database and state rules', () => {
+    const rules = buildReviewChecklist(makeConfig({
+      database: 'drizzle',
+      stateManagement: 'tanstack-query',
+    }));
+    const names = rules.map((r) => r.name);
+    expect(names).toContain('Drizzle schema alignment');
+    expect(names).toContain('TanStack Query keys');
+  });
 });

@@ -1,19 +1,11 @@
-import { readPackageJson, getAllDeps } from '../utils/index.js';
-import type { Detection } from './types.js';
+import { createDependencyDetector } from './dependency-detector.js';
 
-export async function detectStateManagement(projectRoot: string): Promise<Detection> {
-  const pkg = await readPackageJson(projectRoot);
-  if (!pkg) return { value: null, confidence: 0 };
-
-  const deps = getAllDeps(pkg);
-
-  if (deps['zustand']) return { value: 'zustand', confidence: 0.9 };
-  if (deps['@reduxjs/toolkit'] || deps['redux']) return { value: 'redux', confidence: 0.9 };
-  if (deps['jotai']) return { value: 'jotai', confidence: 0.9 };
-  if (deps['recoil']) return { value: 'recoil', confidence: 0.9 };
-  if (deps['mobx']) return { value: 'mobx', confidence: 0.9 };
-  if (deps['pinia']) return { value: 'pinia', confidence: 0.9 };
-  if (deps['@tanstack/react-query']) return { value: 'tanstack-query', confidence: 0.8 };
-
-  return { value: null, confidence: 0 };
-}
+export const detectStateManagement = createDependencyDetector([
+  { packages: ['zustand'], value: 'zustand', confidence: 0.9 },
+  { packages: ['@reduxjs/toolkit', 'redux'], value: 'redux', confidence: 0.9 },
+  { packages: ['jotai'], value: 'jotai', confidence: 0.9 },
+  { packages: ['recoil'], value: 'recoil', confidence: 0.9 },
+  { packages: ['mobx'], value: 'mobx', confidence: 0.9 },
+  { packages: ['pinia'], value: 'pinia', confidence: 0.9 },
+  { packages: ['@tanstack/react-query'], value: 'tanstack-query', confidence: 0.8 },
+]);

@@ -7,17 +7,16 @@ export async function generateRootConfig(
   context: GeneratorContext,
 ): Promise<GeneratedFile[]> {
   const files: GeneratedFile[] = [];
-  const data = context as unknown as Record<string, unknown>;
 
   if (config.targets.claudeCode) {
-    const claudeMd = await renderTemplate('config/CLAUDE.md.ejs', data);
+    const claudeMd = await renderTemplate('config/CLAUDE.md.ejs', context);
     files.push({ path: 'CLAUDE.md', content: claudeMd });
 
-    const settings = await renderTemplate('config/settings-local.json.ejs', data);
+    const settings = await renderTemplate('config/settings-local.json.ejs', context);
     files.push({ path: '.claude/settings.local.json', content: settings });
   }
 
-  const agentsMd = await renderTemplate('config/AGENTS.md.ejs', data);
+  const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);
   files.push({ path: 'AGENTS.md', content: agentsMd });
 
   return files;

@@ -96,6 +96,30 @@ const ALL_RULES: RuleDefinition[] = [
     severity: 'suggestion',
     appliesWhen: ['typescript'],
   },
+  {
+    name: 'Prisma query shape',
+    howToVerify: 'Use `select`/`include` intentionally, avoid unbounded relation loading, and keep writes inside transactions when multiple records must change together',
+    severity: 'warning',
+    appliesWhen: ['prisma'],
+  },
+  {
+    name: 'Drizzle schema alignment',
+    howToVerify: 'Check Drizzle table definitions, inferred types, and migrations stay aligned with every query and mutation',
+    severity: 'warning',
+    appliesWhen: ['drizzle'],
+  },
+  {
+    name: 'Zustand selector stability',
+    howToVerify: 'Components select the smallest needed state slice and avoid creating new objects/functions inside selectors',
+    severity: 'warning',
+    appliesWhen: ['zustand'],
+  },
+  {
+    name: 'TanStack Query keys',
+    howToVerify: 'Query keys include every variable that affects fetched data, mutations invalidate or update relevant queries, and enabled states prevent invalid requests',
+    severity: 'warning',
+    appliesWhen: ['tanstack-query'],
+  },
 ];
 
 export function buildReviewChecklist(config: StackConfig): ReviewChecklistItem[] {
@@ -123,6 +147,8 @@ function buildApplicableTags(config: StackConfig): Set<string> {
   if (frontendFrameworks.includes(stack.framework)) tags.add('frontend');
 
   if (project.localeRules.length > 0) tags.add('i18n');
+  if (stack.database) tags.add(stack.database);
+  if (stack.stateManagement) tags.add(stack.stateManagement);
 
   return tags;
 }

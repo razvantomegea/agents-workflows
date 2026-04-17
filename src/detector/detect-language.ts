@@ -1,3 +1,4 @@
+import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileExists, readPackageJson } from '../utils/index.js';
 import type { Detection } from './types.js';
@@ -31,5 +32,21 @@ export async function detectLanguage(projectRoot: string): Promise<Detection> {
     return { value: 'java', confidence: 0.9 };
   }
 
+  if (await fileExists(join(projectRoot, 'Directory.Build.props')) ||
+      await fileExists(join(projectRoot, 'global.json')) ||
+      await fileExists(join(projectRoot, 'NuGet.config')) ||
+      await hasDotnetProjectFile(projectRoot)) {
+    return { value: 'csharp', confidence: 0.85 };
+  }
+
   return { value: null, confidence: 0 };
+}
+
+async function hasDotnetProjectFile(projectRoot: string): Promise<boolean> {
+  try {
+    const entries = await readdir(projectRoot);
+    return entries.some((entry) => entry.endsWith('.csproj') || entry.endsWith('.sln'));
+  } catch {
+    return false;
+  }
 }

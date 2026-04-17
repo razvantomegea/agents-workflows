@@ -1,31 +1,44 @@
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { logger, fileExists } from '../utils/index.js';
 
-interface AgentInfo {
+export interface AgentInfo {
   name: string;
   description: string;
   category: 'agent' | 'command';
+  templatePath: string;
 }
 
-const AVAILABLE_ITEMS: AgentInfo[] = [
-  { name: 'architect', description: 'Planning agent (Opus) — structured PLAN.md generation', category: 'agent' },
-  { name: 'implementer', description: 'Primary implementation agent — code writing and editing', category: 'agent' },
-  { name: 'code-reviewer', description: 'Post-edit review with checklist — quality enforcement', category: 'agent' },
-  { name: 'code-optimizer', description: 'Performance and quality analysis', category: 'agent' },
-  { name: 'test-writer', description: 'Unit test generation', category: 'agent' },
-  { name: 'e2e-tester', description: 'E2E test generation', category: 'agent' },
-  { name: 'reviewer', description: 'Review loop orchestrator — 4-step quality gate', category: 'agent' },
-  { name: 'ui-designer', description: 'UI/UX design system enforcement', category: 'agent' },
-  { name: 'workflow-plan', description: 'End-to-end feature planning and execution', category: 'command' },
-  { name: 'workflow-fix', description: 'Fix QA issues from QA.md', category: 'command' },
-  { name: 'external-review', description: 'External review tool integration', category: 'command' },
+interface TemplateDefinition {
+  category: 'agent' | 'command';
+  templatePath: string;
+}
+
+const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
+const TEMPLATES_DIR = join(MODULE_DIR, '..', 'templates');
+
+const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
+  { category: 'agent', templatePath: 'agents/architect.md.ejs' },
+  { category: 'agent', templatePath: 'agents/implementer.md.ejs' },
+  { category: 'agent', templatePath: 'agents/code-reviewer.md.ejs' },
+  { category: 'agent', templatePath: 'agents/code-optimizer.md.ejs' },
+  { category: 'agent', templatePath: 'agents/test-writer.md.ejs' },
+  { category: 'agent', templatePath: 'agents/e2e-tester.md.ejs' },
+  { category: 'agent', templatePath: 'agents/reviewer.md.ejs' },
+  { category: 'agent', templatePath: 'agents/ui-designer.md.ejs' },
+  { category: 'command', templatePath: 'commands/workflow-plan.md.ejs' },
+  { category: 'command', templatePath: 'commands/workflow-fix.md.ejs' },
+  { category: 'command', templatePath: 'commands/external-review.md.ejs' },
 ];
 
 export async function listCommand(projectRoot: string): Promise<void> {
   logger.heading('Available agents and commands');
 
-  const agents = AVAILABLE_ITEMS.filter((i) => i.category === 'agent');
-  const commands = AVAILABLE_ITEMS.filter((i) => i.category === 'command');
+  const items = await readAvailableItems();
+  const agents = items.filter((i) => i.category === 'agent');
+  const commands = items.filter((i) => i.category === 'command');
 
   logger.info('Agents:');
   for (const agent of agents) {
@@ -41,6 +54,42 @@ export async function listCommand(projectRoot: string): Promise<void> {
     const status = installed ? '  [installed]' : '';
     logger.info(`  ${command.name.padEnd(18)} ${command.description}${status}`);
   }
+}
+
+export async function readAvailableItems(): Promise<AgentInfo[]> {
+  return Promise.all(TEMPLATE_DEFINITIONS.map(async (definition) => {
+    const metadata = await readTemplateMetadata(definition.templatePath);
+    return {
+      ...definition,
+      name: metadata.name,
+      description: metadata.description,
+    };
+  }));
+}
+
+async function readTemplateMetadata(
+  templatePath: string,
+): Promise<{ name: string; description: string }> {
+  const content = await readFile(join(TEMPLATES_DIR, templatePath), 'utf-8');
+  const frontmatter = /^---\r?\n([\s\S]*?)\r?\n---/.exec(content);
+
+  if (!frontmatter) {
+    throw new Error(`Template ${templatePath} is missing frontmatter metadata.`);
+  }
+
+  const values = new Map<string, string>();
+  for (const line of frontmatter[1].split(/\r?\n/)) {
+    const match = /^([a-zA-Z]+):\s*(.*)$/.exec(line);
+    if (match) values.set(match[1], match[2].replace(/^"|"$/g, ''));
+  }
+
+  const name = values.get('name');
+  const description = values.get('description');
+  if (!name || !description) {
+    throw new Error(`Template ${templatePath} must define name and description metadata.`);
+  }
+
+  return { name, description };
 }
 
 async function isInstalled(

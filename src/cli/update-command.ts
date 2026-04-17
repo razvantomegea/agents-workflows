@@ -6,7 +6,14 @@ import { manifestSchema } from '../schema/manifest.js';
 import { generateAll } from '../generator/index.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
 
-export async function updateCommand(projectRoot: string): Promise<void> {
+export interface UpdateCommandOptions {
+  yes?: boolean;
+}
+
+export async function updateCommand(
+  projectRoot: string,
+  options: UpdateCommandOptions = {},
+): Promise<void> {
   const manifestPath = join(projectRoot, '.agents-workflows.json');
 
   if (!(await fileExists(manifestPath))) {
@@ -62,7 +69,7 @@ export async function updateCommand(projectRoot: string): Promise<void> {
   }
 
   logger.blank();
-  const proceed = await confirm({ message: 'Apply changes?', default: true });
+  const proceed = options.yes || await confirm({ message: 'Apply changes?', default: true });
 
   if (!proceed) {
     logger.info('Aborted.');

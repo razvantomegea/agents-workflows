@@ -15,7 +15,7 @@
     "check-types": "tsc --noEmit",
     "lint": "oxlint .",
     "publish:check": "corepack pnpm build && npm pack --dry-run",
-    "publish:public": "corepack pnpm publish:check && npm publish --access public --ignore-scripts",
+    "publish:public": "npm version patch --no-git-tag-version && corepack pnpm publish:check && npm publish --access public --ignore-scripts",
     "prepublishOnly": "corepack pnpm build"
   },
   "keywords": [

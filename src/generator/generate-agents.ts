@@ -28,7 +28,7 @@ export async function generateAgents(
   for (const agent of AGENT_DEFINITIONS) {
     if (!config.agents[agent.key]) continue;
 
-    const content = await renderTemplate(agent.templateFile, context as unknown as Record<string, unknown>);
+    const content = await renderTemplate(agent.templateFile, context);
 
     if (config.targets.claudeCode) {
       files.push({ path: `.claude/agents/${agent.outputName}`, content });

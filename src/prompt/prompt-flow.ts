@@ -1,5 +1,6 @@
 import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
+import { readPackageJson } from '../utils/index.js';
 import {
   askProjectIdentity,
   askStack,
@@ -26,16 +27,28 @@ function resolvePackageManagerPrefix(pm: string): string {
   return prefixMap[pm] ?? pm;
 }
 
-function resolveCommands(
+interface PromptFlowOptions {
+  yes?: boolean;
+}
+
+type PackageScripts = Record<string, string>;
+
+export function resolveCommands(
   pm: string,
   testFramework: string,
   linter: string | null,
   language: string,
+  scripts: PackageScripts = {},
 ): StackConfig['commands'] {
   const prefix = resolvePackageManagerPrefix(pm);
+  const packageCommand = (scriptName: string): string => `${prefix} ${scriptName}`;
+  const scriptCommand = (names: string[]): string | null => {
+    const match = names.find((name) => scripts[name]);
+    return match ? packageCommand(match) : null;
+  };
 
   const typeCheckMap: Record<string, string> = {
-    typescript: `${prefix} check-types`,
+    typescript: scriptCommand(['check-types', 'typecheck', 'type-check', 'tsc']) ?? `${prefix} check-types`,
     python: 'mypy .',
     go: 'go vet ./...',
   };
@@ -56,15 +69,23 @@ function resolveCommands(
 
   return {
     typeCheck: typeCheckMap[language] ?? null,
-    test: testMap[testFramework] ?? `${prefix} test`,
-    lint: linter ? (lintMap[linter] ?? `${prefix} lint`) : null,
-    format: null,
-    build: null,
-    dev: null,
+    test: scriptCommand(['test']) ?? testMap[testFramework] ?? `${prefix} test`,
+    lint: scriptCommand(['lint']) ?? (linter ? (lintMap[linter] ?? `${prefix} lint`) : null),
+    format: scriptCommand(['format', 'fmt']),
+    build: scriptCommand(['build']),
+    dev: scriptCommand(['dev', 'start']),
   };
 }
 
-export async function runPromptFlow(detected: DetectedStack): Promise<StackConfig> {
+export async function runPromptFlow(
+  detected: DetectedStack,
+  projectRoot: string,
+  options: PromptFlowOptions = {},
+): Promise<StackConfig> {
+  if (options.yes) {
+    return createDefaultConfig(detected, await readScripts(projectRoot));
+  }
+
   const identity = await askProjectIdentity(detected);
   const stack = await askStack(detected);
   const tooling = await askTooling(detected);
@@ -81,6 +102,7 @@ export async function runPromptFlow(detected: DetectedStack): Promise<StackConfi
     tooling.testFramework,
     tooling.linter,
     stack.language,
+    await readScripts(projectRoot),
   );
 
   return {
@@ -144,4 +166,87 @@ export async function runPromptFlow(detected: DetectedStack): Promise<StackConfi
     },
     targets,
   };
+}
+
+export function createDefaultConfig(
+  detected: DetectedStack,
+  scripts: PackageScripts = {},
+): StackConfig {
+  const language = detected.language.value ?? 'typescript';
+  const runtime = detected.runtime.value ?? 'node';
+  const framework = detected.framework.value ?? 'react';
+  const isFrontend = FRONTEND_FRAMEWORKS.includes(framework);
+  const packageManager = detected.packageManager.value ?? 'npm';
+  const testFramework = detected.testFramework.value ?? 'jest';
+  const linter = detected.linter.value;
+
+  return {
+    project: {
+      name: 'my-project',
+      description: `A ${framework} application`,
+      locale: 'en',
+      localeRules: [],
+    },
+    stack: {
+      language,
+      runtime,
+      framework,
+      uiLibrary: detected.uiLibrary.value,
+      stateManagement: detected.stateManagement.value,
+      database: detected.database.value,
+      auth: detected.auth.value,
+    },
+    tooling: {
+      packageManager,
+      packageManagerPrefix: resolvePackageManagerPrefix(packageManager),
+      testFramework,
+      testLibrary: detected.testLibrary.value,
+      e2eFramework: detected.e2eFramework.value,
+      linter,
+      formatter: detected.formatter.value,
+    },
+    paths: {
+      sourceRoot: 'src/',
+      componentsDir: isFrontend ? 'src/components/' : null,
+      hooksDir: isFrontend ? 'src/hooks/' : null,
+      utilsDir: 'src/utils/',
+      testsDir: null,
+      designTokensFile: null,
+      i18nDir: null,
+      testConfigFile: null,
+    },
+    commands: resolveCommands(packageManager, testFramework, linter, language, scripts),
+    conventions: {
+      componentStyle: 'arrow',
+      propsStyle: 'readonly',
+      maxFileLength: 200,
+      testColocation: true,
+      barrelExports: true,
+      strictTypes: true,
+    },
+    agents: {
+      architect: true,
+      implementer: true,
+      codeReviewer: true,
+      codeOptimizer: true,
+      testWriter: true,
+      e2eTester: false,
+      reviewer: true,
+      uiDesigner: isFrontend,
+    },
+    selectedCommands: {
+      workflowPlan: true,
+      workflowFix: true,
+      externalReview: false,
+    },
+    targets: {
+      claudeCode: true,
+      codexCli: false,
+    },
+  };
+}
+
+async function readScripts(projectRoot: string): Promise<PackageScripts> {
+  const pkg = await readPackageJson(projectRoot);
+  return pkg?.scripts ?? {};
 }

@@ -25,7 +25,7 @@ export async function generateCommands(
 
     const content = await renderTemplate(
       command.templateFile,
-      context as unknown as Record<string, unknown>,
+      context,
     );
 
     if (config.targets.claudeCode) {

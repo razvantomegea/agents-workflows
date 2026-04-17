@@ -1,7 +1,10 @@
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { Command } from 'commander';
 import { initCommand } from './init-command.js';
 import { updateCommand } from './update-command.js';
 import { listCommand } from './list-command.js';
+import { stackConfigSchema, type StackConfig } from '../schema/stack-config.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -15,16 +18,22 @@ export function createCli(): Command {
     .command('init')
     .description('Detect your project stack and generate agent configurations')
     .option('-d, --dir <path>', 'Project root directory', process.cwd())
-    .action(async (options: { dir: string }) => {
-      await initCommand(options.dir);
+    .option('-c, --config <path>', 'Path to a StackConfig JSON file for non-interactive init')
+    .option('-y, --yes', 'Use detected values and defaults without interactive prompts', false)
+    .action(async (options: { dir: string; config?: string; yes: boolean }) => {
+      await initCommand(options.dir, {
+        config: options.config ? await readConfigFile(options.config, options.dir) : undefined,
+        yes: options.yes,
+      });
     });
 
   program
     .command('update')
     .description('Re-generate agent configurations from .agents-workflows.json')
     .option('-d, --dir <path>', 'Project root directory', process.cwd())
-    .action(async (options: { dir: string }) => {
-      await updateCommand(options.dir);
+    .option('-y, --yes', 'Apply changes without prompting', false)
+    .action(async (options: { dir: string; yes: boolean }) => {
+      await updateCommand(options.dir, { yes: options.yes });
     });
 
   program
@@ -36,4 +45,16 @@ export function createCli(): Command {
     });
 
   return program;
+}
+
+async function readConfigFile(configPath: string, projectRoot: string): Promise<StackConfig> {
+  const fullPath = resolve(projectRoot, configPath);
+  const raw = await readFile(fullPath, 'utf-8');
+  const parsed = stackConfigSchema.safeParse(JSON.parse(raw));
+
+  if (!parsed.success) {
+    throw new Error(`Invalid config file ${fullPath}: ${parsed.error.message}`);
+  }
+
+  return parsed.data;
 }

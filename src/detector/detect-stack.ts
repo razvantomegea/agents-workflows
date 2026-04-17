@@ -8,6 +8,7 @@ import { detectTestFramework, detectTestLibrary } from './detect-testing.js';
 import { detectLinter, detectFormatter } from './detect-linter.js';
 import { detectPackageManager } from './detect-package-manager.js';
 import { detectE2e } from './detect-e2e.js';
+import { detectAuth } from './detect-auth.js';
 import type { DetectedStack } from './types.js';
 
 export async function detectStack(projectRoot: string): Promise<DetectedStack> {
@@ -23,6 +24,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     formatter,
     packageManager,
     e2eFramework,
+    auth,
   ] = await Promise.all([
     detectLanguage(projectRoot),
     detectFramework(projectRoot),
@@ -35,6 +37,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectFormatter(projectRoot),
     detectPackageManager(projectRoot),
     detectE2e(projectRoot),
+    detectAuth(projectRoot),
   ]);
 
   const runtime = resolveRuntime(language.value, framework.value);
@@ -47,7 +50,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     uiLibrary,
     stateManagement,
     database,
-    auth: { value: null, confidence: 0 },
+    auth,
     testFramework,
     testLibrary,
     e2eFramework,
@@ -58,7 +61,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
   };
 }
 
-function resolveRuntime(
+export function resolveRuntime(
   language: string | null,
   framework: string | null,
 ): { value: string | null; confidence: number } {
@@ -84,7 +87,7 @@ function resolveRuntime(
     : { value: null, confidence: 0 };
 }
 
-async function detectMonorepo(projectRoot: string): Promise<boolean> {
+export async function detectMonorepo(projectRoot: string): Promise<boolean> {
   const pkg = await readPackageJson(projectRoot);
   if (!pkg) return false;
 

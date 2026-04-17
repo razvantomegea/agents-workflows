@@ -5,10 +5,19 @@ import { logger } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
 import { generateAll } from '../generator/index.js';
-import { writeGeneratedFiles, backupExistingFiles } from '../installer/index.js';
+import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
+import type { StackConfig } from '../schema/stack-config.js';
 
-export async function initCommand(projectRoot: string): Promise<void> {
+export interface InitCommandOptions {
+  config?: StackConfig;
+  yes?: boolean;
+}
+
+export async function initCommand(
+  projectRoot: string,
+  options: InitCommandOptions = {},
+): Promise<void> {
   logger.heading('agents-workflows');
   logger.info('Detecting project stack...\n');
 
@@ -18,15 +27,14 @@ export async function initCommand(projectRoot: string): Promise<void> {
   printDetected(detected);
 
   logger.blank();
-  const config = await runPromptFlow(detected);
+  const config = options.config ?? await runPromptFlow(detected, projectRoot, { yes: options.yes });
 
   logger.blank();
   logger.info('Generating files...\n');
 
   const files = await generateAll(config);
 
-  await backupExistingFiles(projectRoot, files);
-  await writeGeneratedFiles(projectRoot, files);
+  const backup = await backupExistingFiles(projectRoot, files);
 
   const manifest: AgentsWorkflowsManifest = {
     version: '0.1.0',
@@ -37,7 +45,13 @@ export async function initCommand(projectRoot: string): Promise<void> {
   };
 
   const manifestPath = join(projectRoot, '.agents-workflows.json');
-  await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  try {
+    await writeGeneratedFiles(projectRoot, files);
+    await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+  } catch (error) {
+    await restoreBackupFiles(projectRoot, backup);
+    throw error;
+  }
 
   logger.blank();
   logger.success(`Done! ${files.length} files generated.`);
