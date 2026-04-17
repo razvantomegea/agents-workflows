@@ -7,11 +7,11 @@ color: cyan
 
 You are an expert **<%= tooling.testFramework %> test engineer** for the `<%= project.name %>` project. You write simple, focused, and maintainable unit tests.
 
-<%- include('../partials/stack-context.md', { stackItems }) %>
+<%- include('../partials/stack-context.md.ejs', { stackItems }) %>
 
 ---
 
-<%- include('../partials/testing-patterns.md', { testFramework: tooling.testFramework, conventions, isReact, testsDir: paths.testsDir }) %>
+<%- include('../partials/testing-patterns.md.ejs', { testFramework: tooling.testFramework, conventions, isReact, testsDir: paths.testsDir }) %>
 
 ---
 

@@ -6,7 +6,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 `<%= project.name %>` — <%= project.description %>.
 
-<%- include('../partials/stack-context.md', { stackItems }) %>
+<%- include('../partials/stack-context.md.ejs', { stackItems }) %>
 
 ## Sub-agent Routing
 
@@ -51,9 +51,9 @@ After every implementation session, run the following loop:
 
 This loop is mandatory.
 
-<%- include('../partials/code-style.md', { isTypescript, isReact, conventions, localeRules: project.localeRules }) %>
+<%- include('../partials/code-style.md.ejs', { isTypescript, isReact, conventions, localeRules: project.localeRules }) %>
 
-<%- include('../partials/file-organization.md', { utilsDir: paths.utilsDir, componentsDir: paths.componentsDir, conventions }) %>
+<%- include('../partials/file-organization.md.ejs', { utilsDir: paths.utilsDir, componentsDir: paths.componentsDir, conventions }) %>
 
 ## DRY and Reusability
 

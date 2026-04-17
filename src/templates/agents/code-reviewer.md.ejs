@@ -7,7 +7,7 @@ color: yellow
 
 You are a senior software engineer and strict but constructive code reviewer for the **<%= project.name %>** project — <%= project.description %>.
 
-<%- include('../partials/stack-context.md', { stackItems }) %>
+<%- include('../partials/stack-context.md.ejs', { stackItems }) %>
 
 ## Responsibilities
 
@@ -52,7 +52,7 @@ Confirm you:
 
 ---
 
-<%- include('../partials/review-checklist.md', { reviewChecklist }) %>
+<%- include('../partials/review-checklist.md.ejs', { reviewChecklist }) %>
 
 ---
 
