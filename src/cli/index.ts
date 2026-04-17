@@ -50,7 +50,16 @@ export function createCli(): Command {
 async function readConfigFile(configPath: string, projectRoot: string): Promise<StackConfig> {
   const fullPath = resolve(projectRoot, configPath);
   const raw = await readFile(fullPath, 'utf-8');
-  const parsed = stackConfigSchema.safeParse(JSON.parse(raw));
+  let config: unknown;
+
+  try {
+    config = JSON.parse(raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid JSON in config file ${fullPath}: ${message}`);
+  }
+
+  const parsed = stackConfigSchema.safeParse(config);
 
   if (!parsed.success) {
     throw new Error(`Invalid config file ${fullPath}: ${parsed.error.message}`);
