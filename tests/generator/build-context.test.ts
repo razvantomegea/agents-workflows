@@ -12,6 +12,7 @@ function makeConfig(overrides: Partial<StackConfig> = {}): StackConfig {
     agents: { architect: true, implementer: true, codeReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true },
     selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false },
     targets: { claudeCode: true, codexCli: false },
+    detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false },
     ...overrides,
   };
 }

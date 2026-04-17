@@ -151,9 +151,11 @@ export async function askCommandSelection(): Promise<string[]> {
   return checkbox({ message: 'Select commands to generate:', choices });
 }
 
-export async function askTargets(): Promise<{ claudeCode: boolean; codexCli: boolean }> {
-  const claudeCode = await confirm({ message: 'Generate Claude Code config (.claude/)?', default: true });
-  const codexCli = await confirm({ message: 'Generate Codex CLI config (.codex/)?', default: false });
+export async function askTargets(detected: DetectedStack['aiAgents']): Promise<{ claudeCode: boolean; codexCli: boolean }> {
+  const claudeDefault = detected.hasClaudeCode || !detected.hasCodexCli;
+  const codexDefault = detected.hasCodexCli;
+  const claudeCode = await confirm({ message: 'Generate Claude Code config (.claude/)?', default: claudeDefault });
+  const codexCli = await confirm({ message: 'Generate Codex CLI config (.codex/)?', default: codexDefault });
 
   return { claudeCode, codexCli };
 }

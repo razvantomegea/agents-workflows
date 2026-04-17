@@ -78,6 +78,17 @@ export const stackConfigSchema = z.object({
     claudeCode: z.boolean().default(true),
     codexCli: z.boolean().default(false),
   }),
+
+  detectedAiAgents: z.object({
+    claudeCode: z.boolean().default(false),
+    codexCli: z.boolean().default(false),
+    cursor: z.boolean().default(false),
+    aider: z.boolean().default(false),
+    continueDev: z.boolean().default(false),
+    copilot: z.boolean().default(false),
+    windsurf: z.boolean().default(false),
+    gemini: z.boolean().default(false),
+  }).default({}),
 });
 
 export type StackConfig = z.infer<typeof stackConfigSchema>;

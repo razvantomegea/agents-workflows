@@ -1,6 +1,7 @@
 import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import { readPackageJson } from '../utils/index.js';
+import { isDetected } from '../detector/detect-ai-agents.js';
 import {
   askProjectIdentity,
   askStack,
@@ -95,7 +96,7 @@ export async function runPromptFlow(
   const isFrontend = FRONTEND_FRAMEWORKS.includes(stack.framework);
   const selectedAgents = await askAgentSelection(isFrontend);
   const selectedCommands = await askCommandSelection();
-  const targets = await askTargets();
+  const targets = await askTargets(detected.aiAgents);
 
   const commands = resolveCommands(
     tooling.packageManager,
@@ -165,6 +166,7 @@ export async function runPromptFlow(
       externalReview: selectedCommands.includes('externalReview'),
     },
     targets,
+    detectedAiAgents: toDetectedAiAgentFlags(detected),
   };
 }
 
@@ -179,6 +181,11 @@ export function createDefaultConfig(
   const packageManager = detected.packageManager.value ?? 'npm';
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;
+
+  const targets = {
+    claudeCode: detected.aiAgents.hasClaudeCode || !detected.aiAgents.hasCodexCli,
+    codexCli: detected.aiAgents.hasCodexCli,
+  };
 
   return {
     project: {
@@ -239,14 +246,28 @@ export function createDefaultConfig(
       workflowFix: true,
       externalReview: false,
     },
-    targets: {
-      claudeCode: true,
-      codexCli: false,
-    },
+    targets,
+    detectedAiAgents: toDetectedAiAgentFlags(detected),
   };
 }
 
 async function readScripts(projectRoot: string): Promise<PackageScripts> {
   const pkg = await readPackageJson(projectRoot);
   return pkg?.scripts ?? {};
+}
+
+function toDetectedAiAgentFlags(detected: DetectedStack): StackConfig['detectedAiAgents'] {
+  const isPresent = (id: string): boolean =>
+    isDetected(detected.aiAgents.agents.find((candidate) => candidate.id === id));
+
+  return {
+    claudeCode: detected.aiAgents.hasClaudeCode || isPresent('claude'),
+    codexCli: detected.aiAgents.hasCodexCli || isPresent('codex'),
+    cursor: isPresent('cursor'),
+    aider: isPresent('aider'),
+    continueDev: isPresent('continue'),
+    copilot: isPresent('copilot'),
+    windsurf: isPresent('windsurf'),
+    gemini: isPresent('gemini'),
+  };
 }

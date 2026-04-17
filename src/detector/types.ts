@@ -3,6 +3,31 @@ export interface Detection<T = string> {
   confidence: number;
 }
 
+export type AiAgentId =
+  | 'claude'
+  | 'codex'
+  | 'cursor'
+  | 'aider'
+  | 'continue'
+  | 'copilot'
+  | 'windsurf'
+  | 'gemini';
+
+export interface DetectedAiAgent {
+  id: AiAgentId;
+  name: string;
+  cliAvailable: boolean;
+  configPresent: boolean;
+  apiKeyPresent: boolean;
+  matchedEnvVars: readonly string[];
+}
+
+export interface DetectedAiAgents {
+  agents: readonly DetectedAiAgent[];
+  hasClaudeCode: boolean;
+  hasCodexCli: boolean;
+}
+
 export interface DetectedStack {
   language: Detection;
   runtime: Detection;
@@ -18,4 +43,5 @@ export interface DetectedStack {
   formatter: Detection;
   packageManager: Detection;
   monorepo: boolean;
+  aiAgents: DetectedAiAgents;
 }

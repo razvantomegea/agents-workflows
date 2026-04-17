@@ -13,6 +13,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   paths: StackConfig['paths'];
   commands: StackConfig['commands'];
   conventions: StackConfig['conventions'];
+  detectedAiAgents: StackConfig['detectedAiAgents'];
 
   stackItems: string[];
   isTypescript: boolean;

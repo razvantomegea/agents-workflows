@@ -12,6 +12,7 @@ function makeConfig(): StackConfig {
     agents: { architect: true, implementer: true, codeReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true },
     selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: true },
     targets: { claudeCode: true, codexCli: true },
+    detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false },
   };
 }
 
@@ -33,5 +34,23 @@ describe('generateAll', () => {
       throw new Error(`Generated files with empty content: ${emptyFilePaths}`);
     }
     expect(emptyFiles.length).toBe(0);
+  });
+
+  it('renders modernized agent frontmatter and structured safety sections', async () => {
+    const files = await generateAll(makeConfig());
+    const agentFiles = files.filter((file) => file.path.startsWith('.claude/agents/'));
+
+    expect(agentFiles).toHaveLength(8);
+
+    for (const file of agentFiles) {
+      expect(file.content).toMatch(/^tools: .+$/m);
+      expect(file.content).toContain('<constraints>');
+      expect(file.content).toContain('<uncertainty>');
+      expect(file.content.split(/\r?\n/).length).toBeLessThanOrEqual(200);
+    }
+
+    const codeReviewer = agentFiles.find((file) => file.path.endsWith('code-reviewer.md'));
+    expect(codeReviewer?.content).toMatch(/^tools: Read, Grep, Glob, Bash$/m);
+    expect(codeReviewer?.content).not.toMatch(/^tools: .*?\b(?:Edit|Write)\b/m);
   });
 });

@@ -8,6 +8,7 @@ import { generateAll } from '../generator/index.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { StackConfig } from '../schema/stack-config.js';
+import type { DetectedAiAgent } from '../detector/types.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
@@ -25,6 +26,7 @@ export async function initCommand(
 
   logger.heading('Detected:');
   printDetected(detected);
+  printDetectedAiTools(detected.aiAgents.agents);
 
   logger.blank();
   const config = options.config ?? await runPromptFlow(detected, projectRoot, { yes: options.yes });
@@ -85,5 +87,15 @@ function printDetected(detected: ReturnType<typeof import('../detector/detect-st
     if (detection.value) {
       logger.label(label, `${detection.value} (${Math.round(detection.confidence * 100)}%)`);
     }
+  }
+}
+
+function printDetectedAiTools(agents: readonly DetectedAiAgent[]): void {
+  const names = agents
+    .filter((agent) => agent.cliAvailable)
+    .map((agent) => agent.name);
+
+  if (names.length > 0) {
+    logger.info(`Detected AI tools on PATH: ${names.join(', ')}`);
   }
 }

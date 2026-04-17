@@ -9,6 +9,7 @@ import { detectLinter, detectFormatter } from './detect-linter.js';
 import { detectPackageManager } from './detect-package-manager.js';
 import { detectE2e } from './detect-e2e.js';
 import { detectAuth } from './detect-auth.js';
+import { detectAiAgents } from './detect-ai-agents.js';
 import type { DetectedStack } from './types.js';
 
 export async function detectStack(projectRoot: string): Promise<DetectedStack> {
@@ -25,6 +26,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     packageManager,
     e2eFramework,
     auth,
+    aiAgents,
   ] = await Promise.all([
     detectLanguage(projectRoot),
     detectFramework(projectRoot),
@@ -38,6 +40,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectPackageManager(projectRoot),
     detectE2e(projectRoot),
     detectAuth(projectRoot),
+    detectAiAgents(),
   ]);
 
   const runtime = resolveRuntime(language.value, framework.value);
@@ -58,6 +61,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     formatter,
     packageManager,
     monorepo,
+    aiAgents,
   };
 }
 

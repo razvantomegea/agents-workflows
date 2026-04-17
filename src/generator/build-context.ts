@@ -19,6 +19,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
     paths: config.paths,
     commands: config.commands,
     conventions: config.conventions,
+    detectedAiAgents: config.detectedAiAgents,
 
     stackItems: buildStackItems(config),
     isTypescript,
