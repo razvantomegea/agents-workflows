@@ -29,16 +29,28 @@ function parseMinimalToml(content: string): PyprojectToml {
   const result: PyprojectToml = {};
   const lines = content.split('\n');
   let currentSection = '';
+  let dependencyLines: string[] | null = null;
 
   for (const line of lines) {
     const trimmed = line.trim();
+
+    if (dependencyLines) {
+      dependencyLines.push(trimmed);
+      if (trimmed.includes(']')) {
+        if (!result.project) result.project = {};
+        result.project.dependencies = parseDependencyArray(dependencyLines.join(' '));
+        dependencyLines = null;
+      }
+      continue;
+    }
+
     const sectionMatch = trimmed.match(/^\[(.+)\]$/);
     if (sectionMatch) {
       currentSection = sectionMatch[1];
 
       if (currentSection.startsWith('tool.')) {
         if (!result.tool) result.tool = {};
-        const toolName = currentSection.slice(5);
+        const toolName = currentSection.slice(5).split('.')[0];
         result.tool[toolName] = {};
       }
       continue;
@@ -58,12 +70,29 @@ function parseMinimalToml(content: string): PyprojectToml {
       const depMatch = trimmed.match(/^dependencies\s*=\s*\[(.+)\]$/);
       if (depMatch) {
         if (!result.project) result.project = {};
-        result.project.dependencies = depMatch[1]
-          .split(',')
-          .map((d) => d.trim().replace(/"/g, '').split(/[>=<~!]/)[0].trim());
+        result.project.dependencies = parseDependencyArray(depMatch[1]);
+        continue;
+      }
+
+      if (/^dependencies\s*=\s*\[/.test(trimmed)) {
+        dependencyLines = [trimmed];
+        if (trimmed.includes(']')) {
+          if (!result.project) result.project = {};
+          result.project.dependencies = parseDependencyArray(dependencyLines.join(' '));
+          dependencyLines = null;
+        }
       }
     }
   }
 
   return result;
+}
+
+function parseDependencyArray(raw: string): string[] {
+  return raw
+    .replace(/^dependencies\s*=\s*\[/, '')
+    .replace(/\]$/, '')
+    .split(',')
+    .map((d) => d.trim().replace(/["']/g, '').split(/[>=<~!]/)[0].trim())
+    .filter(Boolean);
 }

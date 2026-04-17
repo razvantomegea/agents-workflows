@@ -23,7 +23,7 @@ You are an **E2E test engineer** specializing in **<%= tooling.e2eFramework %>**
 ## Flow Structure
 
 ```yaml
-appId: <%= project.name %>
+appId: "<%- (project.bundleId || project.name).toLowerCase().replace(/[^a-z0-9.-]+/g, '-').replace(/^-+|-+$/g, '') || 'app' %>"
 ---
 - launchApp:
     clearState: true

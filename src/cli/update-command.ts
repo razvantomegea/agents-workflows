@@ -15,7 +15,16 @@ export async function updateCommand(projectRoot: string): Promise<void> {
   }
 
   const raw = await readFile(manifestPath, 'utf-8');
-  const parsed = manifestSchema.safeParse(JSON.parse(raw));
+  let manifestJson: unknown;
+  try {
+    manifestJson = JSON.parse(raw);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.error(`Invalid JSON in ${manifestPath}: ${message}`);
+    process.exit(1);
+  }
+
+  const parsed = manifestSchema.safeParse(manifestJson);
 
   if (!parsed.success) {
     logger.error('Invalid .agents-workflows.json:');

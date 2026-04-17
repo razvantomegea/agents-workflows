@@ -31,4 +31,7 @@ for TASK_NUM in $PARALLEL_TASKS; do
 done
 
 wait
-echo "[$TIMESTAMP] All parallel tasks launched." | tee -a "$LOG_FILE"
+COMPLETED_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+echo "[$COMPLETED_TIMESTAMP] All parallel tasks completed." | tee -a "$LOG_FILE"
+echo ""
+echo "Log: ${LOG_FILE}"

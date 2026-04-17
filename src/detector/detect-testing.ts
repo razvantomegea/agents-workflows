@@ -13,8 +13,12 @@ export async function detectTestFramework(projectRoot: string): Promise<Detectio
     if (deps['ava']) return { value: 'ava', confidence: 0.9 };
   }
 
-  if (await fileExists(join(projectRoot, 'pytest.ini')) ||
-      await fileExists(join(projectRoot, 'pyproject.toml'))) {
+  const hasPytestIni = await fileExists(join(projectRoot, 'pytest.ini'));
+  if (hasPytestIni) {
+    return { value: 'pytest', confidence: 0.9 };
+  }
+
+  if (await fileExists(join(projectRoot, 'pyproject.toml'))) {
     const pyproject = await readPyprojectToml(projectRoot);
     if (pyproject?.tool && 'pytest' in pyproject.tool) {
       return { value: 'pytest', confidence: 0.9 };

@@ -1,4 +1,4 @@
-import { input, select, confirm, checkbox } from '@inquirer/prompts';
+import { input, confirm, checkbox } from '@inquirer/prompts';
 import type { DetectedStack } from '../detector/types.js';
 
 function useDetectedOr<T>(detection: { value: T | null; confidence: number }, fallback: T): T {
@@ -113,10 +113,12 @@ export async function askConventions(): Promise<{
   barrelExports: boolean;
   strictTypes: boolean;
 }> {
-  const maxFileLength = parseInt(
-    await input({ message: 'Max file length:', default: '200' }),
-    10,
-  );
+  const maxFileLengthRaw = await input({ message: 'Max file length:', default: '200' });
+  const parsedMaxFileLength = parseInt(maxFileLengthRaw, 10);
+  const maxFileLength =
+    Number.isNaN(parsedMaxFileLength) || parsedMaxFileLength <= 0
+      ? 200
+      : parsedMaxFileLength;
   const testColocation = await confirm({ message: 'Colocate tests next to source files?', default: true });
   const barrelExports = await confirm({ message: 'Use barrel exports (index.ts)?', default: true });
   const strictTypes = await confirm({ message: 'Strict types (no any)?', default: true });

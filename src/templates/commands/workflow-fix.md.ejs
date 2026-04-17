@@ -21,8 +21,10 @@ Fix all QA issues listed in QA.md on the current feature branch.
 <% if (commands.typeCheck) { -%>
    3. `<%= commands.typeCheck %>` — must pass
 <% } -%>
+<% if (commands.test) { -%>
    4. `<%= commands.test %>` — must pass
-   Repeat until both checks pass.
+<% } -%>
+   Repeat until all listed checks pass.
 <% if (commands.lint) { -%>
    Also run `<%= commands.lint %>` after the loop passes.
 <% } -%>
