@@ -71,4 +71,24 @@ describe('buildContext', () => {
     expect(ruleNames).not.toContain('No `any`');
     expect(ruleNames).toContain('DRY');
   });
+
+  it('passes detectedAiAgents through unchanged', () => {
+    const ctx = buildContext(makeConfig({
+      detectedAiAgents: {
+        claudeCode: true,
+        codexCli: false,
+        cursor: true,
+        aider: false,
+        continueDev: false,
+        copilot: false,
+        windsurf: false,
+        gemini: false,
+      },
+    }));
+
+    expect(ctx.detectedAiAgents.claudeCode).toBe(true);
+    expect(ctx.detectedAiAgents.cursor).toBe(true);
+    expect(ctx.detectedAiAgents.codexCli).toBe(false);
+    expect(ctx.detectedAiAgents.gemini).toBe(false);
+  });
 });

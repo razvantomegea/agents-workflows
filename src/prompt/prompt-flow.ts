@@ -13,10 +13,10 @@ import {
   askTargets,
 } from './questions.js';
 
-const FRONTEND_FRAMEWORKS = [
+const FRONTEND_FRAMEWORKS = new Set([
   'react', 'nextjs', 'expo', 'react-native', 'vue', 'nuxt',
   'angular', 'sveltekit', 'remix',
-];
+]);
 
 function resolvePackageManagerPrefix(pm: string): string {
   const prefixMap: Record<string, string> = {
@@ -93,7 +93,7 @@ export async function runPromptFlow(
   const paths = await askPaths(stack.framework);
   const conventions = await askConventions();
 
-  const isFrontend = FRONTEND_FRAMEWORKS.includes(stack.framework);
+  const isFrontend = FRONTEND_FRAMEWORKS.has(stack.framework);
   const selectedAgents = await askAgentSelection(isFrontend);
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
@@ -177,7 +177,7 @@ export function createDefaultConfig(
   const language = detected.language.value ?? 'typescript';
   const runtime = detected.runtime.value ?? 'node';
   const framework = detected.framework.value ?? 'react';
-  const isFrontend = FRONTEND_FRAMEWORKS.includes(framework);
+  const isFrontend = FRONTEND_FRAMEWORKS.has(framework);
   const packageManager = detected.packageManager.value ?? 'npm';
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;
@@ -261,8 +261,8 @@ function toDetectedAiAgentFlags(detected: DetectedStack): StackConfig['detectedA
     isDetected(detected.aiAgents.agents.find((candidate) => candidate.id === id));
 
   return {
-    claudeCode: detected.aiAgents.hasClaudeCode || isPresent('claude'),
-    codexCli: detected.aiAgents.hasCodexCli || isPresent('codex'),
+    claudeCode: detected.aiAgents.hasClaudeCode,
+    codexCli: detected.aiAgents.hasCodexCli,
     cursor: isPresent('cursor'),
     aider: isPresent('aider'),
     continueDev: isPresent('continue'),

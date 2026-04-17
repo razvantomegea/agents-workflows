@@ -37,10 +37,12 @@ describe('generateAll', () => {
   });
 
   it('renders modernized agent frontmatter and structured safety sections', async () => {
-    const files = await generateAll(makeConfig());
+    const config = makeConfig();
+    const files = await generateAll(config);
     const agentFiles = files.filter((file) => file.path.startsWith('.claude/agents/'));
+    const expectedAgentCount = Object.values(config.agents).filter(Boolean).length;
 
-    expect(agentFiles).toHaveLength(8);
+    expect(agentFiles).toHaveLength(expectedAgentCount);
 
     for (const file of agentFiles) {
       expect(file.content).toMatch(/^tools: .+$/m);
