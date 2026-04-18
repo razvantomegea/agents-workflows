@@ -40,6 +40,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
 
     hasUiDesigner: config.agents.uiDesigner,
     hasE2eTester: config.agents.e2eTester,
+    hasSecurityReviewer: config.agents.securityReviewer,
     testFramework: config.tooling.testFramework,
     testsDir: config.paths.testsDir,
   };

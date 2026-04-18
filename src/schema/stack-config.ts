@@ -62,6 +62,7 @@ export const stackConfigSchema = z.object({
     architect: z.boolean().default(true),
     implementer: z.boolean().default(true),
     codeReviewer: z.boolean().default(true),
+    securityReviewer: z.boolean().default(true),
     codeOptimizer: z.boolean().default(true),
     testWriter: z.boolean().default(true),
     e2eTester: z.boolean().default(false),

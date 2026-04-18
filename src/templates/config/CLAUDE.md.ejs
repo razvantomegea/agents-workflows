@@ -19,6 +19,9 @@ This file provides guidance to Claude Code when working with code in this reposi
 | Architecture, planning | `architect` (opus) |
 | Implementation | `implementer` |
 | Code review (after every file edit) | `code-reviewer` |
+<% if (hasSecurityReviewer) { -%>
+| Security review (parallel to code review) | `security-reviewer` |
+<% } -%>
 | Review loop orchestration (post-task) | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
@@ -49,7 +52,11 @@ Use sub-agents with independent, single, simple tasks as much as possible.
 
 After every implementation session, run the following loop before considering the task done:
 
+<% if (hasSecurityReviewer) { -%>
+1. **Launch `code-reviewer` and `security-reviewer` in parallel** — pass the list of all modified files and the task context to both.
+<% } else { -%>
 1. **Launch `code-reviewer` agent** — pass the list of all modified files and the task context.
+<% } -%>
 2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
 3. **Re-run type-check** — `<%= commands.typeCheck || 'N/A' %>`. Fix any new errors.
 4. **Re-run tests** — `<%= commands.test %>`. All suites must pass.

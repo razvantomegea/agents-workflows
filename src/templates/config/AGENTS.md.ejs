@@ -19,6 +19,9 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Architecture, planning | `architect` |
 | Implementation | `implementer` |
 | Code review (after every file edit) | `code-reviewer` |
+<% if (hasSecurityReviewer) { -%>
+| Security review (parallel to code review) | `security-reviewer` |
+<% } -%>
 | Review loop orchestration | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
@@ -46,7 +49,11 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 After every implementation session, run the following loop:
 
+<% if (hasSecurityReviewer) { -%>
+1. **Launch `code-reviewer` and `security-reviewer` in parallel** on all modified files.
+<% } else { -%>
 1. **Launch `code-reviewer` agent** on all modified files.
+<% } -%>
 2. **Apply every finding** — every critical and warning must be fixed.
 <% if (commands.typeCheck) { -%>
 3. **Re-run type-check** — `<%= commands.typeCheck %>`.

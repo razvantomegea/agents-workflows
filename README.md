@@ -9,7 +9,7 @@ Reusable AI agent configuration framework. Install battle-tested Claude Code age
 
 This CLI tool extracts proven agentic workflow patterns into parameterized templates that adapt to your project's technology stack. Instead of writing agent configurations from scratch, you answer a few questions and get a complete set of:
 
-- **8 specialized agents**: architect, implementer, code-reviewer, code-optimizer, test-writer, e2e-tester, reviewer, ui-designer
+- **9 specialized agents**: architect, implementer, code-reviewer, security-reviewer, code-optimizer, test-writer, e2e-tester, reviewer, ui-designer
 - **3 workflow commands**: `/workflow-plan`, `/workflow-fix`, `/external-review`
 - **Root config files**: `AGENTS.md`, plus `CLAUDE.md` and `.claude/settings.local.json` when Claude Code output is selected
 - **Sync scripts**: Codex CLI integration with `.codex/` skills and prompts
@@ -53,6 +53,7 @@ The CLI will:
 | `architect` | Planning only; produces structured `PLAN.md` with max 8 tasks | Opus |
 | `implementer` | Primary code writing agent adapted to your stack | Sonnet |
 | `code-reviewer` | Post-edit review with project-specific checklist | Sonnet |
+| `security-reviewer` | OWASP/security audit (injection, auth, secrets, data exposure) | Sonnet |
 | `code-optimizer` | Performance, DRY, and quality analysis | Sonnet |
 | `test-writer` | Unit test generation (Jest/Vitest/pytest/Go) | Sonnet |
 | `e2e-tester` | E2E test generation (Playwright/Cypress/Maestro) | Sonnet |

@@ -32,6 +32,7 @@ export interface GeneratorContext extends Record<string, unknown> {
 
   hasUiDesigner: boolean;
   hasE2eTester: boolean;
+  hasSecurityReviewer: boolean;
   testFramework: string;
   testsDir: string | null;
 }

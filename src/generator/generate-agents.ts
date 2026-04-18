@@ -12,6 +12,7 @@ const AGENT_DEFINITIONS: AgentDefinition[] = [
   { key: 'architect', templateFile: 'agents/architect.md.ejs', outputName: 'architect.md' },
   { key: 'implementer', templateFile: 'agents/implementer.md.ejs', outputName: 'implementer.md' },
   { key: 'codeReviewer', templateFile: 'agents/code-reviewer.md.ejs', outputName: 'code-reviewer.md' },
+  { key: 'securityReviewer', templateFile: 'agents/security-reviewer.md.ejs', outputName: 'security-reviewer.md' },
   { key: 'codeOptimizer', templateFile: 'agents/code-optimizer.md.ejs', outputName: 'code-optimizer.md' },
   { key: 'testWriter', templateFile: 'agents/test-writer.md.ejs', outputName: 'test-writer.md' },
   { key: 'e2eTester', templateFile: 'agents/e2e-tester.md.ejs', outputName: 'e2e-tester.md' },

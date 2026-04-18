@@ -1,38 +1,13 @@
-# QA Notes
+@README.md:1-161 Fix the following issues. The issues can be from different files or can overlap on same lines in one file.
 
-## 2026-04-18 - `init --yes` on this repository
+- Verify each finding against the current code and only fix it if needed.
 
-Command tested:
+In @.gitignore around lines 7 - 12, Remove the duplicate `.vscode/` entry from the .gitignore so it only appears once; locate the repeated `.vscode/` lines in the file (they appear in the provided diff) and delete the redundant occurrence, leaving a single `.vscode/` pattern in the list.
 
-```powershell
-node dist\index.js init --dir . --yes
-```
+- Verify each finding against the current code and only fix it if needed.
 
-Outcome:
+In @package.json at line 63, Add a single trailing newline at the end of package.json so the file ends with a newline character (POSIX-compliant EOF); simply update the file to ensure there is a final blank line after the closing brace '}'.
 
-- `corepack pnpm build` completed successfully before running the CLI.
-- The first sandboxed CLI run failed with `EPERM` while reading `node_modules\.pnpm\ansi-styles@4.3.0\node_modules\ansi-styles\index.js`; rerunning with elevated filesystem permissions completed successfully. This appears to be a local sandbox permission issue, not necessarily an `agents-workflows` issue.
-- The CLI generated 25 files and wrote `.agents-workflows.json`.
+- Verify each finding against the current code and only fix it if needed.
 
-Issues found:
-
-- [x] 1. The detected stack summary and generated config disagree.
-   - Console output only reported TypeScript, Jest, Oxlint, pnpm, and README.md.
-   - The generated `.agents-workflows.json` set `stack.framework` to `"react"` and generated `project.description` as `"A react application"`.
-   - This repository is a TypeScript CLI package, so `--yes` appears to fall back to React defaults when no framework is detected. That produces misleading generated instructions.
-   - **Fixed**: `stack.framework` is now nullable in the schema. `createDefaultConfig` no longer forces `'react'`; `project.description` falls back to `A <language> project` when no framework is detected.
-
-- [x] 2. The generated project name falls back to `my-project`.
-   - `package.json` contains `"name": "agents-workflows"`, but `.agents-workflows.json` generated `project.name` as `"my-project"`.
-   - Non-interactive init should probably use the package name when available.
-   - **Fixed**: Non-interactive init and interactive defaults now prefer `package.json` `name`/`description` when available.
-
-- [x] 3. Backup logging is confusing.
-   - The CLI printed `Backed up 1 existing file(s) to .agents-workflows-backup/`, which matched the single pre-existing `.claude/settings.local.json` backup.
-   - Immediately after that, it printed all 25 generated file paths, making the output look like all generated files were backed up.
-   - **Fixed**: `init-command` now prints `Writing files:` header before listing generated files, clearly separating the backup summary from the write list.
-
-- [x] 4. Completion path display is awkward for `--dir .`.
-   - The CLI printed `Done! 25 files generated at ..`
-   - For a current-directory run, `.` or the resolved absolute path would be clearer.
-   - **Fixed**: `projectRoot` is now resolved to an absolute path before display, and the trailing period inside the string was removed.
+In @src/detector/detect-monorepo.ts around lines 89 - 91, The function inferNpmOrYarn currently ignores its _projectRoot parameter and always returns 'npm'; change inferNpmOrYarn(projectRoot: string) to check for a yarn.lock file under the given projectRoot (e.g., using fs.existsSync or await fs.promises.access) and return 'yarn' when present otherwise 'npm', and then update the readWorkspacePatterns call site to await the (now async) inferNpmOrYarn result so workspace detection correctly distinguishes Yarn vs npm workspaces.

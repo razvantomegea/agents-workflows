@@ -1,6 +1,5 @@
-import { input, confirm, checkbox, select } from '@inquirer/prompts';
+import { input, confirm, checkbox } from '@inquirer/prompts';
 import type { DetectedStack } from '../detector/types.js';
-import type { MonorepoInfo } from '../detector/detect-monorepo.js';
 import type { PackageJson } from '../utils/index.js';
 import { isFrontendFramework } from '../constants/frameworks.js';
 import {
@@ -159,6 +158,7 @@ export async function askAgentSelection(isFrontend: boolean): Promise<string[]> 
     { name: 'architect — Planning agent (Opus)', value: 'architect', checked: true },
     { name: 'implementer — Primary implementation agent', value: 'implementer', checked: true },
     { name: 'code-reviewer — Post-edit review with checklist', value: 'codeReviewer', checked: true },
+    { name: 'security-reviewer — OWASP/security audit (parallel to code-reviewer)', value: 'securityReviewer', checked: true },
     { name: 'code-optimizer — Performance & quality analysis', value: 'codeOptimizer', checked: true },
     { name: 'test-writer — Unit test generation', value: 'testWriter', checked: true },
     { name: 'e2e-tester — E2E test generation', value: 'e2eTester', checked: false },
@@ -186,24 +186,4 @@ export async function askTargets(detected: DetectedStack['aiAgents']): Promise<{
   const codexCli = await confirm({ message: 'Generate Codex CLI config (.codex/)?', default: codexDefault });
 
   return { claudeCode, codexCli };
-}
-
-export type InstallScope = 'root' | 'per-package' | 'both';
-
-export async function askInstallScope(monorepo: MonorepoInfo): Promise<InstallScope> {
-  if (!monorepo.isMonorepo || monorepo.workspaces.length === 0) {
-    return 'root';
-  }
-
-  const scope = await select<InstallScope>({
-    message: `Detected ${monorepo.workspaces.length} workspace(s) (${monorepo.tool ?? 'monorepo'}). Where should agents-workflows install?`,
-    choices: [
-      { name: 'Root only — one shared config at the monorepo root', value: 'root' },
-      { name: 'Per-package — one config per workspace', value: 'per-package' },
-      { name: 'Both — root config + per-workspace configs', value: 'both' },
-    ],
-    default: 'root',
-  });
-
-  return scope;
 }

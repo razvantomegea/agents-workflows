@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { logger } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
-import { askInstallScope, type InstallScope } from '../prompt/questions.js';
+import { askInstallScope, type InstallScope } from '../prompt/install-scope.js';
 import { generateAll } from '../generator/index.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';

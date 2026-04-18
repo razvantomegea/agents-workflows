@@ -1,22 +1,7 @@
 import { buildContext } from '../../src/generator/build-context.js';
-import type { StackConfig } from '../../src/schema/stack-config.js';
+import { makeStackConfig } from './fixtures.js';
 
-function makeConfig(overrides: Partial<StackConfig> = {}): StackConfig {
-  return {
-    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [], docsFile: null },
-    stack: { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null },
-    tooling: { packageManager: 'pnpm', packageManagerPrefix: 'pnpm', testFramework: 'vitest', testLibrary: 'react-testing-library', e2eFramework: 'playwright', linter: 'eslint', formatter: 'prettier' },
-    paths: { sourceRoot: 'src/', componentsDir: 'src/components/', hooksDir: 'src/hooks/', utilsDir: 'src/utils/', testsDir: null, designTokensFile: null, i18nDir: null, testConfigFile: null },
-    commands: { typeCheck: 'pnpm check-types', test: 'pnpm test', lint: 'pnpm lint', format: null, build: null, dev: null },
-    conventions: { componentStyle: 'arrow', propsStyle: 'readonly', maxFileLength: 200, testColocation: true, barrelExports: true, strictTypes: true },
-    agents: { architect: true, implementer: true, codeReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true },
-    selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false },
-    targets: { claudeCode: true, codexCli: false },
-    detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false },
-    monorepo: null,
-    ...overrides,
-  };
-}
+const makeConfig = makeStackConfig;
 
 describe('buildContext', () => {
   it('sets isReact true for Next.js', () => {

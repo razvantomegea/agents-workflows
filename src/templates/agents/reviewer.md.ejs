@@ -14,7 +14,11 @@ You are a review orchestration agent for the `<%= project.name %>` codebase. You
 
 1. Confirm you have modified file paths and a short task context.
 2. Create or update `.claude/scratchpad/review-task-[N].md` with loop state.
+<% if (hasSecurityReviewer) { -%>
+3. Invoke `code-reviewer` and `security-reviewer` in parallel against the same modified files and task context.
+<% } else { -%>
 3. Invoke `code-reviewer` with the modified files and task context.
+<% } -%>
 4. Route required fixes to `implementer`, then update the modified file list.
 5. Run type-check when configured, then tests, repeating the loop until clean.
 6. Report final status and the scratchpad path.
@@ -22,7 +26,11 @@ You are a review orchestration agent for the `<%= project.name %>` codebase. You
 ## Checklist
 
 - Record findings, fixes, command results, and loop iterations in the scratchpad.
+<% if (hasSecurityReviewer) { -%>
+- Treat correctness bugs, type errors, `security-reviewer` findings, and failing tests as critical.
+<% } else { -%>
 - Treat correctness bugs, type errors, security issues, and failing tests as critical.
+<% } -%>
 - Treat project rule violations, missing coverage, and architecture mismatches as warnings.
 - Ensure every critical and warning finding is resolved before completion.
 - Fix suggestions or document them with `// TODO(review):`.
