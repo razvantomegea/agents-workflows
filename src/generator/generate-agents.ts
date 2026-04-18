@@ -11,6 +11,7 @@ interface AgentDefinition {
 const AGENT_DEFINITIONS: AgentDefinition[] = [
   { key: 'architect', templateFile: 'agents/architect.md.ejs', outputName: 'architect.md' },
   { key: 'implementer', templateFile: 'agents/implementer.md.ejs', outputName: 'implementer.md' },
+  { key: 'reactTsSenior', templateFile: 'agents/react-ts-senior.md.ejs', outputName: 'react-ts-senior.md' },
   { key: 'codeReviewer', templateFile: 'agents/code-reviewer.md.ejs', outputName: 'code-reviewer.md' },
   { key: 'securityReviewer', templateFile: 'agents/security-reviewer.md.ejs', outputName: 'security-reviewer.md' },
   { key: 'codeOptimizer', templateFile: 'agents/code-optimizer.md.ejs', outputName: 'code-optimizer.md' },

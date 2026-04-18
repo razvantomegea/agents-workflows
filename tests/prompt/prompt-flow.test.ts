@@ -185,6 +185,44 @@ describe('createDefaultConfig', () => {
     expect(config.project.name).toBe('my-project');
     expect(config.project.description).toBe('A typescript project');
   });
+
+  it('defaults reactTsSenior to true when stack is React-based and TypeScript', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.agents.reactTsSenior).toBe(true);
+  });
+
+  it('defaults reactTsSenior to true for React Native + TypeScript', () => {
+    const detected = makeDetectedStack();
+    detected.framework = { value: 'react-native', confidence: 0.95 };
+    const config = createDefaultConfig(detected);
+
+    expect(config.agents.reactTsSenior).toBe(true);
+  });
+
+  it('defaults reactTsSenior to false when framework is not React-based', () => {
+    const detected = makeDetectedStack();
+    detected.framework = { value: 'express', confidence: 0.95 };
+    const config = createDefaultConfig(detected);
+
+    expect(config.agents.reactTsSenior).toBe(false);
+  });
+
+  it('defaults reactTsSenior to false when language is not TypeScript', () => {
+    const detected = makeDetectedStack();
+    detected.language = { value: 'javascript', confidence: 0.95 };
+    const config = createDefaultConfig(detected);
+
+    expect(config.agents.reactTsSenior).toBe(false);
+  });
+
+  it('defaults reactTsSenior to false when framework is null', () => {
+    const detected = makeDetectedStack();
+    detected.framework = emptyDetection;
+    const config = createDefaultConfig(detected);
+
+    expect(config.agents.reactTsSenior).toBe(false);
+  });
 });
 
 describe('resolveDefaultProjectName', () => {
