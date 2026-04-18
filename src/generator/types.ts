@@ -24,8 +24,11 @@ export interface GeneratorContext extends Record<string, unknown> {
   componentsDir: string | null;
   utilsDir: string;
   localeRules: string[];
+  docsFile: string | null;
 
   reviewChecklist: ReviewChecklistItem[];
+  permissions: string[];
+  monorepo: StackConfig['monorepo'];
 
   hasUiDesigner: boolean;
   hasE2eTester: boolean;

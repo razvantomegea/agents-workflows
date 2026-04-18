@@ -13,12 +13,17 @@ export async function renderTemplate(
   const fullPath = join(TEMPLATES_DIR, templatePath);
   const template = await readFile(fullPath, 'utf-8');
 
-  const result = await ejs.render(template, data, {
-    async: true,
+  const result = ejs.render(template, data, {
+    async: false,
     filename: fullPath,
     root: TEMPLATES_DIR,
     views: [TEMPLATES_DIR],
+    escape: identityEscape,
   });
 
   return result.replace(/\n{3,}/g, '\n\n').trim() + '\n';
+}
+
+function identityEscape(value: unknown): string {
+  return value == null ? '' : String(value);
 }

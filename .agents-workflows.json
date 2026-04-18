@@ -1,0 +1,115 @@
+{
+  "version": "0.1.0",
+  "generatedAt": "2026-04-18T13:04:47.734Z",
+  "stackConfigHash": "2052858322025063",
+  "config": {
+    "project": {
+      "name": "agents-workflows",
+      "description": "Reusable AI agent configuration framework",
+      "locale": "en",
+      "localeRules": [],
+      "docsFile": "README.md"
+    },
+    "stack": {
+      "language": "typescript",
+      "runtime": "node",
+      "framework": "none",
+      "uiLibrary": null,
+      "stateManagement": null,
+      "database": null,
+      "auth": null
+    },
+    "tooling": {
+      "packageManager": "pnpm",
+      "packageManagerPrefix": "pnpm",
+      "testFramework": "jest",
+      "testLibrary": null,
+      "e2eFramework": null,
+      "linter": "oxlint",
+      "formatter": null
+    },
+    "paths": {
+      "sourceRoot": "src/",
+      "componentsDir": null,
+      "hooksDir": null,
+      "utilsDir": "src/utils/",
+      "testsDir": "tests/",
+      "designTokensFile": null,
+      "i18nDir": null,
+      "testConfigFile": null
+    },
+    "commands": {
+      "typeCheck": "pnpm check-types",
+      "test": "pnpm test",
+      "lint": "pnpm lint",
+      "format": "pnpm format",
+      "build": "pnpm build",
+      "dev": "pnpm dev"
+    },
+    "conventions": {
+      "componentStyle": "arrow",
+      "propsStyle": "readonly",
+      "maxFileLength": 200,
+      "testColocation": false,
+      "barrelExports": true,
+      "strictTypes": true
+    },
+    "agents": {
+      "architect": true,
+      "implementer": true,
+      "codeReviewer": true,
+      "codeOptimizer": true,
+      "testWriter": true,
+      "e2eTester": false,
+      "reviewer": true,
+      "uiDesigner": false
+    },
+    "selectedCommands": {
+      "workflowPlan": true,
+      "workflowFix": true,
+      "externalReview": true
+    },
+    "targets": {
+      "claudeCode": true,
+      "codexCli": true
+    },
+    "detectedAiAgents": {
+      "claudeCode": true,
+      "codexCli": true,
+      "cursor": true,
+      "aider": false,
+      "continueDev": false,
+      "copilot": false,
+      "windsurf": false,
+      "gemini": true
+    },
+    "monorepo": null
+  },
+  "files": [
+    ".claude/agents/architect.md",
+    ".codex/skills/architect/SKILL.md",
+    ".claude/agents/implementer.md",
+    ".codex/skills/implementer/SKILL.md",
+    ".claude/agents/code-reviewer.md",
+    ".codex/skills/code-reviewer/SKILL.md",
+    ".claude/agents/code-optimizer.md",
+    ".codex/skills/code-optimizer/SKILL.md",
+    ".claude/agents/test-writer.md",
+    ".codex/skills/test-writer/SKILL.md",
+    ".claude/agents/reviewer.md",
+    ".codex/skills/reviewer/SKILL.md",
+    ".claude/commands/workflow-plan.md",
+    ".codex/prompts/workflow-plan.md",
+    ".claude/commands/workflow-fix.md",
+    ".codex/prompts/workflow-fix.md",
+    ".claude/commands/external-review.md",
+    ".codex/prompts/external-review.md",
+    "CLAUDE.md",
+    ".claude/settings.local.json",
+    "AGENTS.md",
+    ".claude/scripts/cursor-task.sh",
+    ".claude/scripts/run-parallel.sh",
+    ".codex/scripts/sync-codex.sh",
+    ".codex/scripts/sync-codex.ps1"
+  ]
+}

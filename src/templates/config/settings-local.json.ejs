@@ -1,22 +1,8 @@
 {
   "permissions": {
     "allow": [
-<% const perms = []; -%>
-<% if (tooling.packageManagerPrefix) { -%>
-<%   perms.push(`Bash(${tooling.packageManagerPrefix}:*)`); -%>
-<% } -%>
-<% perms.push('WebSearch'); -%>
-<% if (commands.test) { -%>
-<%   perms.push(`Bash(${commands.test})`); -%>
-<% } -%>
-<% if (commands.typeCheck) { -%>
-<%   perms.push(`Bash(${commands.typeCheck})`); -%>
-<% } -%>
-<% if (commands.lint) { -%>
-<%   perms.push(`Bash(${commands.lint})`); -%>
-<% } -%>
-<% perms.forEach(function(perm, i) { -%>
-      "<%= perm %>"<%= i < perms.length - 1 ? ',' : '' %>
+<% permissions.forEach(function(perm, i) { -%>
+      "<%= perm %>"<%= i < permissions.length - 1 ? ',' : '' %>
 <% }); -%>
     ]
   }

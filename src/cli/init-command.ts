@@ -1,14 +1,15 @@
 import { writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { logger } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
+import { askInstallScope, type InstallScope } from '../prompt/questions.js';
 import { generateAll } from '../generator/index.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { StackConfig } from '../schema/stack-config.js';
-import type { DetectedAiAgent } from '../detector/types.js';
+import type { DetectedAiAgent, DetectedStack } from '../detector/types.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
@@ -28,14 +29,67 @@ export async function initCommand(
   printDetected(detected);
   printDetectedAiTools(detected.aiAgents.agents);
 
+  const scope = await resolveInstallScope(detected, options);
+
+  if (scope === 'root') {
+    await installSinglePackage(projectRoot, detected, options, rootMonorepoConfig(detected));
+    return;
+  }
+
+  if (scope === 'both') {
+    await installSinglePackage(projectRoot, detected, options, rootMonorepoConfig(detected));
+  }
+
+  await installWorkspaces(projectRoot, detected, options);
+}
+
+async function resolveInstallScope(
+  detected: DetectedStack,
+  options: InitCommandOptions,
+): Promise<InstallScope> {
+  if (options.config || options.yes) return 'root';
   logger.blank();
-  const config = options.config ?? await runPromptFlow(detected, projectRoot, { yes: options.yes });
+  return askInstallScope(detected.monorepo);
+}
+
+function rootMonorepoConfig(detected: DetectedStack): StackConfig['monorepo'] {
+  if (!detected.monorepo.isMonorepo) return null;
+  return {
+    isRoot: true,
+    tool: detected.monorepo.tool,
+    workspaces: detected.monorepo.workspaces,
+  };
+}
+
+async function installWorkspaces(
+  rootDir: string,
+  detected: DetectedStack,
+  options: InitCommandOptions,
+): Promise<void> {
+  for (const workspace of detected.monorepo.workspaces) {
+    const workspacePath = join(rootDir, workspace);
+    logger.blank();
+    logger.heading(`Workspace: ${workspace}`);
+    const workspaceDetected = await detectStack(workspacePath);
+    printDetected(workspaceDetected);
+    await installSinglePackage(workspacePath, workspaceDetected, options, null);
+  }
+}
+
+async function installSinglePackage(
+  projectRoot: string,
+  detected: DetectedStack,
+  options: InitCommandOptions,
+  monorepoOverride: StackConfig['monorepo'],
+): Promise<void> {
+  logger.blank();
+  const baseConfig = options.config ?? await runPromptFlow(detected, projectRoot, { yes: options.yes });
+  const config: StackConfig = { ...baseConfig, monorepo: monorepoOverride ?? baseConfig.monorepo };
 
   logger.blank();
   logger.info('Generating files...\n');
 
   const files = await generateAll(config);
-
   const backup = await backupExistingFiles(projectRoot, files);
 
   const manifest: AgentsWorkflowsManifest = {
@@ -48,6 +102,7 @@ export async function initCommand(
 
   const manifestPath = join(projectRoot, '.agents-workflows.json');
   try {
+    logger.info('Writing files:');
     await writeGeneratedFiles(projectRoot, files);
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
   } catch (error) {
@@ -56,7 +111,7 @@ export async function initCommand(
   }
 
   logger.blank();
-  logger.success(`Done! ${files.length} files generated.`);
+  logger.success(`Done! ${files.length} files generated at ${resolve(projectRoot)}`);
   logger.blank();
   logger.info('Next steps:');
   logger.info('  1. Review the generated files and customize as needed');
@@ -69,7 +124,7 @@ function hashConfig(json: string): string {
   return createHash('sha256').update(json).digest('hex').slice(0, 16);
 }
 
-function printDetected(detected: ReturnType<typeof import('../detector/detect-stack.js').detectStack> extends Promise<infer T> ? T : never): void {
+function printDetected(detected: DetectedStack): void {
   const entries = [
     ['Language', detected.language],
     ['Framework', detected.framework],
@@ -81,12 +136,17 @@ function printDetected(detected: ReturnType<typeof import('../detector/detect-st
     ['Linter', detected.linter],
     ['Formatter', detected.formatter],
     ['Pkg Manager', detected.packageManager],
+    ['Docs', detected.docsFile],
   ] as const;
 
   for (const [label, detection] of entries) {
     if (detection.value) {
       logger.label(label, `${detection.value} (${Math.round(detection.confidence * 100)}%)`);
     }
+  }
+
+  if (detected.monorepo.isMonorepo) {
+    logger.label('Monorepo', `${detected.monorepo.tool ?? 'unknown'} (${detected.monorepo.workspaces.length} workspace(s))`);
   }
 }
 

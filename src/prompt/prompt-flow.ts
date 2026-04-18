@@ -1,7 +1,12 @@
 import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
-import { readPackageJson } from '../utils/index.js';
+import { readPackageJson, type PackageJson } from '../utils/index.js';
 import { isDetected } from '../detector/detect-ai-agents.js';
+import { isFrontendFramework } from '../constants/frameworks.js';
+import {
+  resolveDefaultDescription,
+  resolveDefaultProjectName,
+} from './defaults.js';
 import {
   askProjectIdentity,
   askStack,
@@ -13,10 +18,7 @@ import {
   askTargets,
 } from './questions.js';
 
-const FRONTEND_FRAMEWORKS = new Set([
-  'react', 'nextjs', 'expo', 'react-native', 'vue', 'nuxt',
-  'angular', 'sveltekit', 'remix',
-]);
+export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 
 function resolvePackageManagerPrefix(pm: string): string {
   const prefixMap: Record<string, string> = {
@@ -83,17 +85,19 @@ export async function runPromptFlow(
   projectRoot: string,
   options: PromptFlowOptions = {},
 ): Promise<StackConfig> {
+  const pkg = await readPackageJson(projectRoot);
+
   if (options.yes) {
-    return createDefaultConfig(detected, await readScripts(projectRoot));
+    return createDefaultConfig(detected, pkg?.scripts ?? {}, pkg);
   }
 
-  const identity = await askProjectIdentity(detected);
+  const identity = await askProjectIdentity(detected, pkg);
   const stack = await askStack(detected);
   const tooling = await askTooling(detected);
   const paths = await askPaths(stack.framework);
   const conventions = await askConventions();
 
-  const isFrontend = FRONTEND_FRAMEWORKS.has(stack.framework);
+  const isFrontend = isFrontendFramework(stack.framework);
   const selectedAgents = await askAgentSelection(isFrontend);
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
@@ -103,7 +107,7 @@ export async function runPromptFlow(
     tooling.testFramework,
     tooling.linter,
     stack.language,
-    await readScripts(projectRoot),
+    pkg?.scripts ?? {},
   );
 
   return {
@@ -112,6 +116,7 @@ export async function runPromptFlow(
       description: identity.description,
       locale: identity.locale,
       localeRules: identity.localeRules,
+      docsFile: identity.docsFile,
     },
     stack: {
       language: stack.language,
@@ -167,17 +172,19 @@ export async function runPromptFlow(
     },
     targets,
     detectedAiAgents: toDetectedAiAgentFlags(detected),
+    monorepo: null,
   };
 }
 
 export function createDefaultConfig(
   detected: DetectedStack,
   scripts: PackageScripts = {},
+  pkg: PackageJson | null = null,
 ): StackConfig {
   const language = detected.language.value ?? 'typescript';
   const runtime = detected.runtime.value ?? 'node';
-  const framework = detected.framework.value ?? 'react';
-  const isFrontend = FRONTEND_FRAMEWORKS.has(framework);
+  const framework = detected.framework.value;
+  const isFrontend = isFrontendFramework(framework);
   const packageManager = detected.packageManager.value ?? 'npm';
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;
@@ -189,10 +196,11 @@ export function createDefaultConfig(
 
   return {
     project: {
-      name: 'my-project',
-      description: `A ${framework} application`,
+      name: resolveDefaultProjectName(pkg),
+      description: resolveDefaultDescription(pkg, framework, language),
       locale: 'en',
       localeRules: [],
+      docsFile: detected.docsFile.value,
     },
     stack: {
       language,
@@ -248,12 +256,8 @@ export function createDefaultConfig(
     },
     targets,
     detectedAiAgents: toDetectedAiAgentFlags(detected),
+    monorepo: null,
   };
-}
-
-async function readScripts(projectRoot: string): Promise<PackageScripts> {
-  const pkg = await readPackageJson(projectRoot);
-  return pkg?.scripts ?? {};
 }
 
 function toDetectedAiAgentFlags(detected: DetectedStack): StackConfig['detectedAiAgents'] {

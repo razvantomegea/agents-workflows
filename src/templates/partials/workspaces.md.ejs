@@ -1,0 +1,11 @@
+<% if (monorepo && monorepo.isRoot) { -%>
+## Workspaces
+
+This repository is a <%= monorepo.tool ?? 'monorepo' %> monorepo. The following workspaces each hold their own stack and code:
+
+<% monorepo.workspaces.forEach(function(workspace) { -%>
+- `<%= workspace %>/`
+<% }); -%>
+
+When a task targets a specific workspace, read that workspace's `CLAUDE.md` / `AGENTS.md` and its `.agents-workflows.json` before planning. Root-level scripts fan out through workspace filters; do not assume a single `src/` tree.
+<% } -%>

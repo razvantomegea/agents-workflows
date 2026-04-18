@@ -45,8 +45,8 @@ export async function generateAgents(
 
 function convertToSkill(agentContent: string): string {
   return agentContent
-    .replace(/^model: .+$/m, '')
-    .replace(/^color: .+$/m, '')
+    .replace(/^model: .+\r?\n/m, '')
+    .replace(/^color: .+\r?\n/m, '')
     .replace(/\bagent\b/gi, (match) => {
       if (match === 'Agent') return 'Skill';
       if (match === 'AGENT') return 'SKILL';

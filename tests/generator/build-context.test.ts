@@ -3,7 +3,7 @@ import type { StackConfig } from '../../src/schema/stack-config.js';
 
 function makeConfig(overrides: Partial<StackConfig> = {}): StackConfig {
   return {
-    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [] },
+    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [], docsFile: null },
     stack: { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null },
     tooling: { packageManager: 'pnpm', packageManagerPrefix: 'pnpm', testFramework: 'vitest', testLibrary: 'react-testing-library', e2eFramework: 'playwright', linter: 'eslint', formatter: 'prettier' },
     paths: { sourceRoot: 'src/', componentsDir: 'src/components/', hooksDir: 'src/hooks/', utilsDir: 'src/utils/', testsDir: null, designTokensFile: null, i18nDir: null, testConfigFile: null },
@@ -13,6 +13,7 @@ function makeConfig(overrides: Partial<StackConfig> = {}): StackConfig {
     selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false },
     targets: { claudeCode: true, codexCli: false },
     detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false },
+    monorepo: null,
     ...overrides,
   };
 }
@@ -43,6 +44,17 @@ describe('buildContext', () => {
     expect(ctx.isTypescript).toBe(false);
   });
 
+  it('handles null framework without including a framework item in stackItems', () => {
+    const ctx = buildContext(makeConfig({
+      stack: { language: 'typescript', runtime: 'node', framework: null, uiLibrary: null, stateManagement: null, database: null, auth: null },
+    }));
+    expect(ctx.isReact).toBe(false);
+    expect(ctx.isFrontend).toBe(false);
+    expect(ctx.isMobile).toBe(false);
+    expect(ctx.stackItems).not.toContain('Null');
+    expect(ctx.stackItems).toContain('Typescript (node)');
+  });
+
   it('builds stack items list', () => {
     const ctx = buildContext(makeConfig());
     expect(ctx.stackItems).toContain('Typescript (node)');
@@ -70,6 +82,16 @@ describe('buildContext', () => {
     expect(ruleNames).not.toContain('useMemo');
     expect(ruleNames).not.toContain('No `any`');
     expect(ruleNames).toContain('DRY');
+  });
+
+  it('propagates docsFile from project config onto the context', () => {
+    const withDocs = buildContext(makeConfig({
+      project: { name: 'x', description: 'x', locale: 'en', localeRules: [], docsFile: 'PRD.md' },
+    }));
+    expect(withDocs.docsFile).toBe('PRD.md');
+
+    const withoutDocs = buildContext(makeConfig());
+    expect(withoutDocs.docsFile).toBeNull();
   });
 
   it('passes detectedAiAgents through unchanged', () => {

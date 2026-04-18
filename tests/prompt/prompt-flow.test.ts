@@ -1,4 +1,14 @@
-import { createDefaultConfig, resolveCommands } from '../../src/prompt/prompt-flow.js';
+import {
+  createDefaultConfig,
+  resolveCommands,
+  resolveDefaultDescription,
+  resolveDefaultProjectName,
+} from '../../src/prompt/prompt-flow.js';
+import {
+  isFrontendFramework,
+  isMobileFramework,
+  isReactFramework,
+} from '../../src/constants/frameworks.js';
 import type { DetectedStack } from '../../src/detector/types.js';
 import { stackConfigSchema } from '../../src/schema/stack-config.js';
 
@@ -19,12 +29,13 @@ function makeDetectedStack(): DetectedStack {
     linter: { value: 'eslint', confidence: 0.9 },
     formatter: { value: 'prettier', confidence: 0.9 },
     packageManager: { value: 'pnpm', confidence: 0.95 },
-    monorepo: false,
+    monorepo: { isMonorepo: false, tool: null, workspaces: [] },
     aiAgents: {
       agents: [],
       hasClaudeCode: false,
       hasCodexCli: false,
     },
+    docsFile: emptyDetection,
   };
 }
 
@@ -86,6 +97,21 @@ describe('createDefaultConfig', () => {
     expect(config.targets.codexCli).toBe(false);
   });
 
+  it('propagates detected docsFile onto project.docsFile', () => {
+    const detected = makeDetectedStack();
+    detected.docsFile = { value: 'PRD.md', confidence: 0.9 };
+
+    const config = createDefaultConfig(detected);
+
+    expect(config.project.docsFile).toBe('PRD.md');
+  });
+
+  it('leaves project.docsFile null when detection is empty', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.project.docsFile).toBeNull();
+  });
+
   it('round-trips detected AI agent booleans through the schema', () => {
     const parsed = stackConfigSchema.parse({
       ...createDefaultConfig(makeDetectedStack()),
@@ -130,5 +156,105 @@ describe('createDefaultConfig', () => {
       windsurf: false,
       gemini: false,
     });
+  });
+
+  it('uses package.json name as default project name when no framework is detected', () => {
+    const detected = makeDetectedStack();
+    detected.framework = emptyDetection;
+    const config = createDefaultConfig(detected, {}, { name: 'my-cli-tool' });
+
+    expect(config.project.name).toBe('my-cli-tool');
+    expect(config.stack.framework).toBeNull();
+  });
+
+  it('uses package.json description as default project description', () => {
+    const detected = makeDetectedStack();
+    const config = createDefaultConfig(detected, {}, {
+      name: 'pkg',
+      description: 'A custom CLI tool',
+    });
+
+    expect(config.project.description).toBe('A custom CLI tool');
+  });
+
+  it('falls back to my-project and language-based description when no package.json', () => {
+    const detected = makeDetectedStack();
+    detected.framework = emptyDetection;
+    const config = createDefaultConfig(detected);
+
+    expect(config.project.name).toBe('my-project');
+    expect(config.project.description).toBe('A typescript project');
+  });
+});
+
+describe('resolveDefaultProjectName', () => {
+  it('returns package.json name when present', () => {
+    expect(resolveDefaultProjectName({ name: 'acme' })).toBe('acme');
+  });
+
+  it('falls back to my-project when pkg is null', () => {
+    expect(resolveDefaultProjectName(null)).toBe('my-project');
+  });
+
+  it('falls back to my-project when pkg has no name', () => {
+    expect(resolveDefaultProjectName({})).toBe('my-project');
+  });
+
+  it('falls back to my-project when pkg name is empty or whitespace', () => {
+    expect(resolveDefaultProjectName({ name: '' })).toBe('my-project');
+    expect(resolveDefaultProjectName({ name: '   ' })).toBe('my-project');
+  });
+});
+
+describe('resolveDefaultDescription', () => {
+  it('prefers package.json description', () => {
+    expect(resolveDefaultDescription({ description: 'Custom tool' }, 'react', 'typescript'))
+      .toBe('Custom tool');
+  });
+
+  it('builds framework-based description when no pkg description', () => {
+    expect(resolveDefaultDescription(null, 'react', 'typescript'))
+      .toBe('A react application');
+  });
+
+  it('falls back to language-based description when framework is null', () => {
+    expect(resolveDefaultDescription(null, null, 'typescript'))
+      .toBe('A typescript project');
+  });
+
+  it('ignores empty/whitespace pkg description and falls back to framework/language', () => {
+    expect(resolveDefaultDescription({ description: '' }, 'react', 'typescript'))
+      .toBe('A react application');
+    expect(resolveDefaultDescription({ description: '   ' }, null, 'python'))
+      .toBe('A python project');
+  });
+});
+
+describe('framework constants (imported from shared module)', () => {
+  it('isFrontendFramework returns true for known frontend frameworks and false for null/backend', () => {
+    expect(isFrontendFramework('react')).toBe(true);
+    expect(isFrontendFramework('nextjs')).toBe(true);
+    expect(isFrontendFramework('vue')).toBe(true);
+    expect(isFrontendFramework('angular')).toBe(true);
+    expect(isFrontendFramework('remix')).toBe(true);
+    expect(isFrontendFramework('fastapi')).toBe(false);
+    expect(isFrontendFramework('express')).toBe(false);
+    expect(isFrontendFramework(null)).toBe(false);
+  });
+
+  it('isReactFramework returns true only for React-flavored frameworks', () => {
+    expect(isReactFramework('react')).toBe(true);
+    expect(isReactFramework('nextjs')).toBe(true);
+    expect(isReactFramework('expo')).toBe(true);
+    expect(isReactFramework('remix')).toBe(true);
+    expect(isReactFramework('vue')).toBe(false);
+    expect(isReactFramework(null)).toBe(false);
+  });
+
+  it('isMobileFramework returns true only for mobile frameworks', () => {
+    expect(isMobileFramework('expo')).toBe(true);
+    expect(isMobileFramework('react-native')).toBe(true);
+    expect(isMobileFramework('react')).toBe(false);
+    expect(isMobileFramework(null)).toBe(false);
   });
 });

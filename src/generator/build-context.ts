@@ -1,15 +1,17 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext } from './types.js';
 import { buildReviewChecklist } from './review-checklist-rules.js';
-
-const REACT_FRAMEWORKS = ['react', 'nextjs', 'expo', 'react-native', 'remix'];
-const FRONTEND_FRAMEWORKS = [...REACT_FRAMEWORKS, 'vue', 'nuxt', 'angular', 'sveltekit'];
-const MOBILE_FRAMEWORKS = ['expo', 'react-native'];
+import { buildPermissions } from './permissions.js';
+import {
+  isFrontendFramework,
+  isMobileFramework,
+  isReactFramework,
+} from '../constants/frameworks.js';
 
 export function buildContext(config: StackConfig): GeneratorContext {
-  const isReact = REACT_FRAMEWORKS.includes(config.stack.framework);
-  const isFrontend = FRONTEND_FRAMEWORKS.includes(config.stack.framework);
-  const isMobile = MOBILE_FRAMEWORKS.includes(config.stack.framework);
+  const isReact = isReactFramework(config.stack.framework);
+  const isFrontend = isFrontendFramework(config.stack.framework);
+  const isMobile = isMobileFramework(config.stack.framework);
   const isTypescript = config.stack.language === 'typescript';
 
   return {
@@ -30,8 +32,11 @@ export function buildContext(config: StackConfig): GeneratorContext {
     componentsDir: config.paths.componentsDir,
     utilsDir: config.paths.utilsDir,
     localeRules: config.project.localeRules,
+    docsFile: config.project.docsFile,
 
     reviewChecklist: buildReviewChecklist(config),
+    permissions: buildPermissions(config),
+    monorepo: config.monorepo,
 
     hasUiDesigner: config.agents.uiDesigner,
     hasE2eTester: config.agents.e2eTester,
@@ -45,7 +50,7 @@ function buildStackItems(config: StackConfig): string[] {
   const { stack, tooling } = config;
 
   items.push(`${capitalize(stack.language)} (${stack.runtime})`);
-  items.push(capitalize(stack.framework));
+  if (stack.framework) items.push(capitalize(stack.framework));
 
   if (stack.uiLibrary) items.push(capitalize(stack.uiLibrary));
   if (stack.stateManagement) items.push(capitalize(stack.stateManagement));

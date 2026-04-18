@@ -3,7 +3,7 @@ import type { StackConfig } from '../../src/schema/stack-config.js';
 
 function makeConfig(overrides: Partial<StackConfig['stack']> = {}): StackConfig {
   return {
-    project: { name: 'test', description: 'test', locale: 'en', localeRules: [] },
+    project: { name: 'test', description: 'test', locale: 'en', localeRules: [], docsFile: null },
     stack: { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: null, stateManagement: null, database: null, auth: null, ...overrides },
     tooling: { packageManager: 'npm', packageManagerPrefix: 'npm run', testFramework: 'jest', testLibrary: null, e2eFramework: null, linter: null, formatter: null },
     paths: { sourceRoot: 'src/', componentsDir: null, hooksDir: null, utilsDir: 'src/utils/', testsDir: null, designTokensFile: null, i18nDir: null, testConfigFile: null },
@@ -13,6 +13,7 @@ function makeConfig(overrides: Partial<StackConfig['stack']> = {}): StackConfig 
     selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false },
     targets: { claudeCode: true, codexCli: false },
     detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false },
+    monorepo: null,
   };
 }
 

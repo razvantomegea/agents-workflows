@@ -1,24 +1,37 @@
-import { input, confirm, checkbox } from '@inquirer/prompts';
+import { input, confirm, checkbox, select } from '@inquirer/prompts';
 import type { DetectedStack } from '../detector/types.js';
+import type { MonorepoInfo } from '../detector/detect-monorepo.js';
+import type { PackageJson } from '../utils/index.js';
+import { isFrontendFramework } from '../constants/frameworks.js';
+import {
+  resolveDefaultDescription,
+  resolveDefaultProjectName,
+} from './defaults.js';
 
 function useDetectedOr<T>(detection: { value: T | null; confidence: number }, fallback: T): T {
   return detection.confidence >= 0.7 && detection.value !== null ? detection.value : fallback;
 }
 
-export async function askProjectIdentity(detected: DetectedStack): Promise<{
+export async function askProjectIdentity(
+  detected: DetectedStack,
+  pkg: PackageJson | null = null,
+): Promise<{
   name: string;
   description: string;
   locale: string;
   localeRules: string[];
+  docsFile: string | null;
 }> {
+  const language = detected.language.value ?? 'typescript';
+
   const name = await input({
     message: 'Project name:',
-    default: 'my-project',
+    default: resolveDefaultProjectName(pkg),
   });
 
   const description = await input({
     message: 'Short description:',
-    default: `A ${useDetectedOr(detected.framework, 'web')} application`,
+    default: resolveDefaultDescription(pkg, detected.framework.value, language),
   });
 
   const locale = await input({
@@ -35,13 +48,25 @@ export async function askProjectIdentity(detected: DetectedStack): Promise<{
     ? localeRulesRaw.split(',').map((r) => r.trim()).filter(Boolean)
     : [];
 
-  return { name, description, locale, localeRules };
+  const docsFile = await askDocsFile(detected);
+
+  return { name, description, locale, localeRules, docsFile };
+}
+
+async function askDocsFile(detected: DetectedStack): Promise<string | null> {
+  const docsDefault = detected.docsFile.value ?? '';
+  const raw = await input({
+    message: 'Primary documentation file (path relative to project root, blank to skip):',
+    default: docsDefault,
+  });
+  const trimmed = raw.trim();
+  return trimmed === '' ? null : trimmed;
 }
 
 export async function askStack(detected: DetectedStack): Promise<{
   language: string;
   runtime: string;
-  framework: string;
+  framework: string | null;
   uiLibrary: string | null;
   stateManagement: string | null;
   database: string | null;
@@ -52,12 +77,15 @@ export async function askStack(detected: DetectedStack): Promise<{
 
   const confirmedLanguage = language || await input({ message: 'Language:', default: 'typescript' });
   const confirmedRuntime = runtime || await input({ message: 'Runtime:', default: 'node' });
-  const confirmedFramework = framework || await input({ message: 'Framework:', default: 'react' });
+  const confirmedFramework = framework || await input({
+    message: 'Framework (leave blank if none):',
+    default: '',
+  });
 
   return {
     language: confirmedLanguage,
     runtime: confirmedRuntime,
-    framework: confirmedFramework,
+    framework: confirmedFramework.trim() === '' ? null : confirmedFramework,
     uiLibrary: detected.uiLibrary.value,
     stateManagement: detected.stateManagement.value,
     database: detected.database.value,
@@ -83,12 +111,12 @@ export async function askTooling(detected: DetectedStack): Promise<{
   };
 }
 
-export async function askPaths(framework: string): Promise<{
+export async function askPaths(framework: string | null): Promise<{
   sourceRoot: string;
   componentsDir: string | null;
   utilsDir: string;
 }> {
-  const isFrontend = ['react', 'nextjs', 'expo', 'react-native', 'vue', 'nuxt', 'angular', 'sveltekit'].includes(framework);
+  const isFrontend = isFrontendFramework(framework);
 
   const sourceRoot = await input({
     message: 'Source root directory:',
@@ -114,7 +142,7 @@ export async function askConventions(): Promise<{
   strictTypes: boolean;
 }> {
   const maxFileLengthRaw = await input({ message: 'Max file length:', default: '200' });
-  const parsedMaxFileLength = parseInt(maxFileLengthRaw, 10);
+  const parsedMaxFileLength = Number.parseInt(maxFileLengthRaw, 10);
   const maxFileLength =
     Number.isNaN(parsedMaxFileLength) || parsedMaxFileLength <= 0
       ? 200
@@ -158,4 +186,24 @@ export async function askTargets(detected: DetectedStack['aiAgents']): Promise<{
   const codexCli = await confirm({ message: 'Generate Codex CLI config (.codex/)?', default: codexDefault });
 
   return { claudeCode, codexCli };
+}
+
+export type InstallScope = 'root' | 'per-package' | 'both';
+
+export async function askInstallScope(monorepo: MonorepoInfo): Promise<InstallScope> {
+  if (!monorepo.isMonorepo || monorepo.workspaces.length === 0) {
+    return 'root';
+  }
+
+  const scope = await select<InstallScope>({
+    message: `Detected ${monorepo.workspaces.length} workspace(s) (${monorepo.tool ?? 'monorepo'}). Where should agents-workflows install?`,
+    choices: [
+      { name: 'Root only — one shared config at the monorepo root', value: 'root' },
+      { name: 'Per-package — one config per workspace', value: 'per-package' },
+      { name: 'Both — root config + per-workspace configs', value: 'both' },
+    ],
+    default: 'root',
+  });
+
+  return scope;
 }

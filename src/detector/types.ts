@@ -1,3 +1,5 @@
+import type { MonorepoInfo } from './detect-monorepo.js';
+
 export interface Detection<T = string> {
   value: T | null;
   confidence: number;
@@ -42,6 +44,7 @@ export interface DetectedStack {
   linter: Detection;
   formatter: Detection;
   packageManager: Detection;
-  monorepo: boolean;
+  monorepo: MonorepoInfo;
   aiAgents: DetectedAiAgents;
+  docsFile: Detection;
 }

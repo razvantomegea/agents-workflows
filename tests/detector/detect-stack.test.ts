@@ -59,8 +59,10 @@ describe('detectStack', () => {
     expect(resolveRuntime(null, null)).toEqual({ value: null, confidence: 0 });
   });
 
-  it('detects package workspaces as monorepos', async () => {
-    await expect(detectMonorepo(join(FIXTURES_DIR, 'nextjs-app'))).resolves.toBe(false);
+  it('returns empty monorepo info for a single-package project', async () => {
+    const info = await detectMonorepo(join(FIXTURES_DIR, 'nextjs-app'));
+    expect(info.isMonorepo).toBe(false);
+    expect(info.workspaces).toEqual([]);
   });
 
   it('returns nulls for empty directory', async () => {

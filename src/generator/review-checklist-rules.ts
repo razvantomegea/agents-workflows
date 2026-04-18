@@ -1,5 +1,6 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { ReviewChecklistItem } from './types.js';
+import { isFrontendFramework, isReactFramework } from '../constants/frameworks.js';
 
 interface RuleDefinition extends ReviewChecklistItem {
   appliesWhen: string[];
@@ -136,15 +137,13 @@ function buildApplicableTags(config: StackConfig): Set<string> {
 
   if (stack.language === 'typescript') tags.add('typescript');
 
-  const reactFrameworks = ['react', 'nextjs', 'expo', 'react-native', 'remix'];
-  if (reactFrameworks.includes(stack.framework)) {
+  if (isReactFramework(stack.framework)) {
     tags.add('react');
     tags.add('frontend');
     if (conventions.propsStyle === 'readonly') tags.add('react-readonly');
   }
 
-  const frontendFrameworks = [...reactFrameworks, 'vue', 'nuxt', 'angular', 'sveltekit'];
-  if (frontendFrameworks.includes(stack.framework)) tags.add('frontend');
+  if (isFrontendFramework(stack.framework)) tags.add('frontend');
 
   if (project.localeRules.length > 0) tags.add('i18n');
   if (stack.database) tags.add(stack.database);

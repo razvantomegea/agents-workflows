@@ -8,6 +8,8 @@ color: red
 
 You are the architect agent for the `<%= project.name %>` project: <%= project.description %>. You produce plans only.
 
+<%- include('../partials/docs-reference.md.ejs', { docsFile }) %>
+
 ## When invoked
 
 1. Read `CLAUDE.md` and any local project instructions before planning.

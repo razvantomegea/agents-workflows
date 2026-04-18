@@ -4,13 +4,21 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 <!-- agents-workflows:managed-start -->
 
-`<%= project.name %>` — <%= project.description %>.
+`agents-workflows` — Reusable AI agent configuration framework.
 
-<%- include('../partials/stack-context.md.ejs', { stackItems }) %>
+## Stack Context
 
-<%- include('../partials/docs-reference.md.ejs', { docsFile }) %>
+- Typescript (node)
+- None
+- Jest (testing)
+- Oxlint (linter)
+- pnpm (package manager)
 
-<%- include('../partials/workspaces.md.ejs', { monorepo }) %>
+## Primary Documentation
+
+- The canonical source of project intent lives in `README.md`.
+- Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
+- When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
 
 ## Sub-agent Routing
 
@@ -22,18 +30,8 @@ This file provides guidance to Claude Code when working with code in this reposi
 | Review loop orchestration (post-task) | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
-<% if (hasE2eTester) { -%>
-| E2E tests | `e2e-tester` |
-<% } -%>
-<% if (hasUiDesigner) { -%>
-| UI/UX design & review | `ui-designer` |
-<% } -%>
 
 Use sub-agents with independent, single, simple tasks as much as possible.
-<% if (hasUiDesigner) { -%>
-
-**Mandatory ui-designer routing:** every UI/UX implementation must go through the `ui-designer` sub-agent *before* any implementation agent writes code.
-<% } -%>
 
 ## Planning Workflow
 
@@ -51,14 +49,28 @@ After every implementation session, run the following loop before considering th
 
 1. **Launch `code-reviewer` agent** — pass the list of all modified files and the task context.
 2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
-3. **Re-run type-check** — `<%= commands.typeCheck || 'N/A' %>`. Fix any new errors.
-4. **Re-run tests** — `<%= commands.test %>`. All suites must pass.
+3. **Re-run type-check** — `pnpm check-types`. Fix any new errors.
+4. **Re-run tests** — `pnpm test`. All suites must pass.
 
 This loop is mandatory.
 
-<%- include('../partials/code-style.md.ejs', { isTypescript, isReact, conventions, localeRules: project.localeRules }) %>
+## Code Style
 
-<%- include('../partials/file-organization.md.ejs', { utilsDir: paths.utilsDir, componentsDir: paths.componentsDir, conventions }) %>
+- Always add explicit type annotations to function parameters — never rely on implicit inference.
+- No `any` types — use explicit types, discriminated unions, or generics.
+- Functions with more than 2 parameters must use a single object parameter.
+- Name module-level constants in UPPER_SNAKE_CASE.
+- Do not create thin wrapper components that only forward props.
+- Avoid redundant type aliases.
+- Use descriptive variable names in `.map()` callbacks.
+- Avoid hardcoded styling — use theme variables or design tokens.
+- Keep files under 200 lines.
+
+## File Organization
+
+- Keep business logic in `src/utils/` and hooks — keep UI components thin.
+- One public component/helper per file.
+- Use folder-based module organization with colocated tests and `index.ts` barrel exports.
 
 ## DRY and Reusability
 
@@ -70,9 +82,7 @@ DRY and reusability are critical principles — enforced without exception:
 
 ## Rules
 
-<% if (tooling.packageManagerPrefix) { -%>
-- Always use `<%= tooling.packageManagerPrefix %>` for running scripts.
-<% } -%>
+- Always use `pnpm` for running scripts.
 - Ask clarifying questions when requirements are ambiguous.
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.

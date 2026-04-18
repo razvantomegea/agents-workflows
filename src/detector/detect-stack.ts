@@ -1,4 +1,3 @@
-import { readPackageJson } from '../utils/index.js';
 import { detectLanguage } from './detect-language.js';
 import { detectFramework } from './detect-framework.js';
 import { detectUiLibrary } from './detect-ui-library.js';
@@ -10,6 +9,8 @@ import { detectPackageManager } from './detect-package-manager.js';
 import { detectE2e } from './detect-e2e.js';
 import { detectAuth } from './detect-auth.js';
 import { detectAiAgents } from './detect-ai-agents.js';
+import { detectDocsFile } from './detect-docs-file.js';
+import { detectMonorepo } from './detect-monorepo.js';
 import type { DetectedStack } from './types.js';
 
 export async function detectStack(projectRoot: string): Promise<DetectedStack> {
@@ -27,6 +28,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     e2eFramework,
     auth,
     aiAgents,
+    docsFile,
   ] = await Promise.all([
     detectLanguage(projectRoot),
     detectFramework(projectRoot),
@@ -41,6 +43,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectE2e(projectRoot),
     detectAuth(projectRoot),
     detectAiAgents(),
+    detectDocsFile(projectRoot),
   ]);
 
   const runtime = resolveRuntime(language.value, framework.value);
@@ -62,6 +65,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     packageManager,
     monorepo,
     aiAgents,
+    docsFile,
   };
 }
 
@@ -91,10 +95,4 @@ export function resolveRuntime(
     : { value: null, confidence: 0 };
 }
 
-export async function detectMonorepo(projectRoot: string): Promise<boolean> {
-  const pkg = await readPackageJson(projectRoot);
-  if (!pkg) return false;
-
-  if (pkg.workspaces) return true;
-  return false;
-}
+export { detectMonorepo } from './detect-monorepo.js';

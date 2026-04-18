@@ -6,12 +6,13 @@ export const stackConfigSchema = z.object({
     description: z.string(),
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),
+    docsFile: z.string().nullable().default(null),
   }),
 
   stack: z.object({
     language: z.string(),
     runtime: z.string(),
-    framework: z.string(),
+    framework: z.string().nullable().default(null),
     uiLibrary: z.string().nullable().default(null),
     stateManagement: z.string().nullable().default(null),
     database: z.string().nullable().default(null),
@@ -89,6 +90,12 @@ export const stackConfigSchema = z.object({
     windsurf: z.boolean().default(false),
     gemini: z.boolean().default(false),
   }).default({}),
+
+  monorepo: z.object({
+    isRoot: z.boolean(),
+    tool: z.enum(['pnpm', 'npm', 'yarn', 'lerna', 'turbo', 'nx']).nullable(),
+    workspaces: z.array(z.string()),
+  }).nullable().default(null),
 });
 
 export type StackConfig = z.infer<typeof stackConfigSchema>;
