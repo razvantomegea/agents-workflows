@@ -48,7 +48,7 @@ Add an optional `react-ts-senior` agent that emits only when `stack.framework` i
 **Input**: Reference `C:\Projects\ieftinake\.claude\agents\react-ts-senior.md`; existing `implementer.md.ejs` for structure; partials under `src/templates/partials/`.
 **Output**: New EJS template:
   - Frontmatter: `name: react-ts-senior`, description "senior React + TypeScript implementation agent", `tools: Read, Edit, Write, Bash, Grep, Glob`, `model: sonnet`, `color: green`.
-  - Opening: `You are a senior <%= stack.framework %> + TypeScript implementation agent for the `<%= project.name %>` project: <%= project.description %>.`
+  - Opening: `You are a senior <%= stack.framework %> + TypeScript implementation agent for the <%= project.name %> project: <%= project.description %>.`
   - Includes partials: `stack-context`, `code-style` (emits React rules via `isReact`), `dry-rules`, `file-organization`, `docs-reference`.
   - Specific sections (generalized — no Tamagui/Zustand/Expo Router):
     - **Component Conventions**: arrow components, `Readonly<>` props, one public per file, extract JSX >30 lines, no thin wrappers, `<%= conventions.maxFileLength %>` max.

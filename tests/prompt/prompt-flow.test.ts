@@ -186,43 +186,31 @@ describe('createDefaultConfig', () => {
     expect(config.project.description).toBe('A typescript project');
   });
 
-  it('defaults reactTsSenior to true when stack is React-based and TypeScript', () => {
-    const config = createDefaultConfig(makeDetectedStack());
+  it.each([
+    ['Next.js + TypeScript', 'nextjs', 'typescript', true],
+    ['React Native + TypeScript', 'react-native', 'typescript', true],
+    ['React + padded TypeScript', 'react', ' TypeScript ', true],
+    ['Express + TypeScript', 'express', 'typescript', false],
+    ['Next.js + JavaScript', 'nextjs', 'javascript', false],
+    ['no framework + TypeScript', null, 'typescript', false],
+  ])(
+    'defaults reactTsSenior for %s',
+    (
+      _scenarioName: string,
+      framework: string | null,
+      language: string,
+      expectedReactTsSenior: boolean,
+    ) => {
+      const detected = makeDetectedStack();
+      detected.framework = framework === null
+        ? emptyDetection
+        : { value: framework, confidence: 0.95 };
+      detected.language = { value: language, confidence: 0.95 };
+      const config = createDefaultConfig(detected);
 
-    expect(config.agents.reactTsSenior).toBe(true);
-  });
-
-  it('defaults reactTsSenior to true for React Native + TypeScript', () => {
-    const detected = makeDetectedStack();
-    detected.framework = { value: 'react-native', confidence: 0.95 };
-    const config = createDefaultConfig(detected);
-
-    expect(config.agents.reactTsSenior).toBe(true);
-  });
-
-  it('defaults reactTsSenior to false when framework is not React-based', () => {
-    const detected = makeDetectedStack();
-    detected.framework = { value: 'express', confidence: 0.95 };
-    const config = createDefaultConfig(detected);
-
-    expect(config.agents.reactTsSenior).toBe(false);
-  });
-
-  it('defaults reactTsSenior to false when language is not TypeScript', () => {
-    const detected = makeDetectedStack();
-    detected.language = { value: 'javascript', confidence: 0.95 };
-    const config = createDefaultConfig(detected);
-
-    expect(config.agents.reactTsSenior).toBe(false);
-  });
-
-  it('defaults reactTsSenior to false when framework is null', () => {
-    const detected = makeDetectedStack();
-    detected.framework = emptyDetection;
-    const config = createDefaultConfig(detected);
-
-    expect(config.agents.reactTsSenior).toBe(false);
-  });
+      expect(config.agents.reactTsSenior).toBe(expectedReactTsSenior);
+    },
+  );
 });
 
 describe('resolveDefaultProjectName', () => {

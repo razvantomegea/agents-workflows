@@ -31,6 +31,13 @@ export function isReactFramework(framework: string | null): boolean {
   return isFrameworkIn(framework, REACT_FRAMEWORKS);
 }
 
+export function supportsReactTsStack(
+  framework: string | null,
+  language: string,
+): boolean {
+  return isReactFramework(framework) && language.trim().toLowerCase() === 'typescript';
+}
+
 export function isMobileFramework(framework: string | null): boolean {
   return isFrameworkIn(framework, MOBILE_FRAMEWORKS);
 }

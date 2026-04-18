@@ -6,13 +6,16 @@ import {
   isFrontendFramework,
   isMobileFramework,
   isReactFramework,
+  supportsReactTsStack,
 } from '../constants/frameworks.js';
 
 export function buildContext(config: StackConfig): GeneratorContext {
   const isReact = isReactFramework(config.stack.framework);
   const isFrontend = isFrontendFramework(config.stack.framework);
   const isMobile = isMobileFramework(config.stack.framework);
-  const isTypescript = config.stack.language === 'typescript';
+  const isTypescript = config.stack.language.trim().toLowerCase() === 'typescript';
+  const hasReactTsSenior = config.agents.reactTsSenior
+    && supportsReactTsStack(config.stack.framework, config.stack.language);
 
   return {
     project: config.project,
@@ -41,7 +44,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
     hasUiDesigner: config.agents.uiDesigner,
     hasE2eTester: config.agents.e2eTester,
     hasSecurityReviewer: config.agents.securityReviewer,
-    hasReactTsSenior: config.agents.reactTsSenior,
+    hasReactTsSenior,
     testFramework: config.tooling.testFramework,
     testsDir: config.paths.testsDir,
   };

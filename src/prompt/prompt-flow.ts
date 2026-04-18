@@ -2,7 +2,7 @@ import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import { readPackageJson, type PackageJson } from '../utils/index.js';
 import { isDetected } from '../detector/detect-ai-agents.js';
-import { isFrontendFramework, isReactFramework } from '../constants/frameworks.js';
+import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
 import {
   resolveDefaultDescription,
   resolveDefaultProjectName,
@@ -28,10 +28,6 @@ function resolvePackageManagerPrefix(pm: string): string {
     bun: 'bun run',
   };
   return prefixMap[pm] ?? pm;
-}
-
-function isReactTsStack(framework: string | null, language: string): boolean {
-  return isReactFramework(framework) && language === 'typescript';
 }
 
 interface PromptFlowOptions {
@@ -102,7 +98,7 @@ export async function runPromptFlow(
   const conventions = await askConventions();
 
   const isFrontend = isFrontendFramework(stack.framework);
-  const isReactTs = isReactTsStack(stack.framework, stack.language);
+  const isReactTs = supportsReactTsStack(stack.framework, stack.language);
   const selectedAgents = await askAgentSelection({ isFrontend, isReactTs });
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
@@ -192,7 +188,7 @@ export function createDefaultConfig(
   const runtime = detected.runtime.value ?? 'node';
   const framework = detected.framework.value;
   const isFrontend = isFrontendFramework(framework);
-  const isReactTs = isReactTsStack(framework, language);
+  const isReactTs = supportsReactTsStack(framework, language);
   const packageManager = detected.packageManager.value ?? 'npm';
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;

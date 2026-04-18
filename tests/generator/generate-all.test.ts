@@ -178,7 +178,11 @@ describe('generateAll', () => {
     const templateSource = await readFile(templatePath, 'utf8');
     expect(templateSource).not.toMatch(/Tamagui|Expo Router|Supabase|useTranslations|DataTestId/);
 
-    const disabledConfig = { ...makeConfig(), agents: { ...makeConfig().agents, reactTsSenior: false } };
+    const baseConfig = makeConfig();
+    const disabledConfig = {
+      ...baseConfig,
+      agents: { ...baseConfig.agents, reactTsSenior: false },
+    };
     const disabledFiles = await generateAll(disabledConfig);
     const disabledPaths = disabledFiles.map((file) => file.path);
     expect(disabledPaths).not.toContain('.claude/agents/react-ts-senior.md');
