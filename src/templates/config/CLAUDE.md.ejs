@@ -18,6 +18,9 @@ This file provides guidance to Claude Code when working with code in this reposi
 |---|---|
 | Architecture, planning | `architect` (opus) |
 | Implementation | `implementer` |
+<% if (hasReactTsSenior) { -%>
+| Implementation (React + TypeScript) | `react-ts-senior` |
+<% } -%>
 | Code review (after every file edit) | `code-reviewer` |
 <% if (hasSecurityReviewer) { -%>
 | Security review (parallel to code review) | `security-reviewer` |

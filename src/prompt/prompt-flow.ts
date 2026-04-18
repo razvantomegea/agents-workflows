@@ -2,7 +2,7 @@ import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import { readPackageJson, type PackageJson } from '../utils/index.js';
 import { isDetected } from '../detector/detect-ai-agents.js';
-import { isFrontendFramework } from '../constants/frameworks.js';
+import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
 import {
   resolveDefaultDescription,
   resolveDefaultProjectName,
@@ -98,7 +98,8 @@ export async function runPromptFlow(
   const conventions = await askConventions();
 
   const isFrontend = isFrontendFramework(stack.framework);
-  const selectedAgents = await askAgentSelection(isFrontend);
+  const isReactTs = supportsReactTsStack(stack.framework, stack.language);
+  const selectedAgents = await askAgentSelection({ isFrontend, isReactTs });
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
 
@@ -158,6 +159,7 @@ export async function runPromptFlow(
     agents: {
       architect: selectedAgents.includes('architect'),
       implementer: selectedAgents.includes('implementer'),
+      reactTsSenior: selectedAgents.includes('reactTsSenior'),
       codeReviewer: selectedAgents.includes('codeReviewer'),
       securityReviewer: selectedAgents.includes('securityReviewer'),
       codeOptimizer: selectedAgents.includes('codeOptimizer'),
@@ -186,6 +188,7 @@ export function createDefaultConfig(
   const runtime = detected.runtime.value ?? 'node';
   const framework = detected.framework.value;
   const isFrontend = isFrontendFramework(framework);
+  const isReactTs = supportsReactTsStack(framework, language);
   const packageManager = detected.packageManager.value ?? 'npm';
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;
@@ -243,6 +246,7 @@ export function createDefaultConfig(
     agents: {
       architect: true,
       implementer: true,
+      reactTsSenior: isReactTs,
       codeReviewer: true,
       securityReviewer: true,
       codeOptimizer: true,

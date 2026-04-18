@@ -40,6 +40,25 @@ describe('buildContext', () => {
     expect(ctx.stackItems).toContain('Typescript (node)');
   });
 
+  it('gates hasReactTsSenior by React and TypeScript stack support', () => {
+    const baseConfig = makeConfig();
+    const ctx = buildContext({
+      ...baseConfig,
+      stack: {
+        language: 'python',
+        runtime: 'python',
+        framework: 'fastapi',
+        uiLibrary: null,
+        stateManagement: null,
+        database: null,
+        auth: null,
+      },
+      agents: { ...baseConfig.agents, reactTsSenior: true },
+    });
+
+    expect(ctx.hasReactTsSenior).toBe(false);
+  });
+
   it('builds stack items list', () => {
     const ctx = buildContext(makeConfig());
     expect(ctx.stackItems).toContain('Typescript (node)');

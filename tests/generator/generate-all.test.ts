@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { generateAll } from '../../src/generator/index.js';
 import { makeStackConfig } from './fixtures.js';
 
@@ -9,8 +11,10 @@ describe('generateAll', () => {
     const paths = files.map((file) => file.path);
 
     expect(paths).toContain('.claude/agents/architect.md');
+    expect(paths).toContain('.claude/agents/react-ts-senior.md');
     expect(paths).toContain('.claude/agents/security-reviewer.md');
     expect(paths).toContain('.codex/skills/architect/SKILL.md');
+    expect(paths).toContain('.codex/skills/react-ts-senior/SKILL.md');
     expect(paths).toContain('.codex/skills/security-reviewer/SKILL.md');
     expect(paths).toContain('CLAUDE.md');
     expect(paths).toContain('AGENTS.md');
@@ -156,5 +160,31 @@ describe('generateAll', () => {
     const codeReviewer = agentFiles.find((file) => file.path.endsWith('code-reviewer.md'));
     expect(codeReviewer?.content).toMatch(/^tools: Read, Grep, Glob, Bash$/m);
     expect(codeReviewer?.content).not.toMatch(/^tools: .*?\b(?:Edit|Write)\b/m);
+  });
+
+  it('emits react-ts-senior only when agents.reactTsSenior is true and renders expected content', async () => {
+    const files = await generateAll(makeConfig());
+    const agent = files.find((file) => file.path === '.claude/agents/react-ts-senior.md');
+
+    expect(agent).toBeDefined();
+    expect(agent?.content).toContain('React + TypeScript');
+    expect(agent?.content).toContain('Readonly<');
+    expect(agent?.content).toContain('useCallback');
+    expect(agent?.content).toContain('useMemo');
+    expect(agent?.content).toContain('test-app');
+    expect(agent?.content.split(/\r?\n/).length).toBeLessThanOrEqual(200);
+
+    const templatePath = join(process.cwd(), 'src/templates/agents/react-ts-senior.md.ejs');
+    const templateSource = await readFile(templatePath, 'utf8');
+    expect(templateSource).not.toMatch(/Tamagui|Expo Router|Supabase|useTranslations|DataTestId/);
+
+    const baseConfig = makeConfig();
+    const disabledConfig = {
+      ...baseConfig,
+      agents: { ...baseConfig.agents, reactTsSenior: false },
+    };
+    const disabledFiles = await generateAll(disabledConfig);
+    const disabledPaths = disabledFiles.map((file) => file.path);
+    expect(disabledPaths).not.toContain('.claude/agents/react-ts-senior.md');
   });
 });

@@ -185,6 +185,32 @@ describe('createDefaultConfig', () => {
     expect(config.project.name).toBe('my-project');
     expect(config.project.description).toBe('A typescript project');
   });
+
+  it.each([
+    ['Next.js + TypeScript', 'nextjs', 'typescript', true],
+    ['React Native + TypeScript', 'react-native', 'typescript', true],
+    ['React + padded TypeScript', 'react', ' TypeScript ', true],
+    ['Express + TypeScript', 'express', 'typescript', false],
+    ['Next.js + JavaScript', 'nextjs', 'javascript', false],
+    ['no framework + TypeScript', null, 'typescript', false],
+  ])(
+    'defaults reactTsSenior for %s',
+    (
+      _scenarioName: string,
+      framework: string | null,
+      language: string,
+      expectedReactTsSenior: boolean,
+    ) => {
+      const detected = makeDetectedStack();
+      detected.framework = framework === null
+        ? emptyDetection
+        : { value: framework, confidence: 0.95 };
+      detected.language = { value: language, confidence: 0.95 };
+      const config = createDefaultConfig(detected);
+
+      expect(config.agents.reactTsSenior).toBe(expectedReactTsSenior);
+    },
+  );
 });
 
 describe('resolveDefaultProjectName', () => {

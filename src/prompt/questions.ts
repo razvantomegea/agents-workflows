@@ -153,10 +153,16 @@ export async function askConventions(): Promise<{
   return { maxFileLength, testColocation, barrelExports, strictTypes };
 }
 
-export async function askAgentSelection(isFrontend: boolean): Promise<string[]> {
+export async function askAgentSelection(
+  params: Readonly<{ isFrontend: boolean; isReactTs: boolean }>,
+): Promise<string[]> {
+  const { isFrontend, isReactTs } = params;
   const choices = [
     { name: 'architect — Planning agent (Opus)', value: 'architect', checked: true },
     { name: 'implementer — Primary implementation agent', value: 'implementer', checked: true },
+    ...(isReactTs
+      ? [{ name: 'react-ts-senior — Senior React + TypeScript implementation agent', value: 'reactTsSenior', checked: true }]
+      : []),
     { name: 'code-reviewer — Post-edit review with checklist', value: 'codeReviewer', checked: true },
     { name: 'security-reviewer — OWASP/security audit (parallel to code-reviewer)', value: 'securityReviewer', checked: true },
     { name: 'code-optimizer — Performance & quality analysis', value: 'codeOptimizer', checked: true },

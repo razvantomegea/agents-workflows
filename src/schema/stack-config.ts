@@ -61,6 +61,7 @@ export const stackConfigSchema = z.object({
   agents: z.object({
     architect: z.boolean().default(true),
     implementer: z.boolean().default(true),
+    reactTsSenior: z.boolean().default(false),
     codeReviewer: z.boolean().default(true),
     securityReviewer: z.boolean().default(true),
     codeOptimizer: z.boolean().default(true),
