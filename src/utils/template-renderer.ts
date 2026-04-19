@@ -6,6 +6,16 @@ import { fileURLToPath } from 'node:url';
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(MODULE_DIR, '..', 'templates');
 
+export function jsonString(value: unknown): string {
+  return JSON.stringify(value ?? '');
+}
+
+export function tomlString(value: unknown): string {
+  const str = String(value ?? '');
+  const escaped = str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
 export async function renderTemplate(
   templatePath: string,
   data: Record<string, unknown>,
@@ -13,7 +23,8 @@ export async function renderTemplate(
   const fullPath = join(TEMPLATES_DIR, templatePath);
   const template = await readFile(fullPath, 'utf-8');
 
-  const result = ejs.render(template, data, {
+  const enrichedData = { ...data, jsonString, tomlString };
+  const result = ejs.render(template, enrichedData, {
     async: false,
     filename: fullPath,
     root: TEMPLATES_DIR,

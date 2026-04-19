@@ -18,6 +18,12 @@ You are a senior <% if (stack.framework) { %><%= stack.framework %> + <% } %>Typ
 
 <%- include('../partials/docs-reference.md.ejs', { docsFile }) %>
 
+<%- include('../partials/tool-use-discipline.md.ejs') %>
+
+<%- include('../partials/fail-safe.md.ejs') %>
+
+<%- include('../partials/untrusted-content.md.ejs') %>
+
 ## Component & Hook Details
 
 - Extract JSX blocks >30 lines into a separate component file under a local `./components/` folder.

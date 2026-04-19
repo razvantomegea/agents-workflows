@@ -1,7 +1,7 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext } from './types.js';
 import { buildReviewChecklist } from './review-checklist-rules.js';
-import { buildPermissions } from './permissions.js';
+import { buildPermissions, buildDenyList, buildPostToolUseHooks } from './permissions.js';
 import {
   isFrontendFramework,
   isMobileFramework,
@@ -39,6 +39,8 @@ export function buildContext(config: StackConfig): GeneratorContext {
 
     reviewChecklist: buildReviewChecklist(config),
     permissions: buildPermissions(config),
+    denyList: buildDenyList(),
+    postToolUseHooks: buildPostToolUseHooks({ lintCommand: config.commands.lint ?? null }),
     monorepo: config.monorepo,
 
     hasUiDesigner: config.agents.uiDesigner,

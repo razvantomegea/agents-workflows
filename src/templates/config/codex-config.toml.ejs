@@ -1,0 +1,9 @@
+# Codex CLI configuration — deny list mirrors Claude Code settings
+# See AGENTS.md "Dangerous operations" for rationale.
+
+[permissions]
+deny = [
+<% denyList.forEach(function(pattern, i) { -%>
+  <%- tomlString(pattern) %><%= i < denyList.length - 1 ? ',' : '' %>
+<% }); -%>
+]

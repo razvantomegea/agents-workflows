@@ -1,5 +1,10 @@
 import type { StackConfig } from '../schema/stack-config.js';
 
+export interface PostToolUseHook {
+  matcher: string;
+  command: string;
+}
+
 export interface ReviewChecklistItem {
   name: string;
   howToVerify: string;
@@ -28,6 +33,8 @@ export interface GeneratorContext extends Record<string, unknown> {
 
   reviewChecklist: ReviewChecklistItem[];
   permissions: string[];
+  denyList: readonly string[];
+  postToolUseHooks: readonly PostToolUseHook[];
   monorepo: StackConfig['monorepo'];
 
   hasUiDesigner: boolean;
