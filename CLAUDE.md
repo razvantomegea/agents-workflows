@@ -17,11 +17,24 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Primary Documentation
 
-- The canonical source of project intent lives in `README.md`.
-- Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
-- When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
+- The canonical source of project intent lives in `PRD.md`.
+- Read `PRD.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
+- When `PRD.md` and code disagree, flag the mismatch in your output instead of silently picking one.
 
 
+
+
+## Context budget
+
+Treat context as a finite attention budget, not a storage tank. Every token
+you load competes with reasoning quality (context rot is real; see Chroma
+2025). Rules:
+- Keep this file under 200 lines. If a line's removal would not cause
+  mistakes, delete it.
+- Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
+- Do not paste docs here — link them. Skills hold task-specific knowledge.
+- When context reaches ~50% full, write a NOTES.md summary and /clear.
+- For nested packages, a closer AGENTS.md wins over an outer one.
 
 
 ## Sub-agent Routing

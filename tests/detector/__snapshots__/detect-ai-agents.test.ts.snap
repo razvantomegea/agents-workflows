@@ -1,0 +1,78 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`detectAiAgents does not include env var values in the returned object 1`] = `
+{
+  "agents": [
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "claude",
+      "matchedEnvVars": [
+        "ANTHROPIC_API_KEY",
+      ],
+      "name": "Claude Code",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "codex",
+      "matchedEnvVars": [],
+      "name": "Codex CLI",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "cursor",
+      "matchedEnvVars": [],
+      "name": "Cursor",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "aider",
+      "matchedEnvVars": [
+        "ANTHROPIC_API_KEY",
+      ],
+      "name": "Aider",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "continue",
+      "matchedEnvVars": [],
+      "name": "Continue.dev",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "copilot",
+      "matchedEnvVars": [],
+      "name": "Copilot CLI",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "windsurf",
+      "matchedEnvVars": [],
+      "name": "Windsurf",
+    },
+    {
+      "apiKeyPresent": "<boolean>",
+      "cliAvailable": "<boolean>",
+      "configPresent": "<boolean>",
+      "id": "gemini",
+      "matchedEnvVars": [],
+      "name": "Gemini CLI",
+    },
+  ],
+  "hasClaudeCode": "<boolean>",
+  "hasCodexCli": "<boolean>",
+}
+`;

@@ -1263,7 +1263,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 1 — Agent Safety Core Protocols [MUST]
+## Epic 1 — Agent Safety Core Protocols [MUST] [DONE 2026-04-19]
 
 **Goal.** Every generated agent refuses prompt injection, stops on dirty state, blocks destructive ops, and respects a finite context budget.
 
@@ -1272,41 +1272,43 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - `.claude/settings.local.json` output ships a deny list + PostToolUse lint hook.
 - `pnpm test` covers partial rendering for each agent.
 
-### E1.T1 — Create `untrusted-content.md.ejs` partial [§1.5] — S
+**Landed on** `feature/epic-1-agent-safety-core`. Beyond the PRD spec: added regex validation for command fields (`SAFE_COMMAND_RE` in `src/schema/stack-config.ts`) and `jsonString` / `tomlString` helpers in `src/utils/template-renderer.ts` to close command-injection and output-escaping gaps surfaced by the security review.
+
+### E1.T1 — Create `untrusted-content.md.ejs` partial [§1.5] — S — [DONE]
 - **Files**: `src/templates/partials/untrusted-content.md.ejs` (new)
 - **Content**: §1.5 Rule-of-Two + lethal-trifecta snippet verbatim.
 - **Done when**: file <60 lines; referenced by every agent in E1.T5.
 
-### E1.T2 — Create `fail-safe.md.ejs` partial [§1.3] — S
+### E1.T2 — Create `fail-safe.md.ejs` partial [§1.3] — S — [DONE]
 - **Files**: `src/templates/partials/fail-safe.md.ejs` (new)
 - **Content**: §1.3 pwd/git-status/two-strike block.
 - **Done when**: partial <40 lines; renders unchanged across stacks.
 
-### E1.T3 — Create `tool-use-discipline.md.ejs` partial [§1.2] — S
+### E1.T3 — Create `tool-use-discipline.md.ejs` partial [§1.2] — S — [DONE]
 - **Files**: `src/templates/partials/tool-use-discipline.md.ejs` (new)
 - **Content**: §1.2 search-before-act + slopsquatting clause.
 - **Done when**: file <40 lines; unit test verifies parallel-tool language present.
 
-### E1.T4 — Create `context-budget.md.ejs` partial [§1.1] — S
+### E1.T4 — Create `context-budget.md.ejs` partial [§1.1] — S — [DONE]
 - **Files**: `src/templates/partials/context-budget.md.ejs` (new)
 - **Content**: §1.1 "treat context as finite attention budget" block.
 - **Done when**: partial <30 lines; rendered at top of `AGENTS.md.ejs` and `CLAUDE.md.ejs`.
 
-### E1.T5 — Wire 4 new partials into agent templates — M
-- **Files**: `src/templates/agents/{architect,implementer,code-reviewer,security-reviewer,code-optimizer,test-writer,e2e-tester,reviewer,ui-designer}.md.ejs`, `src/templates/config/{AGENTS,CLAUDE}.md.ejs`
+### E1.T5 — Wire 4 new partials into agent templates — M — [DONE]
+- **Files**: `src/templates/agents/{architect,implementer,code-reviewer,security-reviewer,code-optimizer,test-writer,e2e-tester,reviewer,ui-designer,react-ts-senior}.md.ejs`, `src/templates/config/{AGENTS,CLAUDE}.md.ejs`
 - **Change**: Insert `<%- include('../partials/…') %>` tags per §4 diff map.
 - **Done when**: `pnpm test` passes; snapshot tests updated; each agent includes the 4 partials where mapped.
 
-### E1.T6 — Harden `settings-local.json.ejs` deny list [§1.4 + §1.15] — M
+### E1.T6 — Harden `settings-local.json.ejs` deny list [§1.4 + §1.15] — M — [DONE]
 - **Files**: `src/templates/config/settings-local.json.ejs`, `src/generator/permissions.ts`
 - **Change**: Add §1.4 deny patterns (`rm -rf`, `git push --force`, `git reset --hard`, `npm publish`, `.env*`, `migrations/**`, etc.) and PostToolUse lint hook.
 - **Done when**: generated JSON validates against Claude Code schema; new test in `tests/permissions.test.ts` asserts presence of each deny pattern.
 
-### E1.T7 — Add `## Dangerous operations` to `AGENTS.md.ejs` [§1.4] — S
+### E1.T7 — Add `## Dangerous operations` to `AGENTS.md.ejs` [§1.4] — S — [DONE]
 - **Files**: `src/templates/config/AGENTS.md.ejs`
 - **Done when**: rendered AGENTS.md contains the 10-line deny-list checklist.
 
-### E1.T8 — Mirror deny list for Codex CLI [§1.4] — S
+### E1.T8 — Mirror deny list for Codex CLI [§1.4] — S — [DONE]
 - **Files**: `src/templates/config/codex-config.toml.ejs` (new) + wire into `src/generator/generate-root-config.ts`
 - **Done when**: `.codex/config.toml` emitted on Codex-enabled outputs; deny list parity verified by test.
 

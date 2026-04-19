@@ -8,7 +8,7 @@
       "description": "Reusable AI agent configuration framework",
       "locale": "en",
       "localeRules": [],
-      "docsFile": "README.md"
+      "docsFile": "PRD.md"
     },
     "stack": {
       "language": "typescript",

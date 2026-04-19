@@ -42,6 +42,10 @@ Fix all QA issues listed in QA.md on the current feature branch.
 
 8. Print a summary: which issues were fixed, which were skipped (and why), files changed.
 
+<% if (docsFile) { -%>
+9. **Mark epic done in `<%= docsFile %>` (if applicable)**: if the QA pass was tied to a documented epic (referenced in the session or in `QA.md`), locate the epic header in `<%= docsFile %>`, append `[DONE YYYY-MM-DD]` (today's date) to the header, and append `— [DONE]` to each sub-task heading under that epic. Skip when QA was not tied to a documented epic.
+<% } -%>
+
 ## Git rules
 
 - **NEVER commit or push.** The user decides when to commit.

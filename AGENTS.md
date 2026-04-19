@@ -17,11 +17,24 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 ## Primary Documentation
 
-- The canonical source of project intent lives in `README.md`.
-- Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
-- When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
+- The canonical source of project intent lives in `PRD.md`.
+- Read `PRD.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
+- When `PRD.md` and code disagree, flag the mismatch in your output instead of silently picking one.
 
 
+
+
+## Context budget
+
+Treat context as a finite attention budget, not a storage tank. Every token
+you load competes with reasoning quality (context rot is real; see Chroma
+2025). Rules:
+- Keep this file under 200 lines. If a line's removal would not cause
+  mistakes, delete it.
+- Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
+- Do not paste docs here — link them. Skills hold task-specific knowledge.
+- When context reaches ~50% full, write a NOTES.md summary and /clear.
+- For nested packages, a closer AGENTS.md wins over an outer one.
 
 
 ## Sub-agent Routing
@@ -92,5 +105,24 @@ This loop is mandatory.
 - Always do what is asked. If something is unclear, ask clarifying questions.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
+
+## Dangerous operations — require explicit confirmation
+
+NEVER execute without the user typing "yes" in the current session:
+- `rm -rf`, `rm -r` on any directory
+- `git push --force` / `--force-with-lease` on shared branches
+- `git reset --hard`, `git clean -fd`, `git branch -D`
+- `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` without `WHERE`
+- `kubectl`/`terraform` targeting any non-local context
+- `npm publish`, `pnpm publish`, `cargo publish`, `pypi upload`
+- Writes outside the project root, modifications to shell rc files,
+  installing system packages
+
+Always prefer `--dry-run` / `terraform plan` / `kubectl diff` first.
+Always prefer `--force-with-lease` over `--force` when a force push is
+unavoidable, and ask first.
+
+Before any destructive operation, state: (1) what changes, (2) where
+(env), (3) reversibility, (4) blast radius (count of rows/files/users).
 
 <!-- agents-workflows:managed-end -->
