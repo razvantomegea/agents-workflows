@@ -6,11 +6,11 @@ import { fileURLToPath } from 'node:url';
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_DIR = join(MODULE_DIR, '..', 'templates');
 
-export function jsonString(value: unknown): string {
+function jsonString(value: unknown): string {
   return JSON.stringify(value ?? '');
 }
 
-export function tomlString(value: unknown): string {
+function tomlString(value: unknown): string {
   const str = String(value ?? '');
   const escaped = str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   return `"${escaped}"`;

@@ -20,6 +20,9 @@ const DENY_PATTERNS: readonly string[] = [
   'Bash(git branch -D:*)',
   'Bash(npm publish:*)',
   'Bash(pnpm publish:*)',
+  'Bash(cargo publish:*)',
+  'Bash(pypi upload:*)',
+  'Bash(twine upload:*)',
   'Bash(terraform apply:*)',
   'Bash(kubectl apply:*)',
   'Bash(kubectl delete namespace:*)',
@@ -55,8 +58,11 @@ export function buildDenyList(): string[] {
 export function buildPostToolUseHooks(input: { lintCommand: string | null }): PostToolUseHook[] {
   if (!input.lintCommand) return [];
   const cmd = input.lintCommand;
-  const hasFix = /\s--fix\b/.test(cmd);
-  const command = hasFix ? `${cmd} || true` : `${cmd} --fix || true`;
+  const hasFix = /(?:^|\s)--fix(?:=|\b)/.test(cmd);
+  const usesRunWrapper = /\b(?:npm|yarn|pnpm|bun)\s+run\b/.test(cmd);
+  const needsArgumentSeparator = usesRunWrapper && !/\s--(?:\s|$)/.test(cmd);
+  const fixArgs = needsArgumentSeparator ? '-- --fix' : '--fix';
+  const command = hasFix ? `${cmd} || true` : `${cmd} ${fixArgs} || true`;
   return [{ matcher: 'Edit|Write', command }];
 }
 

@@ -156,7 +156,7 @@ NEVER execute without the user typing "yes" in the current session:
 - `git reset --hard`, `git clean -fd`, `git branch -D`
 - `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` without `WHERE`
 - `kubectl`/`terraform` targeting any non-local context
-- `npm publish`, `pnpm publish`, `cargo publish`, `pypi upload`
+- `npm publish`, `pnpm publish`, `cargo publish`, `pypi upload`, `twine upload`
 - Writes outside the project root, modifications to shell rc files,
   installing system packages
 

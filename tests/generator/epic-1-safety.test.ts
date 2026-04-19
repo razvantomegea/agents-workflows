@@ -1,8 +1,6 @@
 import { generateAll } from '../../src/generator/index.js';
 import { makeStackConfig } from './fixtures.js';
 
-const makeConfig = makeStackConfig;
-
 const AGENTS_WITH_UNTRUSTED = [
   'architect',
   'implementer',
@@ -26,7 +24,7 @@ const AGENTS_WITHOUT_TOOL_USE = [
 
 describe('Epic 1 safety partials', () => {
   it('wires context-budget into AGENTS.md and CLAUDE.md only', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
 
     const agentsMd = files.find((file) => file.path === 'AGENTS.md');
     const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
@@ -40,7 +38,7 @@ describe('Epic 1 safety partials', () => {
   });
 
   it('wires untrusted-content into the mapped agents only', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
 
     for (const agentName of AGENTS_WITH_UNTRUSTED) {
       const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
@@ -54,7 +52,7 @@ describe('Epic 1 safety partials', () => {
   });
 
   it('wires fail-safe into all 10 agent templates', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
 
     for (const agentName of ALL_AGENTS) {
       const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
@@ -63,7 +61,7 @@ describe('Epic 1 safety partials', () => {
   });
 
   it('wires tool-use-discipline into architect, implementer, react-ts-senior only', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
 
     for (const agentName of AGENTS_WITH_TOOL_USE) {
       const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
@@ -79,7 +77,7 @@ describe('Epic 1 safety partials', () => {
   });
 
   it('includes Dangerous operations section in rendered AGENTS.md', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
     const agentsMd = files.find((file) => file.path === 'AGENTS.md');
     expect(agentsMd).toBeDefined();
     expect(agentsMd?.content).toContain('## Dangerous operations');
@@ -88,7 +86,7 @@ describe('Epic 1 safety partials', () => {
   });
 
   it('renders .claude/settings.local.json with deny list and PostToolUse hook', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
     const settings = files.find((file) => file.path === '.claude/settings.local.json');
     expect(settings).toBeDefined();
     const parsed = JSON.parse(settings!.content) as {
@@ -98,15 +96,18 @@ describe('Epic 1 safety partials', () => {
     expect(parsed.permissions.deny).toContain('Bash(rm -rf:*)');
     expect(parsed.permissions.deny).toContain('Edit(.env*)');
     expect(parsed.permissions.deny).toContain('Edit(migrations/**)');
-    expect(parsed.permissions.deny).toHaveLength(20);
+    expect(parsed.permissions.deny).toHaveLength(23);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');
     expect(parsed.permissions.deny).toContain('Bash(rm --recursive:*)');
+    expect(parsed.permissions.deny).toContain('Bash(cargo publish:*)');
+    expect(parsed.permissions.deny).toContain('Bash(pypi upload:*)');
+    expect(parsed.permissions.deny).toContain('Bash(twine upload:*)');
     expect(parsed.hooks?.PostToolUse[0].matcher).toBe('Edit|Write');
     expect(parsed.hooks?.PostToolUse[0].command).toContain('--fix');
   });
 
   it('emits .codex/config.toml with Codex-native safety defaults', async () => {
-    const files = await generateAll(makeConfig());
+    const files = await generateAll(makeStackConfig());
     const codexConfig = files.find((file) => file.path === '.codex/config.toml');
 
     expect(codexConfig).toBeDefined();
@@ -120,7 +121,7 @@ describe('Epic 1 safety partials', () => {
   });
 
   it('omits .codex/config.toml when targets.codexCli is false', async () => {
-    const config = makeConfig();
+    const config = makeStackConfig();
     config.targets.codexCli = false;
     const files = await generateAll(config);
     const paths = files.map((file) => file.path);

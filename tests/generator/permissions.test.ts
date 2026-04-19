@@ -50,18 +50,21 @@ describe('buildPermissions', () => {
 });
 
 describe('buildDenyList', () => {
-  it('returns the 20 documented deny patterns in order', () => {
+  it('returns the 23 documented deny patterns in order', () => {
     const deny = buildDenyList();
-    expect(deny).toHaveLength(20);
+    expect(deny).toHaveLength(23);
     expect(deny[0]).toBe('Bash(rm -rf:*)');
     expect(deny).toContain('Bash(git push --force:*)');
     expect(deny).toContain('Edit(.env*)');
     expect(deny).toContain('Edit(migrations/**)');
-    expect(deny[19]).toBe('Edit(migrations/**)');
+    expect(deny[22]).toBe('Edit(migrations/**)');
     expect(deny).toContain('Bash(git push --force-with-lease:*)');
     expect(deny).toContain('Bash(rm --recursive:*)');
     expect(deny).toContain('Bash(rm --force:*)');
     expect(deny).toContain('Bash(git clean -f:*)');
+    expect(deny).toContain('Bash(cargo publish:*)');
+    expect(deny).toContain('Bash(pypi upload:*)');
+    expect(deny).toContain('Bash(twine upload:*)');
   });
 
   it('returns a fresh copy each call', () => {
@@ -85,6 +88,26 @@ describe('buildPostToolUseHooks', () => {
   it('does not double-append --fix when already present', () => {
     const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm lint --fix' });
     expect(hooks[0].command).toBe('pnpm lint --fix || true');
+  });
+
+  it('does not double-append --fix when already present with a value', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm lint --fix=true' });
+    expect(hooks[0].command).toBe('pnpm lint --fix=true || true');
+  });
+
+  it('inserts the argument separator for package run wrappers', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'npm run lint' });
+    expect(hooks[0].command).toBe('npm run lint -- --fix || true');
+  });
+
+  it('inserts the argument separator for non-npm run wrappers', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'bun run lint' });
+    expect(hooks[0].command).toBe('bun run lint -- --fix || true');
+  });
+
+  it('reuses an existing package run argument separator', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'npm run lint -- --quiet' });
+    expect(hooks[0].command).toBe('npm run lint -- --quiet --fix || true');
   });
 
   it('appends --fix even when command contains fix as a substring without flag', () => {
