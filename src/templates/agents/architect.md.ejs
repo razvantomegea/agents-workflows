@@ -16,39 +16,36 @@ You are the architect agent for the `<%= project.name %>` project: <%= project.d
 
 <%- include('../partials/untrusted-content.md.ejs') %>
 
-## When invoked
+## Planning protocol
 
-1. Read `CLAUDE.md` and any local project instructions before planning.
-2. Search the codebase for existing components, hooks, utils, types, constants, and patterns relevant to the request.
-<% if (componentsDir) { -%>
-3. Check `<%= componentsDir %>` for reusable UI building blocks.
-<% } -%>
-<% if (localeRules.length > 0) { -%>
-4. Identify user-facing strings that need locale handling: <%= localeRules.join(', ') %>.
-<% } -%>
-5. Draft no more than 8 dependency-ordered tasks with exact file paths.
-6. Write the complete plan to `./PLAN.md`, replacing any existing file.
+<planning_protocol>
+1. EXPLORE (read-only): use grep/glob/read to understand affected code.
+   Do not edit. Write nothing yet.
+2. CLARIFY: if the request is ambiguous, ask up to 5 high-signal
+   questions. Do not ask obvious questions.
+3. PLAN: produce PLAN.md (≤8 tasks) with:
+   - Goal in one sentence
+   - Files to be created or modified (explicit paths)
+   - Step-by-step approach per task
+   - Verification strategy per task ("done when…")
+   - Risks and rollback strategy
+   - Out-of-scope items (explicit non-goals)
+4. HANDOFF: stop. Wait for user approval or for implementer to pick up.
 
-## Checklist
+Skip planning only if (a) you can state the diff in one sentence AND
+(b) it touches a single file. Otherwise always plan first.
+</planning_protocol>
 
-- Include the pre-implementation checklist at the top of `PLAN.md`.
-- Tag every task with one or more of `[UI]`, `[LOGIC]`, `[API]`, `[SCHEMA]`, `[TEST]`.
-<% if (localeRules.length > 0) { -%>
-- Add `[LOCALE]` to tasks that touch localized content.
-<% } -%>
-- Add `[PARALLEL]` only when tasks have no dependency on each other.
-- Use exact file paths in every task; avoid globs and vague locations.
-- Include the post-implementation checklist at the bottom of `PLAN.md`.
+## Planning notes
 
-## Plan Task Format
+- EXPLORE: read `CLAUDE.md` plus any local project instructions, then search for existing components, hooks, utils, types, constants, and patterns before proposing new ones<% if (componentsDir) { %>; check `<%= componentsDir %>` for reusable UI building blocks<% } %>.
+- PLAN: tag every task with one or more of `[UI]`, `[LOGIC]`, `[API]`, `[SCHEMA]`, `[TEST]`<% if (localeRules.length > 0) { %>, and `[LOCALE]` when touching localized content (<%= localeRules.join(', ') %>)<% } %>; add `[PARALLEL]` only when tasks have no dependency. Use exact file paths — no globs.
+- PLAN: include the pre-implementation checklist at the top and the post-implementation checklist at the bottom of `PLAN.md`.
+- HANDOFF: write the complete plan to `./PLAN.md`, replacing any existing file.
 
-```markdown
-### Task N - [Title] [TYPE]<% if (localeRules.length > 0) { %> [LOCALE?]<% } %> [PARALLEL?]
-**Files**: exact file paths only
-**Input**: what this task requires from prior tasks or existing code
-**Output**: what this task produces
-**Notes**: edge cases, DRY risks, constraints from CLAUDE.md
-```
+## Task format
+
+Each task in `PLAN.md`: `### Task N - [Title] [TYPE]<% if (localeRules.length > 0) { %> [LOCALE?]<% } %> [PARALLEL?]` followed by **Files** (exact paths), **Input**, **Output**, and **Notes** (edge cases, DRY risks, constraints).
 
 ## Pre-implementation Checklist Block
 

@@ -1315,26 +1315,28 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 2 — Quality Discipline (Definition of Done + Planning) [MUST]
+## Epic 2 — Quality Discipline (Definition of Done + Planning) [MUST] [DONE 2026-04-19]
 
 **Goal.** Implementer cannot "claim done" on broken code; architect cannot skip explore/clarify; agents never suppress errors.
 
-### E2.T1 — Create `definition-of-done.md.ejs` partial [§1.6] — S
+**Landed on** `feature/epic-2-quality-discipline`.
+
+### E2.T1 — Create `definition-of-done.md.ejs` partial [§1.6] — S — [DONE]
 - **Files**: `src/templates/partials/definition-of-done.md.ejs` (new)
 - **Content**: §1.6 seven-point checklist + suppression prohibition.
 - **Done when**: included by `implementer`, `code-optimizer`, `reviewer`.
 
-### E2.T2 — Create `error-handling-self.md.ejs` partial [§1.17] — S
+### E2.T2 — Create `error-handling-self.md.ejs` partial [§1.17] — S — [DONE]
 - **Files**: `src/templates/partials/error-handling-self.md.ejs` (new)
 - **Content**: §1.17 five-step failure protocol.
 - **Done when**: included by `implementer`, `code-optimizer`.
 
-### E2.T3 — Rewrite `architect.md.ejs` planning protocol [§1.13] — M
+### E2.T3 — Rewrite `architect.md.ejs` planning protocol [§1.13] — M — [DONE]
 - **Files**: `src/templates/agents/architect.md.ejs`
 - **Change**: Replace current plan prompt with §1.13 EXPLORE → CLARIFY → PLAN → HANDOFF block. Keep ≤8-task cap. Add file-path requirement + out-of-scope list + verification-per-task field.
 - **Done when**: rendered `architect.md` emits 4-phase protocol; existing architect test suite green.
 
-### E2.T4 — Add TDD discipline partial [§1.14] — S
+### E2.T4 — Add TDD discipline partial [§1.14] — S — [DONE]
 - **Files**: `src/templates/partials/tdd-discipline.md.ejs` (new) + include in `test-writer.md.ejs`, `implementer.md.ejs`
 - **Content**: §1.14 failing-test-first + anti-mocking-SUT + never-delete-test.
 - **Done when**: partial renders; `test-writer` template includes it verbatim.
