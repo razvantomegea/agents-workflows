@@ -1366,6 +1366,11 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Change**: Order the gate: code-reviewer → apply fixes → type-check → tests. State failure-handling at each step.
 - **Done when**: rendered reviewer has numbered steps; test asserts order.
 
+### E3.T5 — Add external-review terminal command config [§1.7] — S
+- **Files**: `src/templates/commands/external-review.md.ejs`
+- **Change**: Allow users to specify in terminal the command used for `/external-review`; set Code Rabbit CLI as the default setup when no explicit command is provided.
+- **Done when**: rendered external-review instructions document both terminal override usage and Code Rabbit CLI default behavior.
+
 ---
 
 ## Epic 4 — Code Standards Enforcement [MUST]

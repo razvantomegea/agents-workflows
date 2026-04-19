@@ -51,6 +51,9 @@ const extractTaggedBlock = (content: string, tag: string): string => {
   if (start < 0 || end < 0) {
     throw new Error(`Tag <${tag}> not found in content`);
   }
+  if (end < start) {
+    throw new Error(`Closing tag ${closeTag} found before opening tag ${openTag}`);
+  }
   return content.slice(start, end + closeTag.length);
 };
 
@@ -103,5 +106,11 @@ describe('Epic 2 quality partials', () => {
       'tdd_discipline',
     );
     expect(implementerBlock).toBe(testWriterBlock);
+  });
+
+  it('extractTaggedBlock rejects malformed tag ordering', () => {
+    expect(() => extractTaggedBlock('</broken><broken>', 'broken')).toThrow(
+      'Closing tag </broken> found before opening tag <broken>',
+    );
   });
 });
