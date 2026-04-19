@@ -1311,6 +1311,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 ### E1.T8 — Mirror deny list for Codex CLI [§1.4] — S — [DONE]
 - **Files**: `src/templates/config/codex-config.toml.ejs` (new) + wire into `src/generator/generate-root-config.ts`
 - **Done when**: `.codex/config.toml` emitted on Codex-enabled outputs; deny list parity verified by test.
+- **Shipped**: Codex CLI has no deny-list table (its schema only supports `approval_policy` / `sandbox_mode` / `[sandbox_workspace_write]`). Literal pattern parity would produce an invalid TOML that Codex rejects. Instead achieved semantic parity: `approval_policy = "untrusted"` (prompts before any non-safe-read command), `sandbox_mode = "workspace-write"` (writes confined to project root), `network_access = false` (blocks outbound egress). Same safety envelope, Codex-native keys.
 
 ---
 

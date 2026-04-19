@@ -105,22 +105,18 @@ describe('Epic 1 safety partials', () => {
     expect(parsed.hooks?.PostToolUse[0].command).toContain('--fix');
   });
 
-  it('emits .codex/config.toml mirroring the Claude deny list', async () => {
+  it('emits .codex/config.toml with Codex-native safety defaults', async () => {
     const files = await generateAll(makeConfig());
     const codexConfig = files.find((file) => file.path === '.codex/config.toml');
-    const settings = files.find((file) => file.path === '.claude/settings.local.json');
 
     expect(codexConfig).toBeDefined();
-    expect(settings).toBeDefined();
-
-    const parsed = JSON.parse(settings!.content) as { permissions: { deny: string[] } };
     const toml = codexConfig!.content;
 
-    expect(toml).toContain('[permissions]');
-    expect(toml).toContain('deny = [');
-    for (const pattern of parsed.permissions.deny) {
-      expect(toml).toContain(`"${pattern}"`);
-    }
+    expect(toml).toContain('approval_policy = "untrusted"');
+    expect(toml).toContain('sandbox_mode = "workspace-write"');
+    expect(toml).toContain('[sandbox_workspace_write]');
+    expect(toml).toContain('network_access = false');
+    expect(toml).not.toContain('[permissions]');
   });
 
   it('omits .codex/config.toml when targets.codexCli is false', async () => {
