@@ -14,11 +14,15 @@ This file provides guidance to Claude Code when working with code in this reposi
 - Oxlint (linter)
 - pnpm (package manager)
 
+
 ## Primary Documentation
 
 - The canonical source of project intent lives in `README.md`.
 - Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
 - When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
+
+
+
 
 ## Sub-agent Routing
 
@@ -27,6 +31,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 | Architecture, planning | `architect` (opus) |
 | Implementation | `implementer` |
 | Code review (after every file edit) | `code-reviewer` |
+| Security review (parallel to code review) | `security-reviewer` |
 | Review loop orchestration (post-task) | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
@@ -47,7 +52,7 @@ Use sub-agents with independent, single, simple tasks as much as possible.
 
 After every implementation session, run the following loop before considering the task done:
 
-1. **Launch `code-reviewer` agent** — pass the list of all modified files and the task context.
+1. **Launch `code-reviewer` and `security-reviewer` in parallel** — pass the list of all modified files and the task context to both.
 2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
 3. **Re-run type-check** — `pnpm check-types`. Fix any new errors.
 4. **Re-run tests** — `pnpm test`. All suites must pass.
@@ -66,11 +71,13 @@ This loop is mandatory.
 - Avoid hardcoded styling — use theme variables or design tokens.
 - Keep files under 200 lines.
 
+
 ## File Organization
 
 - Keep business logic in `src/utils/` and hooks — keep UI components thin.
 - One public component/helper per file.
 - Use folder-based module organization with colocated tests and `index.ts` barrel exports.
+
 
 ## DRY and Reusability
 

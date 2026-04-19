@@ -14,11 +14,15 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 - Oxlint (linter)
 - pnpm (package manager)
 
+
 ## Primary Documentation
 
 - The canonical source of project intent lives in `README.md`.
 - Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
 - When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
+
+
+
 
 ## Sub-agent Routing
 
@@ -27,6 +31,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Architecture, planning | `architect` |
 | Implementation | `implementer` |
 | Code review (after every file edit) | `code-reviewer` |
+| Security review (parallel to code review) | `security-reviewer` |
 | Review loop orchestration | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
@@ -48,7 +53,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 After every implementation session, run the following loop:
 
-1. **Launch `code-reviewer` agent** on all modified files.
+1. **Launch `code-reviewer` and `security-reviewer` in parallel** on all modified files.
 2. **Apply every finding** — every critical and warning must be fixed.
 3. **Re-run type-check** — `pnpm check-types`.
 4. **Re-run tests** — `pnpm test`. All suites must pass.
@@ -67,11 +72,13 @@ This loop is mandatory.
 - Avoid hardcoded styling — use theme variables or design tokens.
 - Keep files under 200 lines.
 
+
 ## File Organization
 
 - Keep business logic in `src/utils/` and hooks — keep UI components thin.
 - One public component/helper per file.
 - Use folder-based module organization with colocated tests and `index.ts` barrel exports.
+
 
 ## DRY and Reusability
 

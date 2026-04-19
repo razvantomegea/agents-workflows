@@ -1471,13 +1471,57 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 7 — Situational Enhancements [NICE]
+## Epic 7 — CLI Generator Safe File Handling [MUST]
 
-- **E7.T1** — i18n partial [§2.13] — S — `src/templates/partials/i18n.md.ejs`; include in `ui-designer.md.ejs`, `implementer.md.ejs` when i18n library detected.
-- **E7.T2** — TCR workflow command (Trial from Radar v33) — M.
-- **E7.T3** — OSCAL continuous-compliance template — L.
-- **E7.T4** — Continuous profiling note inside observability partial — S.
-- **E7.T5** — Stacked PR tooling (Graphite/ghstack) mention in git-rules — S.
+**Goal.** `agents-workflows` never silently overwrites a user's existing files. When generated output would replace an existing file (e.g. `AGENTS.md`, `CLAUDE.md`, `.claude/settings.local.json`, any agent `.md`, any command `.md`), the CLI prompts before writing and offers a merge path where safe. Applies the §1.4 destructive-operation philosophy to the tool itself — a re-run of `init` must be data-preserving by default so users never lose hand-edited project rules.
+
+**Rationale.** A blind overwrite of `AGENTS.md` / `CLAUDE.md` / `settings.local.json` on re-run destroys user customizations and violates the 2025–2026 norm (Anthropic destructive-op guardrails, Codex approval modes) of asking before any hard-to-reverse write. Idempotent, data-preserving re-runs are table stakes for a scaffolding CLI.
+
+**Acceptance.**
+- Every generator write routes through a single `writeFileSafe` helper with existence + diff + prompt.
+- Prompt offers `[y]es / [n]o / [a]ll (yes-to-all) / [s]kip-all / [m]erge`; `a`/`s` sticky for the remainder of the run.
+- `--yes`, `--no-prompt`, `--merge-strategy=<keep|overwrite|merge>` CLI flags cover CI use; default stays interactive.
+- Markdown and JSON files support structured merge; unsupported formats fall back to yes/no/all/skip.
+- `pnpm test` covers each prompt answer, both merge strategies, re-run idempotency, and flag behavior.
+
+### E7.T1 — Shared `writeFileSafe` helper with prompt [§1.4 philosophy] — M
+- **Files**: `src/generator/write-file.ts` (new); refactor every `fs.write*` call in `src/generator/` to use it.
+- **Change**: `writeFileSafe({ path, content, merge? })` returns `{ status: "written" | "skipped" | "merged" }`. Uses `@inquirer/prompts` for the 5-choice menu. Module-level state tracks sticky `all` / `skip-all` answers for the session.
+- **Done when**: no direct `writeFile` / `writeFileSync` remains under `src/generator/`; Jest covers each answer path.
+
+### E7.T2 — Colored unified-diff preview — S
+- **Files**: `src/utils/diff.ts` (new); consumed by `write-file.ts`.
+- **Change**: Pure function returning an ANSI-colored unified diff, capped at 80 lines with `… (N more)` footer. File <40 lines total.
+- **Done when**: Jest covers cap + no-diff edge case; re-running `init` over a changed project prints the preview before prompting.
+
+### E7.T3 — Markdown-aware merge [AGENTS.md / CLAUDE.md / agent prompts] — M
+- **Files**: `src/generator/merge-markdown.ts` (new), `tests/merge-markdown.test.ts` (new).
+- **Change**: Parse with `remark`. Merge by top-level heading — user body wins unless the heading is tagged `<!-- agents-workflows:managed -->`, in which case generator wins. New managed headings append at the bottom. Must be idempotent on unchanged inputs.
+- **Done when**: Jest proves (a) idempotency, (b) user's custom headings preserved, (c) new managed headings appended, (d) managed-tagged headings overwritten.
+
+### E7.T4 — JSON-aware merge [settings.local.json, codex config] — S
+- **Files**: `src/generator/merge-json.ts` (new), `tests/merge-json.test.ts` (new).
+- **Change**: Deep-merge: arrays union by value (allow/deny lists), objects merge key-by-key with user winning on non-managed conflicts. Stable key order for diff-friendliness.
+- **Done when**: re-running on a settings file with user-added allow entries preserves them while still applying new generator deny rules.
+
+### E7.T5 — CLI flags `--yes`, `--no-prompt`, `--merge-strategy` — S
+- **Files**: `src/cli.ts`, `src/generator/write-file.ts`.
+- **Change**: `--yes` answers overwrite-all, `--no-prompt` answers skip-all, `--merge-strategy=<keep|overwrite|merge>` sets the default action; interactive otherwise. Flags are exit-code-safe for CI.
+- **Done when**: `agents-workflows --help` documents each flag; CI matrix asserts each flag short-circuits the prompt correctly.
+
+### E7.T6 — README + AGENTS.md tooling note — S
+- **Files**: `README.md` (new section "Re-running on an existing project"), `src/templates/config/AGENTS.md.ejs` (one-liner under Tooling).
+- **Done when**: README explains the five prompt answers + flags + merge limitations; rendered AGENTS.md notes the CLI's no-destructive-writes invariant.
+
+---
+
+## Epic 8 — Situational Enhancements [NICE]
+
+- **E8.T1** — i18n partial [§2.13] — S — `src/templates/partials/i18n.md.ejs`; include in `ui-designer.md.ejs`, `implementer.md.ejs` when i18n library detected.
+- **E8.T2** — TCR workflow command (Trial from Radar v33) — M.
+- **E8.T3** — OSCAL continuous-compliance template — L.
+- **E8.T4** — Continuous profiling note inside observability partial — S.
+- **E8.T5** — Stacked PR tooling (Graphite/ghstack) mention in git-rules — S.
 
 ---
 
@@ -1485,10 +1529,10 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 | Sprint | Focus | Epics |
 |---|---|---|
-| 1 | Safety & DoD | Epic 1 + Epic 2 |
+| 1 | Safety & DoD | Epic 1 + Epic 2 + Epic 7 |
 | 2 | Review & Standards | Epic 3 + Epic 4 |
 | 3 | Orchestration | Epic 5 |
 | 4 | Extended standards | Epic 6 |
-| Backlog | Situational | Epic 7 |
+| Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs.
