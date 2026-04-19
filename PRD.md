@@ -95,8 +95,8 @@ you load competes with reasoning quality (context rot is real; see Chroma
 ```
 <fail_safe>
 Before starting: run `pwd`, `git status`, `git branch --show-current`.
-If the tree is dirty, on an unexpected branch, or a rebase/merge is in
-progress, STOP and report. Do not auto-stash, auto-commit, or switch.
+If the branch is unexpected, rebase/merge/conflicts exist, or `git status` shows unrelated local edits outside this task, STOP and report.
+Task-related edits are allowed during implementation/review; do not auto-stash, auto-commit, or switch.
 
 If the request is ambiguous in a way that would change >10 lines of diff,
 ask ONE precise clarifying question before writing code. Do not silently
@@ -1265,7 +1265,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ## Epic 1 — Agent Safety Core Protocols [MUST] [DONE 2026-04-19]
 
-**Goal.** Every generated agent refuses prompt injection, stops on dirty state, blocks destructive ops, and respects a finite context budget.
+**Goal.** Every generated agent refuses prompt injection, stops on unsafe VCS state, blocks destructive ops, and respects a finite context budget.
 
 **Acceptance.**
 - New partials render into all 9 agent templates.
@@ -1283,6 +1283,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Files**: `src/templates/partials/fail-safe.md.ejs` (new)
 - **Content**: §1.3 pwd/git-status/two-strike block.
 - **Done when**: partial <40 lines; renders unchanged across stacks.
+- **QA update**: Allows task-related local edits during implementation and review; stops only for unsafe VCS states or unrelated local edits.
 
 ### E1.T3 — Create `tool-use-discipline.md.ejs` partial [§1.2] — S — [DONE]
 - **Files**: `src/templates/partials/tool-use-discipline.md.ejs` (new)

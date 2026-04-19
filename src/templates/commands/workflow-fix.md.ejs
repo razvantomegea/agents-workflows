@@ -40,10 +40,13 @@ Fix all QA issues listed in QA.md on the current feature branch.
    - Only fix errors in files related to the current QA issue.
    - If verification fails on unrelated files, report in summary but do not fix.
 
-8. Print a summary: which issues were fixed, which were skipped (and why), files changed.
+8. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
 
 <% if (docsFile) { -%>
-9. **Mark epic done in `<%= docsFile %>` (if applicable)**: if the QA pass was tied to a documented epic (referenced in the session or in `QA.md`), locate the epic header in `<%= docsFile %>`, append `[DONE YYYY-MM-DD]` (today's date) to the header, and append `— [DONE]` to each sub-task heading under that epic. Skip when QA was not tied to a documented epic.
+9. **Update `<%= docsFile %>` (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching PRD checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched PRD items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
+10. Print a final summary: which issues were fixed, which were skipped (and why), files changed, PRD items marked done, any unmatched PRD items, and any unresolved issues.
+<% } else { -%>
+9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, and any unresolved issues.
 <% } -%>
 
 ## Git rules

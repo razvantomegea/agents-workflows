@@ -2,8 +2,8 @@
 
 <fail_safe>
 Before starting: run `pwd`, `git status`, `git branch --show-current`.
-If the tree is dirty, on an unexpected branch, or a rebase/merge is in
-progress, STOP and report. Do not auto-stash, auto-commit, or switch.
+If the branch is unexpected, rebase/merge/conflicts exist, or `git status` shows unrelated local edits outside this task, STOP and report.
+Task-related edits are allowed during implementation/review; do not auto-stash, auto-commit, or switch.
 
 If the request is ambiguous in a way that would change >10 lines of diff,
 ask ONE precise clarifying question before writing code. Do not silently

@@ -27,6 +27,14 @@ const getAgentContent = (files: GeneratedFile[], agentName: string): string => {
   return agentFile.content;
 };
 
+const getCommandContent = (files: GeneratedFile[], commandName: string): string => {
+  const commandFile = files.find((file) => file.path === `.claude/commands/${commandName}.md`);
+  if (!commandFile) {
+    throw new Error(`Command file not found: ${commandName}`);
+  }
+  return commandFile.content;
+};
+
 interface AssertInclusionArgs {
   files: GeneratedFile[];
   included: string[];
@@ -94,6 +102,34 @@ describe('Epic 2 quality partials', () => {
     expect(architect).toContain('Verification strategy per task');
     expect(architect).toContain('Out-of-scope items');
     expect(architect).not.toContain('Draft no more than 8 dependency-ordered');
+  });
+
+  it('architect has the tools required to inspect state and write PLAN.md', () => {
+    const architect = getAgentContent(files, 'architect');
+    expect(architect).toMatch(/^tools: Read, Edit, Write, Bash, Grep, Glob$/m);
+    expect(architect).toContain('write the complete plan to `./PLAN.md`');
+  });
+
+  it('fail-safe allows task-related dirty state during implementation and review passes', () => {
+    const implementer = getAgentContent(files, 'implementer');
+    expect(implementer).toContain('Task-related edits are allowed');
+    expect(implementer).toContain('unrelated local edits outside this task');
+    expect(implementer).not.toContain('If the tree is dirty, on an unexpected branch');
+  });
+
+  it('workflow commands update only confirmed PRD task items', async () => {
+    const config = makeStackConfig();
+    config.project.docsFile = 'PRD.md';
+    const commandFiles = await generateAll(config);
+    const workflowPlan = getCommandContent(commandFiles, 'workflow-plan');
+    const workflowFix = getCommandContent(commandFiles, 'workflow-fix');
+
+    expect(workflowPlan).toContain('Mark only PRD checklist items or task headings');
+    expect(workflowPlan).toContain('only when every task item under that epic is confirmed complete');
+    expect(workflowFix).toContain('mark only the matching PRD checklist items or task headings');
+    expect(workflowFix).toContain('Leave incomplete or unmatched PRD items unchanged');
+    expect(workflowPlan).not.toContain('Append `— [DONE]` to every sub-task heading');
+    expect(workflowFix).not.toContain('append `— [DONE]` to each sub-task heading');
   });
 
   it('tdd-discipline block renders byte-identical in implementer and test-writer', () => {
