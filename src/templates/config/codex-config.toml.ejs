@@ -1,0 +1,18 @@
+# Codex CLI configuration — safe defaults for agentic workflows
+# Mirrors the Claude Code deny list semantically via approval_policy +
+# sandbox_mode. See AGENTS.md "Dangerous operations" for rationale.
+#
+# - approval_policy = "untrusted" requires user approval for any command
+#   that is not a known-safe read (blocks rm -rf, git push --force,
+#   git reset --hard, npm publish, kubectl apply, etc. by default).
+# - sandbox_mode = "workspace-write" confines writes to the project root
+#   (blocks edits to .env outside the workspace, migrations/** outside,
+#   shell rc files, system packages).
+# - sandbox_workspace_write.network_access = false blocks outbound
+#   network egress unless explicitly approved per command.
+
+approval_policy = "untrusted"
+sandbox_mode = "workspace-write"
+
+[sandbox_workspace_write]
+network_access = false

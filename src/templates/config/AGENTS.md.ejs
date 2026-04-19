@@ -12,6 +12,8 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 <%- include('../partials/workspaces.md.ejs', { monorepo }) %>
 
+<%- include('../partials/context-budget.md.ejs') %>
+
 ## Sub-agent Routing
 
 | Task | Agent |
@@ -83,5 +85,24 @@ This loop is mandatory.
 - Always do what is asked. If something is unclear, ask clarifying questions.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
+
+## Dangerous operations — require explicit confirmation
+
+NEVER execute without the user typing "yes" in the current session:
+- `rm -rf`, `rm -r` on any directory
+- `git push --force` / `--force-with-lease` on shared branches
+- `git reset --hard`, `git clean -fd`, `git branch -D`
+- `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` without `WHERE`
+- `kubectl`/`terraform` targeting any non-local context
+- `npm publish`, `pnpm publish`, `cargo publish`, `pypi upload`, `twine upload`
+- Writes outside the project root, modifications to shell rc files,
+  installing system packages
+
+Always prefer `--dry-run` / `terraform plan` / `kubectl diff` first.
+Always prefer `--force-with-lease` over `--force` when a force push is
+unavoidable, and ask first.
+
+Before any destructive operation, state: (1) what changes, (2) where
+(env), (3) reversibility, (4) blast radius (count of rows/files/users).
 
 <!-- agents-workflows:managed-end -->

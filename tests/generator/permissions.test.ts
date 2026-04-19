@@ -1,4 +1,4 @@
-import { buildPermissions } from '../../src/generator/permissions.js';
+import { buildPermissions, buildDenyList, buildPostToolUseHooks } from '../../src/generator/permissions.js';
 
 describe('buildPermissions', () => {
   it('emits glob and WebSearch for pnpm with glob-covered commands', () => {
@@ -46,5 +46,72 @@ describe('buildPermissions', () => {
       commands: { test: 'pnpm', typeCheck: null, lint: null },
     });
     expect(perms).toEqual(['Bash(pnpm:*)', 'WebSearch']);
+  });
+});
+
+describe('buildDenyList', () => {
+  it('returns the 23 documented deny patterns in order', () => {
+    const deny = buildDenyList();
+    expect(deny).toHaveLength(23);
+    expect(deny[0]).toBe('Bash(rm -rf:*)');
+    expect(deny).toContain('Bash(git push --force:*)');
+    expect(deny).toContain('Edit(.env*)');
+    expect(deny).toContain('Edit(migrations/**)');
+    expect(deny[22]).toBe('Edit(migrations/**)');
+    expect(deny).toContain('Bash(git push --force-with-lease:*)');
+    expect(deny).toContain('Bash(rm --recursive:*)');
+    expect(deny).toContain('Bash(rm --force:*)');
+    expect(deny).toContain('Bash(git clean -f:*)');
+    expect(deny).toContain('Bash(cargo publish:*)');
+    expect(deny).toContain('Bash(pypi upload:*)');
+    expect(deny).toContain('Bash(twine upload:*)');
+  });
+
+  it('returns a fresh copy each call', () => {
+    const a = buildDenyList();
+    const b = buildDenyList();
+    expect(a).not.toBe(b);
+    expect(a).toEqual(b);
+  });
+});
+
+describe('buildPostToolUseHooks', () => {
+  it('emits a lint --fix hook when lintCommand is provided', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm lint' });
+    expect(hooks).toEqual([{ matcher: 'Edit|Write', command: 'pnpm lint --fix || true' }]);
+  });
+
+  it('returns an empty array when lintCommand is null', () => {
+    expect(buildPostToolUseHooks({ lintCommand: null })).toEqual([]);
+  });
+
+  it('does not double-append --fix when already present', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm lint --fix' });
+    expect(hooks[0].command).toBe('pnpm lint --fix || true');
+  });
+
+  it('does not double-append --fix when already present with a value', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm lint --fix=true' });
+    expect(hooks[0].command).toBe('pnpm lint --fix=true || true');
+  });
+
+  it('inserts the argument separator for package run wrappers', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'npm run lint' });
+    expect(hooks[0].command).toBe('npm run lint -- --fix || true');
+  });
+
+  it('inserts the argument separator for non-npm run wrappers', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'bun run lint' });
+    expect(hooks[0].command).toBe('bun run lint -- --fix || true');
+  });
+
+  it('reuses an existing package run argument separator', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'npm run lint -- --quiet' });
+    expect(hooks[0].command).toBe('npm run lint -- --quiet --fix || true');
+  });
+
+  it('appends --fix even when command contains fix as a substring without flag', () => {
+    const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm prefix-fix' });
+    expect(hooks[0].command).toBe('pnpm prefix-fix --fix || true');
   });
 });

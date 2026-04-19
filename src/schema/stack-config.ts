@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+const SAFE_COMMAND_RE = /^[a-zA-Z0-9 ._/:=@-]+$/;
+const SAFE_COMMAND_MESSAGE = 'command contains disallowed shell metacharacters';
+
+const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
+const safeCommandNullable = safeCommand.nullable().default(null);
+
 export const stackConfigSchema = z.object({
   project: z.object({
     name: z.string(),
@@ -21,7 +27,7 @@ export const stackConfigSchema = z.object({
 
   tooling: z.object({
     packageManager: z.string(),
-    packageManagerPrefix: z.string(),
+    packageManagerPrefix: z.union([z.literal(''), safeCommand]),
     testFramework: z.string(),
     testLibrary: z.string().nullable().default(null),
     e2eFramework: z.string().nullable().default(null),
@@ -41,12 +47,12 @@ export const stackConfigSchema = z.object({
   }),
 
   commands: z.object({
-    typeCheck: z.string().nullable().default(null),
-    test: z.string(),
-    lint: z.string().nullable().default(null),
-    format: z.string().nullable().default(null),
-    build: z.string().nullable().default(null),
-    dev: z.string().nullable().default(null),
+    typeCheck: safeCommandNullable,
+    test: safeCommand,
+    lint: safeCommandNullable,
+    format: safeCommandNullable,
+    build: safeCommandNullable,
+    dev: safeCommandNullable,
   }),
 
   conventions: z.object({

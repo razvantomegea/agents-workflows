@@ -1,0 +1,11 @@
+## Context budget
+
+Treat context as a finite attention budget, not a storage tank. Every token
+you load competes with reasoning quality (context rot is real; see Chroma
+2025). Rules:
+- Keep this file under 200 lines. If a line's removal would not cause
+  mistakes, delete it.
+- Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
+- Do not paste docs here — link them. Skills hold task-specific knowledge.
+- When context reaches ~50% full, write a NOTES.md summary and /clear.
+- For nested packages, a closer AGENTS.md wins over an outer one.

@@ -16,6 +16,11 @@ export async function generateRootConfig(
     files.push({ path: '.claude/settings.local.json', content: settings });
   }
 
+  if (config.targets.codexCli) {
+    const codexConfig = await renderTemplate('config/codex-config.toml.ejs', context);
+    files.push({ path: '.codex/config.toml', content: codexConfig });
+  }
+
   const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);
   files.push({ path: 'AGENTS.md', content: agentsMd });
 

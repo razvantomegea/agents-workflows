@@ -82,7 +82,22 @@ After writing the plan, **immediately execute every task** in order:
 
 4. Print a final summary: what was implemented, files changed, any open questions, and any external errors.
 
+<% if (docsFile) { -%>
+### Phase 4 — Mark epic done in `<%= docsFile %>` (if applicable)
+
+If the user's request referenced a documented epic in `<%= docsFile %>` (pattern: `## Epic N — <title>` with `[MUST]` / `[SHOULD]` / `[NICE]` tag, or a copy-pasted epic header):
+
+1. Locate the epic header in `<%= docsFile %>`.
+2. Append `[DONE YYYY-MM-DD]` (today's date) to the header.
+3. Append `— [DONE]` to every sub-task heading under that epic (e.g. `### EN.T1 — ... — S — [DONE]`).
+4. Add a one-line `**Landed on** \`<branch-name>\`.` note under the header.
+
+Skip this phase when the request was not tied to a documented epic.
+
+### Phase 5 — Done
+<% } else { -%>
 ### Phase 4 — Done
+<% } -%>
 
 The user will review the code and commit when satisfied.
 

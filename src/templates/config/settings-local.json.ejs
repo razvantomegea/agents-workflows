@@ -1,9 +1,21 @@
 {
   "permissions": {
     "allow": [
-<% permissions.forEach(function(perm, i) { -%>
-      "<%= perm %>"<%= i < permissions.length - 1 ? ',' : '' %>
+<% permissions.forEach(function(permission, i) { -%>
+      <%- jsonString(permission) %><%= i < permissions.length - 1 ? ',' : '' %>
+<% }); -%>
+    ],
+    "deny": [
+<% denyList.forEach(function(pattern, i) { -%>
+      <%- jsonString(pattern) %><%= i < denyList.length - 1 ? ',' : '' %>
 <% }); -%>
     ]
-  }
+  }<% if (postToolUseHooks.length > 0) { %>,
+  "hooks": {
+    "PostToolUse": [
+<% postToolUseHooks.forEach(function(hookEntry, i) { -%>
+      { "matcher": <%- jsonString(hookEntry.matcher) %>, "command": <%- jsonString(hookEntry.command) %> }<%= i < postToolUseHooks.length - 1 ? ',' : '' %>
+<% }); -%>
+    ]
+  }<% } %>
 }
