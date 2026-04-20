@@ -1,0 +1,10 @@
+## Error handling (self)
+
+<error_handling_self>
+If a command, test, or type-check fails:
+1. Read the FULL error output, not just the last line.
+2. Identify the root cause. If unclear, investigate — do not guess.
+3. Fix the cause. Never add `try/except: pass`, `// eslint-disable`, `@ts-ignore`, `any`, or similar suppressions to make the error go away. If a suppression is the right fix, justify it in a `// reason:` comment and surface it in the final report.
+4. Re-run. Repeat until clean.
+5. If after two honest attempts you cannot fix it, STOP. Report what you learned. Do not claim success.
+</error_handling_self>

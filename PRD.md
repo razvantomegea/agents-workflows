@@ -95,8 +95,8 @@ you load competes with reasoning quality (context rot is real; see Chroma
 ```
 <fail_safe>
 Before starting: run `pwd`, `git status`, `git branch --show-current`.
-If the tree is dirty, on an unexpected branch, or a rebase/merge is in
-progress, STOP and report. Do not auto-stash, auto-commit, or switch.
+If the branch is unexpected, rebase/merge/conflicts exist, or `git status` shows unrelated local edits outside this task, STOP and report.
+Task-related edits are allowed during implementation/review; do not auto-stash, auto-commit, or switch.
 
 If the request is ambiguous in a way that would change >10 lines of diff,
 ask ONE precise clarifying question before writing code. Do not silently
@@ -1265,7 +1265,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ## Epic 1 — Agent Safety Core Protocols [MUST] [DONE 2026-04-19]
 
-**Goal.** Every generated agent refuses prompt injection, stops on dirty state, blocks destructive ops, and respects a finite context budget.
+**Goal.** Every generated agent refuses prompt injection, stops on unsafe VCS state, blocks destructive ops, and respects a finite context budget.
 
 **Acceptance.**
 - New partials render into all 9 agent templates.
@@ -1283,6 +1283,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Files**: `src/templates/partials/fail-safe.md.ejs` (new)
 - **Content**: §1.3 pwd/git-status/two-strike block.
 - **Done when**: partial <40 lines; renders unchanged across stacks.
+- **QA update**: Allows task-related local edits during implementation and review; stops only for unsafe VCS states or unrelated local edits.
 
 ### E1.T3 — Create `tool-use-discipline.md.ejs` partial [§1.2] — S — [DONE]
 - **Files**: `src/templates/partials/tool-use-discipline.md.ejs` (new)
@@ -1315,26 +1316,28 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 2 — Quality Discipline (Definition of Done + Planning) [MUST]
+## Epic 2 — Quality Discipline (Definition of Done + Planning) [MUST] [DONE 2026-04-19]
 
 **Goal.** Implementer cannot "claim done" on broken code; architect cannot skip explore/clarify; agents never suppress errors.
 
-### E2.T1 — Create `definition-of-done.md.ejs` partial [§1.6] — S
+**Landed on** `feature/epic-2-quality-discipline`.
+
+### E2.T1 — Create `definition-of-done.md.ejs` partial [§1.6] — S — [DONE]
 - **Files**: `src/templates/partials/definition-of-done.md.ejs` (new)
 - **Content**: §1.6 seven-point checklist + suppression prohibition.
 - **Done when**: included by `implementer`, `code-optimizer`, `reviewer`.
 
-### E2.T2 — Create `error-handling-self.md.ejs` partial [§1.17] — S
+### E2.T2 — Create `error-handling-self.md.ejs` partial [§1.17] — S — [DONE]
 - **Files**: `src/templates/partials/error-handling-self.md.ejs` (new)
 - **Content**: §1.17 five-step failure protocol.
 - **Done when**: included by `implementer`, `code-optimizer`.
 
-### E2.T3 — Rewrite `architect.md.ejs` planning protocol [§1.13] — M
+### [x] E2.T3 — Rewrite `architect.md.ejs` planning protocol [§1.13] — M — [DONE]
 - **Files**: `src/templates/agents/architect.md.ejs`
 - **Change**: Replace current plan prompt with §1.13 EXPLORE → CLARIFY → PLAN → HANDOFF block. Keep ≤8-task cap. Add file-path requirement + out-of-scope list + verification-per-task field.
 - **Done when**: rendered `architect.md` emits 4-phase protocol; existing architect test suite green.
 
-### E2.T4 — Add TDD discipline partial [§1.14] — S
+### [x] E2.T4 — Add TDD discipline partial [§1.14] — S — [DONE]
 - **Files**: `src/templates/partials/tdd-discipline.md.ejs` (new) + include in `test-writer.md.ejs`, `implementer.md.ejs`
 - **Content**: §1.14 failing-test-first + anti-mocking-SUT + never-delete-test.
 - **Done when**: partial renders; `test-writer` template includes it verbatim.
@@ -1363,6 +1366,11 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Files**: `src/templates/agents/reviewer.md.ejs`
 - **Change**: Order the gate: code-reviewer → apply fixes → type-check → tests. State failure-handling at each step.
 - **Done when**: rendered reviewer has numbered steps; test asserts order.
+
+### E3.T5 — Add external-review terminal command config [§1.7] — S
+- **Files**: `src/templates/commands/external-review.md.ejs`
+- **Change**: Allow users to specify in terminal the command used for `/external-review`; set Code Rabbit CLI as the default setup when no explicit command is provided.
+- **Done when**: rendered external-review instructions document both terminal override usage and Code Rabbit CLI default behavior.
 
 ---
 
@@ -1528,6 +1536,59 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
+## Epic 9 — Agent Permission & Sandbox Hardening [MUST]
+
+**Goal.** Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. Deny-first rules and the sandbox are complementary layers; neither is trusted alone.
+
+**Rationale.** `.claude/settings.local.json` exists but is gitignored and local-only, so teammates do not inherit a safe default. `.codex/config.toml` is already sandboxed (`approval_policy = "untrusted"`, `network_access = false`) but is not shared. Both directories are blanket-ignored in `.gitignore`. This epic commits a minimal, merge-not-replace baseline: every existing deny is preserved, no allow rule becomes broader, Codex's stricter `"untrusted"` posture is retained, and network access stays disabled. Web-fetch / network expansion is an explicit non-goal for this round.
+
+**Acceptance.**
+- `.claude/settings.json` (new, shared) is committed; its deny list is a strict superset of the current `.claude/settings.local.json` deny list. No existing deny is dropped.
+- `.codex/config.toml` is committed unchanged from its current stricter state: `approval_policy = "untrusted"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`.
+- `.codex/rules/project.rules` (new) lints clean under `codex execpolicy check --rules .codex/rules/project.rules`.
+- `.gitignore` un-ignores `!/.claude/settings.json`, `!/.codex/config.toml`, `!/.codex/rules/` via negation while `.claude/settings.local.json` and other transient paths stay ignored. Verified via `git check-ignore -v`.
+- Any Claude Code `sandbox` block (`mode`, `allowedDomains`, `autoAllowBashIfSandboxed`) is dropped unless its schema is verified against current Claude Code docs in the implementing PR. Windows hosts treat permission rules as the primary guard since kernel-layer sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
+- Non-goals: no `approval_policy` relaxation to `"on-request"`, no `network_access = true`, no `WebFetch` / `curl` / `wget` allows, no broad prefix allows like `Bash(git:*)`.
+
+### E9.T1 — Consolidate existing denies as authoritative spec [§1.9] — S
+- **Files**: read `.claude/settings.local.json`, `.codex/config.toml`, `.gitignore`, `package.json`.
+- **Change**: Produce a single consolidated deny list combining (a) every current deny in `settings.local.json` (`Bash(rm -rf:*)`, `Bash(rm -r:*)`, `Bash(rm --force:*)`, `Bash(git push --force:*)`, `Bash(git push -f:*)`, `Bash(git reset --hard:*)`, `Bash(git clean -fd:*)`, `Bash(npm publish:*)`, `Bash(pnpm publish:*)`, `Bash(terraform apply:*)`, `Bash(kubectl apply:*)`, `Edit(.env*)`, `Edit(**/*.key)`, `Edit(**/*.pem)`) and (b) the new denies from this epic (`Bash(git push:*)`, `Bash(git commit:*)`, `Bash(git rm:*)`, `Bash(sudo:*)`, `Bash(curl:* | sh)`, `Bash(curl:* | bash)`, `Edit(/**)`, `Edit(~/**)`, `Write(/**)`, `Write(~/**)`). Output is the authoritative input for E9.T2.
+- **Done when**: the consolidated list is written into this task and every item from `settings.local.json` appears in it verbatim.
+
+### E9.T2 — `.claude/settings.json` shared policy [§1.9] — M
+- **Files**: `.claude/settings.json` (new, tracked).
+- **Change**: Create shared settings with (a) `"defaultMode": "default"`, (b) `permissions.deny` = consolidated list from E9.T1, (c) `permissions.allow` scoped to explicit subcommands only — never `Bash(git:*)` or other broad prefixes. Allow list must cover pnpm/node/npx/tsc/jest/eslint/prettier, read-only and local git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`, `pull`), and filesystem-scoped `Edit(./**)`, `Write(./**)`, `Read(./**)`, plus `WebSearch`. (d) Preserve the existing `hooks.PostToolUse` `pnpm lint --fix` block verbatim.
+- **Sandbox block handling**: verify the `sandbox` schema (`mode: "workspace-write"`, `allowedDomains`, `autoAllowBashIfSandboxed`) against current Claude Code docs in the implementing PR. If unverified, omit the block and document the decision in the PR body; permission rules remain the primary guard.
+- **Done when**: JSON parses; diff review confirms every existing deny is present in the new shared file; no allow entry is broader than what `settings.local.json` currently grants.
+
+### E9.T3 — `.codex/config.toml` committed + `project.rules` [§1.9] — M
+- **Files**: `.codex/config.toml` (tracked, unchanged content from current local state), `.codex/rules/project.rules` (new).
+- **Change**: Keep `approval_policy = "untrusted"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules for `git push`/`git commit`/`git reset --hard|--merge`/`rm`/`sudo`, and `allow` rules for the Node/TS/Python toolchain (`node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`) plus read-only git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`). No broad `["git"]` prefix allows. No `curl` / `wget` allow.
+- **Done when**: `codex execpolicy check --rules .codex/rules/project.rules` exits 0; no match/not_match rule conflicts; Codex posture is unchanged or stricter vs. current.
+
+### E9.T4 — `.gitignore` surgical un-ignore [§1.9] — S
+- **Files**: `.gitignore`.
+- **Change**: Add negation rules under the existing `.claude/` / `.codex/` ignores so shared policy files are tracked while local caches stay ignored:
+  ```
+  !/.claude/settings.json
+  !/.codex/config.toml
+  !/.codex/rules/
+  ```
+  Do **not** un-ignore `.claude/settings.local.json` or any path that corresponds to per-session caches.
+- **Done when**: `git check-ignore -v .claude/settings.json` reports NOT ignored; `git check-ignore -v .claude/settings.local.json` still reports ignored; `git check-ignore -v .codex/config.toml` reports NOT ignored.
+
+### E9.T5 — Document policy boundaries in CLAUDE.md [§1.9] — S
+- **Files**: `CLAUDE.md` (append one short paragraph to an existing section; do not create a new top-level heading).
+- **Change**: One paragraph noting (a) `.claude/settings.json` + `.codex/config.toml` + `.codex/rules/project.rules` are the shared, committed policy; (b) `.claude/settings.local.json` is a per-developer cache and stays gitignored; (c) `~/.codex/rules/default.rules` accumulates approved prompts over sessions and should be pruned periodically; (d) on Windows hosts, permission rules are the primary guard since kernel sandbox primitives do not apply.
+- **Done when**: one paragraph exists pointing to the three shared files and the prune reminder; total added lines ≤ 8.
+
+### E9.T6 — Deferred follow-ups (backlog, not this round) — N/A
+- **Web-fetch / network enablement**: if later enabled, require an explicit Claude Code `allowedDomains` allowlist (once the schema is verified), flip Codex `network_access = true`, and re-audit exfiltration surface — confirm no secrets live inside the workspace (`.env` is gitignored and outside the repo, or managed via a secret manager).
+- **Periodic prune ritual**: prune `~/.codex/rules/default.rules` each quarter to remove approved prompts that accumulated over time.
+- **Epic becomes DONE** only after E9.T1–E9.T5 land and the verification smoke tests pass (Claude Code `git push` is blocked from repo root; Codex `curl` is blocked with network disabled).
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -1536,6 +1597,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 | 2 | Review & Standards | Epic 3 + Epic 4 |
 | 3 | Orchestration | Epic 5 |
 | 4 | Extended standards | Epic 6 |
+| 5 | Policy hardening | Epic 9 |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs.

@@ -90,12 +90,27 @@ describe('buildContext', () => {
 
   it('propagates docsFile from project config onto the context', () => {
     const withDocs = buildContext(makeConfig({
-      project: { name: 'x', description: 'x', locale: 'en', localeRules: [], docsFile: 'PRD.md' },
+      project: { name: 'x', description: 'x', locale: 'en', localeRules: [], docsFile: 'PRD.md', mainBranch: 'main' },
     }));
     expect(withDocs.docsFile).toBe('PRD.md');
 
     const withoutDocs = buildContext(makeConfig());
     expect(withoutDocs.docsFile).toBeNull();
+  });
+
+  it('propagates mainBranch from project config onto the context', () => {
+    const ctx = buildContext(makeConfig({
+      project: {
+        name: 'x',
+        description: 'x',
+        locale: 'en',
+        localeRules: [],
+        docsFile: null,
+        mainBranch: 'trunk',
+      },
+    }));
+
+    expect(ctx.mainBranch).toBe('trunk');
   });
 
   it('passes detectedAiAgents through unchanged', () => {

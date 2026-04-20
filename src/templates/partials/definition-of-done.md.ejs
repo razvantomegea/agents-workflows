@@ -1,0 +1,16 @@
+## Definition of done
+
+<definition_of_done>
+A task is done only when ALL of:
+1. Test command passes (run it — do not assume).
+2. Type-check passes with no new errors (`tsc --noEmit` or equivalent).
+3. Lint and format pass.
+4. The specific acceptance criterion is verified end-to-end.
+5. `git status` shows only the intended changes; no stray files.
+6. You have read your own diff top-to-bottom.
+7. No `TODO`, `FIXME`, `console.log`, commented-out code, or `@ts-ignore`/`any`/`eslint-disable` introduced unless explicitly approved, and if so with a `// reason:` comment.
+
+Never suppress or catch-and-ignore an error to make a gate pass. Never delete or weaken an existing test to make the build green; if a test is wrong, say so and ask the user.
+
+If you cannot meet Definition of Done, STOP and report the blocker — do not claim the task complete. Surface unknowns explicitly rather than papering over them.
+</definition_of_done>

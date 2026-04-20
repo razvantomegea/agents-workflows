@@ -88,6 +88,25 @@ describe('generateAll', () => {
     expect(agentsMd?.content).toContain('## Workspaces');
   });
 
+  it('renders the configured primary branch in workflow and git guidance', async () => {
+    const config = makeConfig();
+    config.project.mainBranch = 'develop';
+    const files = await generateAll(config);
+
+    const workflowPlan = files.find((file) => file.path === '.claude/commands/workflow-plan.md');
+    const workflowFix = files.find((file) => file.path === '.claude/commands/workflow-fix.md');
+    const externalReview = files.find((file) => file.path === '.claude/commands/external-review.md');
+    const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
+    const architect = files.find((file) => file.path === '.claude/agents/architect.md');
+
+    expect(workflowPlan?.content).toContain('git checkout develop && git pull origin develop');
+    expect(workflowPlan?.content).not.toContain('git checkout main && git pull origin main');
+    expect(workflowFix?.content).toContain('merging `develop`');
+    expect(externalReview?.content).toContain('compared to `develop`');
+    expect(claudeMd?.content).toContain('from up-to-date `develop`');
+    expect(architect?.content).toContain('from `develop`');
+  });
+
   it('omits the Workspaces section for single-package projects', async () => {
     const config = makeConfig();
     config.monorepo = null;

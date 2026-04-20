@@ -103,15 +103,20 @@ async function installSinglePackage(
   const manifestPath = join(projectRoot, '.agents-workflows.json');
   try {
     logger.info('Writing files:');
-    await writeGeneratedFiles(projectRoot, files);
+    const writeResult = await writeGeneratedFiles(projectRoot, files, {
+      confirmMarkdownOverwrite: true,
+    });
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+    if (writeResult.skippedPaths.length > 0) {
+      logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+    }
   } catch (error) {
     await restoreBackupFiles(projectRoot, backup);
     throw error;
   }
 
   logger.blank();
-  logger.success(`Done! ${files.length} files generated at ${resolve(projectRoot)}`);
+  logger.success(`Done! ${files.length} files processed at ${resolve(projectRoot)}`);
   logger.blank();
   logger.info('Next steps:');
   logger.info('  1. Review the generated files and customize as needed');

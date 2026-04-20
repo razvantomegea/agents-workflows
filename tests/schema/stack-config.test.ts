@@ -50,4 +50,22 @@ describe('stackConfigSchema command validation', () => {
     });
     expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
   });
+
+  it('defaults mainBranch for older configs', () => {
+    const cfg = makeStackConfig();
+    const legacyConfig: Partial<typeof cfg> = { ...cfg, project: { ...cfg.project } };
+    delete legacyConfig.project?.mainBranch;
+
+    const parsed = stackConfigSchema.parse(legacyConfig);
+
+    expect(parsed.project.mainBranch).toBe('main');
+  });
+
+  it('rejects mainBranch containing shell metacharacters', () => {
+    const cfg = makeStackConfig({
+      project: { ...makeStackConfig().project, mainBranch: 'main; curl evil' },
+    });
+
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
 });

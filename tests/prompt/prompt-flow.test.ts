@@ -106,6 +106,12 @@ describe('createDefaultConfig', () => {
     expect(config.project.docsFile).toBe('PRD.md');
   });
 
+  it('defaults the primary branch to main in non-interactive config', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.project.mainBranch).toBe('main');
+  });
+
   it('leaves project.docsFile null when detection is empty', () => {
     const config = createDefaultConfig(makeDetectedStack());
 

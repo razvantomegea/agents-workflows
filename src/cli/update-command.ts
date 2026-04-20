@@ -1,10 +1,13 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
 import { logger, fileExists } from '../utils/index.js';
 import { manifestSchema } from '../schema/manifest.js';
 import { generateAll } from '../generator/index.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
+import { askMainBranch } from '../prompt/questions.js';
+import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 
 export interface UpdateCommandOptions {
   yes?: boolean;
@@ -39,7 +42,15 @@ export async function updateCommand(
     process.exit(1);
   }
 
-  const { config } = parsed.data;
+  const config = {
+    ...parsed.data.config,
+    project: {
+      ...parsed.data.config.project,
+      mainBranch: options.yes
+        ? parsed.data.config.project.mainBranch
+        : await askMainBranch(parsed.data.config.project.mainBranch),
+    },
+  };
 
   logger.heading('agents-workflows update');
   logger.info('Re-generating files from config...\n');
@@ -81,7 +92,25 @@ export async function updateCommand(
   );
 
   await backupExistingFiles(projectRoot, changedFiles);
-  await writeGeneratedFiles(projectRoot, changedFiles);
+  const writeResult = await writeGeneratedFiles(projectRoot, changedFiles, {
+    confirmMarkdownOverwrite: true,
+    confirmOverwrite: options.yes ? async () => true : undefined,
+  });
+  const nextManifest: AgentsWorkflowsManifest = {
+    ...parsed.data,
+    generatedAt: new Date().toISOString(),
+    stackConfigHash: hashConfig(JSON.stringify(config)),
+    config,
+    files: files.map((file) => file.path),
+  };
+  await writeFile(manifestPath, JSON.stringify(nextManifest, null, 2), 'utf-8');
 
-  logger.success(`Updated ${changedFiles.length} file(s).`);
+  logger.success(`Updated ${writeResult.writtenPaths.length} file(s).`);
+  if (writeResult.skippedPaths.length > 0) {
+    logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+  }
+}
+
+function hashConfig(json: string): string {
+  return createHash('sha256').update(json).digest('hex').slice(0, 16);
 }
