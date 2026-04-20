@@ -26,9 +26,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 ## Context budget
 
-Treat context as a finite attention budget, not a storage tank. Every token
-you load competes with reasoning quality (context rot is real; see Chroma
-2025). Rules:
+- Load only files, symbols, and recent decisions needed for the current task.
 - Keep this file under 200 lines. If a line's removal would not cause
   mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
@@ -114,7 +112,7 @@ NEVER execute without the user typing "yes" in the current session:
 - `git reset --hard`, `git clean -fd`, `git branch -D`
 - `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` without `WHERE`
 - `kubectl`/`terraform` targeting any non-local context
-- `npm publish`, `pnpm publish`, `cargo publish`, `pypi upload`, `twine upload`
+- `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`
 - Writes outside the project root, modifications to shell rc files,
   installing system packages
 

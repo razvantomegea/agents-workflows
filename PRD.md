@@ -44,9 +44,7 @@ The framework is therefore **architecturally sound**. What follows is not a rede
 **Paste-ready snippet (AGENTS.md / CLAUDE.md top section):**
 ```
 ## Context budget
-Treat context as a finite attention budget, not a storage tank. Every token
-you load competes with reasoning quality (context rot is real; see Chroma
-2025). Rules:
+- Load only files, symbols, and recent decisions needed for the current task.
 - Keep this file under 200 lines. If a line's removal would not cause
   mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
@@ -141,7 +139,10 @@ failed attempts.
   },
   "hooks": {
     "PostToolUse": [
-      { "matcher": "Edit|Write", "command": "npm run lint -- --fix || true" }
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [{ "type": "command", "command": "npm run lint -- --fix || true" }]
+      }
     ]
   }
 }
@@ -156,7 +157,7 @@ NEVER execute without the user typing "yes" in the current session:
 - `git reset --hard`, `git clean -fd`, `git branch -D`
 - `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` without `WHERE`
 - `kubectl`/`terraform` targeting any non-local context
-- `npm publish`, `pnpm publish`, `cargo publish`, `pypi upload`, `twine upload`
+- `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`
 - Writes outside the project root, modifications to shell rc files,
   installing system packages
 
@@ -1292,7 +1293,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ### E1.T4 — Create `context-budget.md.ejs` partial [§1.1] — S — [DONE]
 - **Files**: `src/templates/partials/context-budget.md.ejs` (new)
-- **Content**: §1.1 "treat context as finite attention budget" block.
+- **Content**: §1.1 concise context-budget rules.
 - **Done when**: partial <30 lines; rendered at top of `AGENTS.md.ejs` and `CLAUDE.md.ejs`.
 
 ### E1.T5 — Wire 4 new partials into agent templates — M — [DONE]
@@ -1312,7 +1313,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 ### E1.T8 — Mirror deny list for Codex CLI [§1.4] — S — [DONE]
 - **Files**: `src/templates/config/codex-config.toml.ejs` (new) + wire into `src/generator/generate-root-config.ts`
 - **Done when**: `.codex/config.toml` emitted on Codex-enabled outputs; deny list parity verified by test.
-- **Shipped**: Codex CLI has no deny-list table (its schema only supports `approval_policy` / `sandbox_mode` / `[sandbox_workspace_write]`). Literal pattern parity would produce an invalid TOML that Codex rejects. Instead achieved semantic parity: `approval_policy = "untrusted"` (prompts before any non-safe-read command), `sandbox_mode = "workspace-write"` (writes confined to project root), `network_access = false` (blocks outbound egress). Same safety envelope, Codex-native keys.
+- **Shipped**: Codex CLI has no deny-list table (its schema only supports `approval_policy` / `sandbox_mode` / `[sandbox_workspace_write]`). Literal pattern parity would produce an invalid TOML that Codex rejects. Instead achieved practical parity with fewer current-project prompts: `approval_policy = "on-failure"` (runs sandboxed commands and asks only when more access is needed), `sandbox_mode = "workspace-write"` (writes confined to project root), `network_access = false` (blocks outbound egress). Same workspace safety envelope, Codex-native keys.
 
 ---
 

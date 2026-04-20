@@ -1,8 +1,6 @@
 ## Context budget
 
-Treat context as a finite attention budget, not a storage tank. Every token
-you load competes with reasoning quality (context rot is real; see Chroma
-2025). Rules:
+- Load only files, symbols, and recent decisions needed for the current task.
 - Keep this file under 200 lines. If a line's removal would not cause
   mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.

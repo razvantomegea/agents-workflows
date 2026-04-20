@@ -5,7 +5,9 @@ dist/
 coverage/
 .claude/
 .vscode/
-.codex/
+.codex/*
+!.codex/
+!.codex/config.toml
 .cursor/
 .agents/
 .husky/

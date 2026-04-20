@@ -28,12 +28,12 @@ describe('Epic 1 safety partials', () => {
 
     const agentsMd = files.find((file) => file.path === 'AGENTS.md');
     const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
-    expect(agentsMd?.content).toContain('finite attention budget');
-    expect(claudeMd?.content).toContain('finite attention budget');
+    expect(agentsMd?.content).toContain('Load only files, symbols, and recent decisions');
+    expect(claudeMd?.content).toContain('Load only files, symbols, and recent decisions');
 
     const agentFiles = files.filter((file) => file.path.startsWith('.claude/agents/'));
     for (const agentFile of agentFiles) {
-      expect(agentFile.content).not.toContain('finite attention budget');
+      expect(agentFile.content).not.toContain('Load only files, symbols, and recent decisions');
     }
   });
 
@@ -58,6 +58,13 @@ describe('Epic 1 safety partials', () => {
       const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
       expect(agentFile?.content).toContain('<fail_safe>');
     }
+
+    const architectFile = files.find((file) => file.path === '.claude/agents/architect.md');
+    const implementerFile = files.find((file) => file.path === '.claude/agents/implementer.md');
+    expect(architectFile?.content).toContain('materially change the plan');
+    expect(architectFile?.content).toContain('Do not accumulate failed plan attempts');
+    expect(architectFile?.content).not.toContain('Task-related edits are allowed');
+    expect(implementerFile?.content).toContain('Task-related edits are allowed');
   });
 
   it('wires tool-use-discipline into architect, implementer, react-ts-senior only', async () => {
@@ -91,19 +98,32 @@ describe('Epic 1 safety partials', () => {
     expect(settings).toBeDefined();
     const parsed = JSON.parse(settings!.content) as {
       permissions: { allow: string[]; deny: string[] };
-      hooks?: { PostToolUse: Array<{ matcher: string; command: string }> };
+      hooks?: {
+        PostToolUse: Array<{
+          matcher: string;
+          hooks: Array<{ type: string; command: string }>;
+        }>;
+      };
     };
     expect(parsed.permissions.deny).toContain('Bash(rm -rf:*)');
     expect(parsed.permissions.deny).toContain('Edit(.env*)');
+    expect(parsed.permissions.deny).toContain('Write(.env*)');
+    expect(parsed.permissions.deny).toContain('MultiEdit(.env*)');
     expect(parsed.permissions.deny).toContain('Edit(migrations/**)');
-    expect(parsed.permissions.deny).toHaveLength(23);
+    expect(parsed.permissions.allow).toEqual(
+      expect.arrayContaining(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)']),
+    );
+    expect(parsed.permissions.allow).not.toContain('Read(./**)');
+    expect(parsed.permissions.deny).toHaveLength(30);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');
     expect(parsed.permissions.deny).toContain('Bash(rm --recursive:*)');
     expect(parsed.permissions.deny).toContain('Bash(cargo publish:*)');
-    expect(parsed.permissions.deny).toContain('Bash(pypi upload:*)');
+    expect(parsed.permissions.deny).not.toContain('Bash(pypi upload:*)');
     expect(parsed.permissions.deny).toContain('Bash(twine upload:*)');
-    expect(parsed.hooks?.PostToolUse[0].matcher).toBe('Edit|Write');
-    expect(parsed.hooks?.PostToolUse[0].command).toContain('--fix');
+    expect(parsed.hooks?.PostToolUse[0].matcher).toBe('Edit|MultiEdit|Write');
+    expect(parsed.hooks?.PostToolUse[0].hooks).toEqual([
+      { type: 'command', command: expect.stringContaining('--fix') },
+    ]);
   });
 
   it('emits .codex/config.toml with Codex-native safety defaults', async () => {
@@ -113,7 +133,7 @@ describe('Epic 1 safety partials', () => {
     expect(codexConfig).toBeDefined();
     const toml = codexConfig!.content;
 
-    expect(toml).toContain('approval_policy = "untrusted"');
+    expect(toml).toContain('approval_policy = "on-failure"');
     expect(toml).toContain('sandbox_mode = "workspace-write"');
     expect(toml).toContain('[sandbox_workspace_write]');
     expect(toml).toContain('network_access = false');

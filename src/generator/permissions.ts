@@ -21,7 +21,6 @@ const DENY_PATTERNS: readonly string[] = [
   'Bash(npm publish:*)',
   'Bash(pnpm publish:*)',
   'Bash(cargo publish:*)',
-  'Bash(pypi upload:*)',
   'Bash(twine upload:*)',
   'Bash(terraform apply:*)',
   'Bash(kubectl apply:*)',
@@ -30,10 +29,24 @@ const DENY_PATTERNS: readonly string[] = [
   'Edit(**/*.key)',
   'Edit(**/*.pem)',
   'Edit(migrations/**)',
+  'Write(.env*)',
+  'Write(**/*.key)',
+  'Write(**/*.pem)',
+  'Write(migrations/**)',
+  'MultiEdit(.env*)',
+  'MultiEdit(**/*.key)',
+  'MultiEdit(**/*.pem)',
+  'MultiEdit(migrations/**)',
+];
+
+const CURRENT_PROJECT_PERMISSIONS: readonly string[] = [
+  'Edit(./**)',
+  'MultiEdit(./**)',
+  'Write(./**)',
 ];
 
 export function buildPermissions(input: PermissionsInput): string[] {
-  const perms: string[] = [];
+  const perms: string[] = [...CURRENT_PROJECT_PERMISSIONS];
   const prefix = input.tooling.packageManagerPrefix;
   const glob = prefix ? `Bash(${prefix}:*)` : null;
 
@@ -63,7 +76,7 @@ export function buildPostToolUseHooks(input: { lintCommand: string | null }): Po
   const needsArgumentSeparator = usesRunWrapper && !/\s--(?:\s|$)/.test(cmd);
   const fixArgs = needsArgumentSeparator ? '-- --fix' : '--fix';
   const command = hasFix ? `${cmd} || true` : `${cmd} ${fixArgs} || true`;
-  return [{ matcher: 'Edit|Write', command }];
+  return [{ matcher: 'Edit|MultiEdit|Write', hooks: [{ type: 'command', command }] }];
 }
 
 function isCoveredByGlob(command: string, prefix: string | null | undefined): boolean {

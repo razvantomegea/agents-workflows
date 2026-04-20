@@ -14,7 +14,14 @@
   "hooks": {
     "PostToolUse": [
 <% postToolUseHooks.forEach(function(hookEntry, i) { -%>
-      { "matcher": <%- jsonString(hookEntry.matcher) %>, "command": <%- jsonString(hookEntry.command) %> }<%= i < postToolUseHooks.length - 1 ? ',' : '' %>
+      {
+        "matcher": <%- jsonString(hookEntry.matcher) %>,
+        "hooks": [
+<% hookEntry.hooks.forEach(function(commandHook, hookIndex) { -%>
+          { "type": <%- jsonString(commandHook.type) %>, "command": <%- jsonString(commandHook.command) %> }<%= hookIndex < hookEntry.hooks.length - 1 ? ',' : '' %>
+<% }); -%>
+        ]
+      }<%= i < postToolUseHooks.length - 1 ? ',' : '' %>
 <% }); -%>
     ]
   }<% } %>
