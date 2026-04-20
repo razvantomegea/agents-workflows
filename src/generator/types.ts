@@ -2,6 +2,11 @@ import type { StackConfig } from '../schema/stack-config.js';
 
 export interface PostToolUseHook {
   matcher: string;
+  hooks: readonly PostToolUseCommandHook[];
+}
+
+export interface PostToolUseCommandHook {
+  type: 'command';
   command: string;
 }
 

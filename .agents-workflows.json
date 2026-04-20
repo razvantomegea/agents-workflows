@@ -1,14 +1,15 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-18T13:04:47.734Z",
-  "stackConfigHash": "2052858322025063",
+  "generatedAt": "2026-04-20T08:53:44.084Z",
+  "stackConfigHash": "cdd576ab66c44ebc",
   "config": {
     "project": {
       "name": "agents-workflows",
       "description": "Reusable AI agent configuration framework",
       "locale": "en",
       "localeRules": [],
-      "docsFile": "PRD.md"
+      "docsFile": "PRD.md",
+      "mainBranch": "main"
     },
     "stack": {
       "language": "typescript",
@@ -57,7 +58,9 @@
     "agents": {
       "architect": true,
       "implementer": true,
+      "reactTsSenior": false,
       "codeReviewer": true,
+      "securityReviewer": true,
       "codeOptimizer": true,
       "testWriter": true,
       "e2eTester": false,
@@ -92,6 +95,8 @@
     ".codex/skills/implementer/SKILL.md",
     ".claude/agents/code-reviewer.md",
     ".codex/skills/code-reviewer/SKILL.md",
+    ".claude/agents/security-reviewer.md",
+    ".codex/skills/security-reviewer/SKILL.md",
     ".claude/agents/code-optimizer.md",
     ".codex/skills/code-optimizer/SKILL.md",
     ".claude/agents/test-writer.md",
@@ -106,6 +111,7 @@
     ".codex/prompts/external-review.md",
     "CLAUDE.md",
     ".claude/settings.local.json",
+    ".codex/config.toml",
     "AGENTS.md",
     ".claude/scripts/cursor-task.sh",
     ".claude/scripts/run-parallel.sh",

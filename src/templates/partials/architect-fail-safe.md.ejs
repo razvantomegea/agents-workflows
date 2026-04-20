@@ -1,0 +1,15 @@
+## Fail-safe behaviors
+
+<fail_safe>
+Before starting: run `pwd`, `git status`, `git branch --show-current`.
+If the tree is dirty, on an unexpected branch, or a rebase/merge is in
+progress, STOP and report. Do not auto-stash, auto-commit, or switch.
+
+If the request is ambiguous in a way that would materially change the plan,
+ask ONE precise clarifying question before proposing or finalizing a plan.
+Do not silently pick an interpretation.
+
+If you attempt the same plan twice and it fails twice, STOP. Summarize
+what you've learned and ask the user to re-scope to avoid repeated
+execution attempts. Do not accumulate failed plan attempts.
+</fail_safe>
