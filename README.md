@@ -111,6 +111,99 @@ npx agents-workflows init --yes
 | Claude Code | `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/scripts/*.sh`, `CLAUDE.md`, `.claude/settings.local.json` |
 | Codex CLI | `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.sh`, `.codex/scripts/sync-codex.ps1` |
 
+## Project structure
+
+### Top-level layout
+
+```
+agents-workflows/
+├── src/                        TypeScript source (CLI, detectors, generators, templates)
+├── tests/                      Jest test suite mirroring src/
+├── scripts/                    Build scripts
+├── temp-templates/             Experimental EJS staging area (not shipped)
+├── dist/                       Compiled JS output (gitignored)
+├── .claude/                    Generated Claude Code workspace (init was run on this repo)
+├── .codex/                     Generated Codex CLI workspace (init was run on this repo)
+├── .agents-workflows-backup/   Auto-backup created before write-over
+├── .agents-workflows.json      Manifest: version, config hash, generated file list
+├── package.json                Bin entry (`agents-workflows` → dist/index.js), deps
+├── tsconfig.json               TypeScript compiler config
+├── tsconfig.build.json         Build-only TypeScript overrides
+├── jest.config.js              Jest + ts-jest ESM preset
+├── PRD.md                      Canonical product requirements (source of truth)
+├── PLAN.md                     Active task breakdown for current work
+├── QA.md                       QA findings consumed by /workflow-fix
+├── CLAUDE.md                   Claude Code project instructions (generated)
+├── AGENTS.md                   Cross-agent project instructions (generated)
+├── LICENSE                     Apache-2.0
+└── README.md                   This file
+```
+
+### `src/` subsystems
+
+| Folder | Purpose | Files |
+|---|---|---|
+| `src/` | CLI entry point | `index.ts` (shebang, invokes the CLI) |
+| `src/cli/` | Commander.js command layer | `index.ts`, `init-command.ts`, `update-command.ts`, `list-command.ts` |
+| `src/detector/` | Parallel stack detection | `index.ts`, `types.ts`, `detect-stack.ts` (orchestrator), `detect-language.ts`, `detect-framework.ts`, `detect-ui-library.ts`, `detect-database.ts`, `detect-testing.ts`, `detect-e2e.ts`, `detect-linter.ts`, `detect-state-management.ts`, `detect-package-manager.ts`, `detect-auth.ts`, `detect-ai-agents.ts`, `detect-monorepo.ts`, `detect-docs-file.ts`, `dependency-detector.ts` |
+| `src/schema/` | Zod schemas & types | `index.ts`, `stack-config.ts` (user config), `manifest.ts` (generated manifest) |
+| `src/prompt/` | Inquirer-based Q&A flow | `index.ts`, `prompt-flow.ts`, `questions.ts`, `defaults.ts`, `install-scope.ts`, `types.ts` |
+| `src/generator/` | EJS rendering + context building | `index.ts`, `types.ts`, `build-context.ts`, `generate-agents.ts`, `generate-commands.ts`, `generate-root-config.ts`, `generate-scripts.ts`, `review-checklist-rules.ts`, `permissions.ts` |
+| `src/installer/` | File I/O with backup & diff | `index.ts`, `write-files.ts`, `backup.ts`, `diff-files.ts` |
+| `src/constants/` | Static lookup tables | `frameworks.ts` (framework metadata: isReact, isMobile, isFrontend) |
+| `src/utils/` | Shared helpers | `index.ts`, `logger.ts`, `file-exists.ts`, `read-package-json.ts`, `read-pyproject-toml.ts`, `template-renderer.ts` |
+
+### `src/templates/` — EJS asset library
+
+All generated output starts as an `.ejs` file here. Five categories:
+
+| Category | Contents |
+|---|---|
+| `agents/` | `architect.md.ejs`, `implementer.md.ejs`, `react-ts-senior.md.ejs`, `code-reviewer.md.ejs`, `security-reviewer.md.ejs`, `code-optimizer.md.ejs`, `test-writer.md.ejs`, `e2e-tester.md.ejs`, `reviewer.md.ejs`, `ui-designer.md.ejs` |
+| `commands/` | `workflow-plan.md.ejs`, `workflow-fix.md.ejs`, `external-review.md.ejs` |
+| `config/` | `AGENTS.md.ejs`, `CLAUDE.md.ejs`, `codex-config.toml.ejs`, `settings-local.json.ejs` |
+| `partials/` | Reusable context blocks included by agents/commands: `code-style`, `context-budget`, `definition-of-done`, `dry-rules`, `error-handling-self`, `fail-safe`, `file-organization`, `git-rules`, `review-checklist`, `stack-context`, `tdd-discipline`, `testing-patterns`, `tool-use-discipline`, `untrusted-content`, `workspaces`, `docs-reference` |
+| `scripts/` | `sync-codex.sh.ejs`, `sync-codex.ps1.ejs`, `run-parallel.sh.ejs`, `cursor-task.sh.ejs` |
+
+### `tests/` layout
+
+Jest suite mirrors `src/` one-to-one.
+
+| Folder | Covers |
+|---|---|
+| `tests/cli/` | CLI commands (`list-command.test.ts`) |
+| `tests/detector/` | Stack detection: `detect-auth`, `detect-language`, `detect-ai-agents`, `detect-docs-file`, `detect-monorepo`, `detect-stack` (+ `__snapshots__/`) |
+| `tests/generator/` | Generation + rule coverage: `build-context`, `generate-all`, `epic-1-safety`, `epic-2-quality`, `permissions`, `review-checklist`, `security-reviewer`, plus `fixtures.ts` shared data |
+| `tests/installer/` | Backup behaviour (`backup.test.ts`) |
+| `tests/prompt/` | Prompt flow (`prompt-flow.test.ts`) |
+| `tests/schema/` | Zod validation (`stack-config.test.ts`) |
+| `tests/fixtures/` | Sample projects for detection: `nextjs-app/`, `react-native-expo/`, `python-fastapi/` |
+
+### Generated workspaces in the repo
+
+`.claude/` and `.codex/` are committed because this project runs `init` against itself — contributors see the exact output users would get.
+
+| Path | Contents |
+|---|---|
+| `.claude/agents/` | `architect.md`, `implementer.md`, `code-reviewer.md`, `security-reviewer.md`, `code-optimizer.md`, `test-writer.md`, `reviewer.md`, `ui-designer.md` |
+| `.claude/commands/` | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` |
+| `.claude/scripts/` | `run-parallel.sh`, `cursor-task.sh` |
+| `.claude/scratchpad/` | Per-task working notes (ephemeral) |
+| `.claude/settings.local.json` | Project-scoped permissions |
+| `.codex/skills/<agent>/SKILL.md` | One SKILL.md per agent |
+| `.codex/prompts/` | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` |
+| `.codex/scripts/` | `sync-codex.sh`, `sync-codex.ps1` |
+| `.codex/config.toml` | Codex skill/prompt registry |
+
+### Other top-level folders
+
+| Path | Purpose |
+|---|---|
+| `scripts/build.mjs` | Node build script invoked by `pnpm build` |
+| `temp-templates/` | Experimental EJS staging; not consumed by the generator |
+| `dist/` | Compiled output produced by `pnpm build` (gitignored) |
+| `.agents-workflows-backup/` | Snapshot of previous `.claude/` and `.codex/` written automatically before each overwrite |
+
 ## Generated example
 
 Generated agents include stack context and shared rules. For example, `.claude/agents/implementer.md` starts with frontmatter and a role-specific prompt:

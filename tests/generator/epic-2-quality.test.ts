@@ -20,7 +20,9 @@ const AGENTS_WITH_ERROR_HANDLING = ['implementer', 'code-optimizer'];
 const AGENTS_WITH_TDD = ['implementer', 'test-writer'];
 
 const getAgentContent = (files: GeneratedFile[], agentName: string): string => {
-  const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
+  const agentFile = files.find(
+    (file: GeneratedFile) => file.path === `.claude/agents/${agentName}.md`,
+  );
   if (!agentFile) {
     throw new Error(`Agent file not found: ${agentName}`);
   }
@@ -28,7 +30,9 @@ const getAgentContent = (files: GeneratedFile[], agentName: string): string => {
 };
 
 const getCommandContent = (files: GeneratedFile[], commandName: string): string => {
-  const commandFile = files.find((file) => file.path === `.claude/commands/${commandName}.md`);
+  const commandFile = files.find(
+    (file: GeneratedFile) => file.path === `.claude/commands/${commandName}.md`,
+  );
   if (!commandFile) {
     throw new Error(`Command file not found: ${commandName}`);
   }
@@ -45,7 +49,7 @@ const assertInclusion = ({ files, included, anchor }: AssertInclusionArgs): void
   for (const agentName of included) {
     expect(getAgentContent(files, agentName)).toContain(anchor);
   }
-  const excluded = ALL_AGENTS.filter((name) => !included.includes(name));
+  const excluded = ALL_AGENTS.filter((name: string) => !included.includes(name));
   for (const agentName of excluded) {
     expect(getAgentContent(files, agentName)).not.toContain(anchor);
   }
@@ -87,15 +91,35 @@ describe('Epic 2 quality partials', () => {
 
   it('wires tdd-discipline into implementer and test-writer only', () => {
     assertInclusion({ files, included: AGENTS_WITH_TDD, anchor: '<tdd_discipline>' });
+    expect(getAgentContent(files, 'implementer')).toContain(
+      'Read PRD.md before planning, implementing, reviewing, or writing tests',
+    );
     expect(getAgentContent(files, 'test-writer')).toContain(
       'NEVER delete or weaken an existing test',
     );
+  });
+
+  it('implementer orders failing tests before implementation work', () => {
+    const implementer = getAgentContent(files, 'implementer');
+    const testStepIndex = implementer.indexOf(
+      'Add or update focused tests for new logic and changed behavior',
+    );
+    const implementationStepIndex = implementer.indexOf(
+      'Implement the smallest coherent change that satisfies the task',
+    );
+    const runTestsStepIndex = implementer.indexOf('Run the relevant tests and checks');
+
+    expect(testStepIndex).toBeGreaterThan(-1);
+    expect(implementationStepIndex).toBeGreaterThan(testStepIndex);
+    expect(runTestsStepIndex).toBeGreaterThan(implementationStepIndex);
   });
 
   it('architect emits planning_protocol with 4 phases and required fields', () => {
     const architect = getAgentContent(files, 'architect');
     expect(architect).toContain('<planning_protocol>');
     expect(architect).toContain('EXPLORE');
+    expect(architect).toContain('read `PRD.md`');
+    expect(architect).toContain('verify proposed components');
     expect(architect).toContain('CLARIFY');
     expect(architect).toContain('PLAN');
     expect(architect).toContain('HANDOFF');

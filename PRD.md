@@ -1332,12 +1332,12 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Content**: §1.17 five-step failure protocol.
 - **Done when**: included by `implementer`, `code-optimizer`.
 
-### E2.T3 — Rewrite `architect.md.ejs` planning protocol [§1.13] — M — [DONE]
+### [x] E2.T3 — Rewrite `architect.md.ejs` planning protocol [§1.13] — M — [DONE]
 - **Files**: `src/templates/agents/architect.md.ejs`
 - **Change**: Replace current plan prompt with §1.13 EXPLORE → CLARIFY → PLAN → HANDOFF block. Keep ≤8-task cap. Add file-path requirement + out-of-scope list + verification-per-task field.
 - **Done when**: rendered `architect.md` emits 4-phase protocol; existing architect test suite green.
 
-### E2.T4 — Add TDD discipline partial [§1.14] — S — [DONE]
+### [x] E2.T4 — Add TDD discipline partial [§1.14] — S — [DONE]
 - **Files**: `src/templates/partials/tdd-discipline.md.ejs` (new) + include in `test-writer.md.ejs`, `implementer.md.ejs`
 - **Content**: §1.14 failing-test-first + anti-mocking-SUT + never-delete-test.
 - **Done when**: partial renders; `test-writer` template includes it verbatim.
