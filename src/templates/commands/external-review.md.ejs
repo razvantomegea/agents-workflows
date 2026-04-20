@@ -8,7 +8,7 @@ Run an external code review tool to review all changes on the current branch.
 ## Instructions
 
 1. Verify the external review tool is available.
-2. Run the review tool against all changes on the current branch compared to `main`.
+2. Run the review tool against all changes on the current branch compared to `<%= mainBranch %>`.
 3. Format the findings into `QA.md` with severity tags:
    - `[critical]` — must fix before merge
    - `[warning]` — should fix, may defer with justification

@@ -2,9 +2,12 @@ import { z } from 'zod';
 
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9 ._/:=@-]+$/;
 const SAFE_COMMAND_MESSAGE = 'command contains disallowed shell metacharacters';
+const SAFE_BRANCH_RE = /^[a-zA-Z0-9._/-]+$/;
+const SAFE_BRANCH_MESSAGE = 'branch name contains disallowed shell metacharacters';
 
 const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
 const safeCommandNullable = safeCommand.nullable().default(null);
+const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
 
 export const stackConfigSchema = z.object({
   project: z.object({
@@ -13,6 +16,7 @@ export const stackConfigSchema = z.object({
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),
     docsFile: z.string().nullable().default(null),
+    mainBranch: safeBranch.default('main'),
   }),
 
   stack: z.object({

@@ -36,6 +36,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
     utilsDir: config.paths.utilsDir,
     localeRules: config.project.localeRules,
     docsFile: config.project.docsFile,
+    mainBranch: config.project.mainBranch,
 
     reviewChecklist: buildReviewChecklist(config),
     permissions: buildPermissions(config),

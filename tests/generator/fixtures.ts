@@ -3,7 +3,7 @@ import { supportsReactTsStack } from '../../src/constants/frameworks.js';
 
 export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConfig {
   const baseConfig: StackConfig = {
-    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [], docsFile: null },
+    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [], docsFile: null, mainBranch: 'main' },
     stack: { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null },
     tooling: { packageManager: 'pnpm', packageManagerPrefix: 'pnpm', testFramework: 'jest', testLibrary: 'react-testing-library', e2eFramework: 'playwright', linter: 'eslint', formatter: 'prettier' },
     paths: { sourceRoot: 'src/', componentsDir: 'src/components/', hooksDir: 'src/hooks/', utilsDir: 'src/utils/', testsDir: 'tests/', designTokensFile: null, i18nDir: null, testConfigFile: null },

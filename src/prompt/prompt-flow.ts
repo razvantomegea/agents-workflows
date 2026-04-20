@@ -118,6 +118,7 @@ export async function runPromptFlow(
       locale: identity.locale,
       localeRules: identity.localeRules,
       docsFile: identity.docsFile,
+      mainBranch: identity.mainBranch,
     },
     stack: {
       language: stack.language,
@@ -205,6 +206,7 @@ export function createDefaultConfig(
       locale: 'en',
       localeRules: [],
       docsFile: detected.docsFile.value,
+      mainBranch: 'main',
     },
     stack: {
       language,

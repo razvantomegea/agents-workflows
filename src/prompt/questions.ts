@@ -2,10 +2,7 @@ import { input, confirm, checkbox } from '@inquirer/prompts';
 import type { DetectedStack } from '../detector/types.js';
 import type { PackageJson } from '../utils/index.js';
 import { isFrontendFramework } from '../constants/frameworks.js';
-import {
-  resolveDefaultDescription,
-  resolveDefaultProjectName,
-} from './defaults.js';
+import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 
 function useDetectedOr<T>(detection: { value: T | null; confidence: number }, fallback: T): T {
   return detection.confidence >= 0.7 && detection.value !== null ? detection.value : fallback;
@@ -20,6 +17,7 @@ export async function askProjectIdentity(
   locale: string;
   localeRules: string[];
   docsFile: string | null;
+  mainBranch: string;
 }> {
   const language = detected.language.value ?? 'typescript';
 
@@ -43,23 +41,30 @@ export async function askProjectIdentity(
     default: '',
   });
 
-  const localeRules = localeRulesRaw
-    ? localeRulesRaw.split(',').map((r) => r.trim()).filter(Boolean)
-    : [];
+  const localeRules = localeRulesRaw ? localeRulesRaw.split(',').map((r) => r.trim()).filter(Boolean) : [];
 
   const docsFile = await askDocsFile(detected);
+  const mainBranch = await askMainBranch('main');
 
-  return { name, description, locale, localeRules, docsFile };
+  return { name, description, locale, localeRules, docsFile, mainBranch };
 }
 
 async function askDocsFile(detected: DetectedStack): Promise<string | null> {
-  const docsDefault = detected.docsFile.value ?? '';
   const raw = await input({
     message: 'Primary documentation file (path relative to project root, blank to skip):',
-    default: docsDefault,
+    default: detected.docsFile.value ?? '',
   });
   const trimmed = raw.trim();
   return trimmed === '' ? null : trimmed;
+}
+
+export async function askMainBranch(defaultBranch: string): Promise<string> {
+  const trimmed = (await input({
+    message: 'Primary branch for new work (main/master/trunk/develop/etc.):',
+    default: defaultBranch,
+    validate: (value: string): true | string => value.trim() === '' || /^[a-zA-Z0-9._/-]+$/.test(value.trim()) ? true : 'Use only letters, numbers, slash, dot, underscore, or hyphen.',
+  })).trim();
+  return trimmed === '' ? defaultBranch : trimmed;
 }
 
 export async function askStack(detected: DetectedStack): Promise<{

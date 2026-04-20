@@ -55,6 +55,21 @@ const assertInclusion = ({ files, included, anchor }: AssertInclusionArgs): void
   }
 };
 
+const assertStepOrder = (content: string, orderedSteps: string[]): void => {
+  let previousIndex = -1;
+
+  for (const step of orderedSteps) {
+    const stepIndex = content.indexOf(step);
+    if (stepIndex <= -1) {
+      throw new Error(`Expected step to exist in content: "${step}"`);
+    }
+    if (stepIndex <= previousIndex) {
+      throw new Error(`Expected step "${step}" to appear after the previous ordered step`);
+    }
+    previousIndex = stepIndex;
+  }
+};
+
 const extractTaggedBlock = (content: string, tag: string): string => {
   const openTag = `<${tag}>`;
   const closeTag = `</${tag}>`;
@@ -101,17 +116,11 @@ describe('Epic 2 quality partials', () => {
 
   it('implementer orders failing tests before implementation work', () => {
     const implementer = getAgentContent(files, 'implementer');
-    const testStepIndex = implementer.indexOf(
+    assertStepOrder(implementer, [
       'Add or update focused tests for new logic and changed behavior',
-    );
-    const implementationStepIndex = implementer.indexOf(
       'Implement the smallest coherent change that satisfies the task',
-    );
-    const runTestsStepIndex = implementer.indexOf('Run the relevant tests and checks');
-
-    expect(testStepIndex).toBeGreaterThan(-1);
-    expect(implementationStepIndex).toBeGreaterThan(testStepIndex);
-    expect(runTestsStepIndex).toBeGreaterThan(implementationStepIndex);
+      'Run the relevant tests and checks',
+    ]);
   });
 
   it('architect emits planning_protocol with 4 phases and required fields', () => {
