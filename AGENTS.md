@@ -104,6 +104,12 @@ This loop is mandatory.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
 
+## Semi-autonomous (non-interactive) session rules
+
+- **Non-interactive ≠ unsandboxed.** `approval_policy = "never"` skips prompts only. Deny/forbid rules and the workspace-write sandbox remain fully enforced.
+- **Developer-assisted feature branches only.** Run headless sessions on a dedicated feature branch. Never run against `main`/`master` or shared integration branches.
+- **Human review before commit/push.** After any headless session, run `git diff` and review every change before deciding to commit or push. This is not a claim of unattended CI suitability.
+
 ## Dangerous operations — require explicit confirmation
 
 NEVER execute without the user typing "yes" in the current session:

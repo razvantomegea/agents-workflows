@@ -1,6 +1,16 @@
 # Gap analysis: bringing `agents-workflows` up to 2025–2026 state of the art
 
-**Scope.** This document is a gap analysis for the CLI tool `agents-workflows` (npm: `agents-workflows`, GitHub: `razvantomegea/agents-workflows`), which generates reusable agent configurations for Claude Code and OpenAI Codex CLI: 8 agents (`architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `e2e-tester`, `reviewer`, `ui-designer`), 3 workflow commands (`/workflow-plan`, `/workflow-fix`, `/external-review`), root `AGENTS.md`/`CLAUDE.md`/`.claude/settings.local.json`, and `.codex/` skills/prompts. The orchestration is: architect → `PLAN.md` (≤8 tasks) → implementer per task → code-reviewer after each task → code-optimizer after all tasks → reviewer runs a 4-step quality gate (review → fix → type-check → test).
+**Scope.** This document is a gap analysis for the CLI tool `agents-workflows` (npm: `agents-workflows`, GitHub: `razvantomegea/agents-workflows`), which generates reusable agent configurations for **five target tools**:
+
+1. **Claude Code** — `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/settings.local.json` + shared `.claude/settings.json`, and repo-root `CLAUDE.md`.
+2. **OpenAI Codex CLI** — `.codex/config.toml`, `.codex/skills/*/SKILL.md`, `.codex/rules/project.rules`.
+3. **Cursor** — `.cursor/rules/*.mdc` (YAML frontmatter: `description`, `alwaysApply`, `globs`) and `.cursor/commands/*.md` (slash commands). Legacy `.cursorrules` is silently ignored in Agent mode and is **not** emitted.
+4. **VSCode + GitHub Copilot** — `.github/copilot-instructions.md` (repo-wide) and `.github/prompts/*.prompt.md` (prompt files / custom agents). Copilot also reads repo-root `AGENTS.md` natively, so it is a zero-config peer target for that file.
+5. **Windsurf** — `.windsurf/rules/*.md` with activation metadata (Always On / Manual / Model Decision / Glob) and `.windsurf/workflows/*.md` (Cascade slash commands). Legacy `.windsurfrules` is **not** emitted.
+
+Agents generated (shared across all targets): 8 agents (`architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `e2e-tester`, `reviewer`, `ui-designer`) plus the optional `security-reviewer` and `react-ts-senior`. Workflow commands (shared): `/workflow-plan`, `/workflow-fix`, `/external-review`. Repo-root universal surface: `AGENTS.md` (consumed natively by Copilot, Windsurf, Gemini CLI, Aider, Continue) and `CLAUDE.md` (consumed by Claude Code; other tools follow the `AGENTS.md` pointer).
+
+The orchestration is identical across all five targets: architect → `PLAN.md` (≤8 tasks) → implementer per task → code-reviewer after each task → code-optimizer after all tasks → reviewer runs a 4-step quality gate (review → fix → type-check → test).
 
 **Caveat on the inventory.** The repository could not be fetched directly from this environment (URL-allowlist restriction), so what follows treats the README description above as the authoritative baseline. A small number of items below are flagged "verify presence" where the provided description is silent but the feature is plausible. The research-based "missing" rules are the substantive contribution; they are grounded in Anthropic, OpenAI, Cursor, OWASP, SLSA, W3C, Thoughtworks, DORA, and Martin Fowler sources from 2024–2026.
 
@@ -21,9 +31,14 @@ From the README description the following are **present** and should be preserve
 - **Per-task review gate.** `code-reviewer` runs after each task; this matches Anthropic's writer/reviewer pattern and is the single highest-leverage habit per Claude Code's "Best Practices" page.
 - **Post-implementation optimization pass.** `code-optimizer` after all tasks is a strong discipline most frameworks skip.
 - **4-step orchestrated quality gate** (review → fix → type-check → test) run by `reviewer`. This matches Anthropic's Nov 2025 long-running-harness recommendation to enforce type-check + tests as deterministic gates.
-- **AGENTS.md + CLAUDE.md parity.** Aligns with the LF-stewarded `AGENTS.md` standard (Oct 2025, 60k+ repos) and Claude Code's `CLAUDE.md` with `@import` support.
-- **Specialist split (8 agents).** Matches Cursor/Claude Code direction toward specialized roles per SDLC phase.
-- **Codex CLI dual output.** Matches Codex's 2025–2026 positioning as first-class peer to Claude Code.
+- **Multi-IDE universal surface.** The CLI emits a common content set and fans it out into five tool-native surfaces:
+  - `AGENTS.md` — LF-stewarded standard (Oct 2025, 60k+ repos) read natively by **GitHub Copilot** (nearest-wins in directory tree), **Windsurf**, **Gemini CLI**, **Aider**, **Continue.dev** — so emitting a good `AGENTS.md` already covers five of the eight detected tools with zero extra wiring.
+  - `CLAUDE.md` — Claude Code's `@import`-aware variant, layered on top of `AGENTS.md`.
+  - `.cursor/rules/*.mdc` — Cursor's MDC format (Agent-mode only; `.cursorrules` is silently ignored under Cursor Agent and is therefore not emitted).
+  - `.github/copilot-instructions.md` + `.github/prompts/*.prompt.md` — VSCode+Copilot's custom instructions and prompt files.
+  - `.windsurf/rules/*.md` + `.windsurf/workflows/*.md` — Windsurf workspace rules (with activation metadata) and Cascade workflows.
+- **Specialist split (8 agents).** Matches Cursor, Claude Code, Copilot Agents, and Windsurf Cascade direction toward specialized roles per SDLC phase.
+- **Five-target output.** Matches the 2025–2026 positioning of Claude Code, Codex CLI, Cursor, VSCode+Copilot, and Windsurf as peer agentic coding tools; one rule-set, five native surfaces.
 
 The framework is therefore **architecturally sound**. What follows is not a redesign — it is what to add so the agents enforce 2025–2026 state-of-the-art.
 
@@ -261,21 +276,24 @@ than papering over them.
 **Paste-ready model-routing block:**
 ```
 ## Model routing (verify current model IDs in vendor docs)
-| Role           | Preferred model family        | Reasoning effort |
-|----------------|-------------------------------|------------------|
-| architect      | Opus-class (thinking on)      | high             |
-| implementer    | Sonnet-class / Codex-class    | medium           |
-| code-reviewer  | Same family as implementer    | medium           |
-| reviewer       | DIFFERENT family from implementer | high         |
-| external-review| DIFFERENT family, fresh context   | high         |
-| code-optimizer | Sonnet-class                  | medium           |
-| test-writer    | Sonnet-class                  | medium           |
-| e2e-tester     | Sonnet-class                  | medium           |
-| ui-designer    | Sonnet-class                  | medium           |
+| Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
+|----------------|-------------------------------|------------------|--------------------------|
+| architect      | Opus-class (thinking on)      | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
+| implementer    | Sonnet-class / Codex-class    | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
+| code-reviewer  | Same family as implementer    | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
+| reviewer       | DIFFERENT family from implementer | high         | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
+| external-review| DIFFERENT family, fresh context   | high         | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent |
+| code-optimizer | Sonnet-class                  | medium           | same as implementer |
+| test-writer    | Sonnet-class                  | medium           | same as implementer |
+| e2e-tester     | Sonnet-class                  | medium           | same as implementer |
+| ui-designer    | Sonnet-class                  | medium           | same as implementer |
 
 Rule: never let the writer be its own final reviewer. A fresh-context
 session with a different model family is the cheapest diversity gain
-available.
+available. This rule applies identically across Claude Code, Codex CLI,
+Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
+picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
+Copilot Agent on GPT-5, or vice versa).
 ```
 
 ## 1.8 Long-horizon harness (initializer + coder + progress.txt + feature_list.json)
@@ -536,6 +554,70 @@ If a command, test, or type-check fails:
 5. If after two honest attempts you cannot fix it, STOP. Report what
    you learned. Do not claim success.
 </error_handling_self>
+```
+
+## 1.18 Polyglot monorepo navigation
+
+**Rule.** Real-world monorepos routinely mix ecosystems: a TypeScript web app next to a Python ML service, a Rust systems crate, a Go gateway, a .NET back-office service, or a C++ native library. Each workspace owns its own manifest, lockfile, and test/lint/build toolchain, and the root rarely exposes a single unified command. The agent MUST locate the nearest manifest before any edit or command (`package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`, `*.csproj` / `*.sln`, `CMakeLists.txt` / `conanfile.*` / `vcpkg.json`) and operate inside that workspace's toolchain. Running one workspace's command at the repo root is forbidden unless the root exposes a fan-out runner (Turbo / Nx / `cargo` workspace / `go work` / `dotnet sln` / `cmake --build`). Nested `AGENTS.md` wins over the outer one (reinforces §1.1).
+
+**Verdict.** **Missing.** Today the PRD only mentions nested `AGENTS.md` precedence in §1.1; the CLI's `detectMonorepo` recognises JS-ecosystem workspaces only (`pnpm-workspace.yaml`, `package.json workspaces`, `lerna.json`), `detectLanguage` runs once at repo root, and no partial teaches agents to route commands per workspace.
+
+**Priority.** [MUST].
+
+**Where to add.** New shared partial `src/templates/partials/polyglot-monorepo.md.ejs` wired into `architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `reviewer`. Root `AGENTS.md`/`CLAUDE.md` gain a `## Workspaces` index table. Rendered conditionally when ≥2 distinct languages are detected across workspaces.
+
+**Paste-ready snippet (partial):**
+```
+<polyglot_monorepo>
+This repo is a monorepo with multiple languages. Before any edit or
+command:
+
+1. Locate the NEAREST manifest walking upward from the target file:
+   `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`,
+   `*.csproj` / `*.sln`, `CMakeLists.txt` / `conanfile.*` / `vcpkg.json`.
+   That directory is the workspace root for this operation.
+2. A closer `AGENTS.md` / `CLAUDE.md` ALWAYS wins over an outer one
+   (see §1.1).
+3. Resolve all commands from that workspace manifest — never from repo
+   root — unless a root task runner is configured to fan out (Turbo,
+   Nx, `cargo` workspace, `go work`, `dotnet sln`, `cmake --build`).
+   Examples:
+     - JS/TS:  `pnpm --filter <pkg> test` / `pnpm --filter <pkg> lint`
+     - Python: `uv run --package <pkg> pytest` / `poetry -C <pkg> run pytest`
+     - Rust:   `cargo test -p <pkg>` / `cargo clippy -p <pkg>`
+     - Go:     run from the module dir: `go test ./...` / `go vet ./...`
+     - .NET:   `dotnet test <proj>.csproj` / `dotnet build <proj>.csproj`
+     - C++:    `cmake --build build --target <tgt>` then `ctest --test-dir build`
+4. Definition of Done (§1.6) runs PER touched workspace: type-check,
+   lint, and the narrowest relevant test in each workspace's
+   toolchain. Do not short-circuit by running one ecosystem's gate.
+5. Cross-workspace refactors: the plan (§1.13) MUST enumerate every
+   touched workspace and list each workspace's DoD gate as a
+   verification step.
+6. Never install a dependency into the wrong workspace. Never share
+   or cross-write lockfiles across ecosystems (no `package-lock.json`
+   in a Rust crate, no `Cargo.lock` in a Python package, etc.).
+7. If a workspace has no `AGENTS.md`, inherit the root one but still
+   route commands through the workspace manifest.
+</polyglot_monorepo>
+```
+
+**Decision flow:**
+```mermaid
+flowchart TD
+    Request[Edit or command request] --> Locate[Walk upward to nearest manifest]
+    Locate --> Workspace[Workspace root identified]
+    Workspace --> Nested{"Nested AGENTS.md present?"}
+    Nested -->|Yes| UseNested[Follow nested AGENTS.md]
+    Nested -->|No| UseRoot[Fall back to root AGENTS.md]
+    UseNested --> Toolchain[Resolve commands from workspace manifest]
+    UseRoot --> Toolchain
+    Toolchain --> Cross{"Cross-workspace change?"}
+    Cross -->|No| SingleDoD["Run DoD: type-check + lint + test in this workspace"]
+    Cross -->|Yes| Enumerate[Enumerate every touched workspace in the plan]
+    Enumerate --> FanOut["Run DoD in EACH workspace's toolchain"]
+    SingleDoD --> Done[Report per-workspace results]
+    FanOut --> Done
 ```
 
 ---
@@ -1179,6 +1261,7 @@ When reviewing AI-generated code, verify explicitly:
 31. Formatting/linting + Biome (§2.15).
 32. 12-factor / deployment / feature flags / expand-contract migrations (§2.16).
 33. Concurrency rules (§2.17).
+34. **Polyglot monorepo support** (§1.18) — per-workspace stack detection, nested `AGENTS.md`, workspace-scoped DoD gates across JS/TS, Python, Rust, Go, .NET, C++.
 
 ## Nice-to-have
 
@@ -1212,11 +1295,23 @@ Recommended placement of every addition above:
 | `external-review.md` | §1.7 Cross-model routing (different family mandatory) · §2.18 AI-complacency guard · §2.1 full checklist |
 | `.codex/config.toml` | Mirror the Claude Code allow/deny list; enable approval + sandbox modes |
 | `.codex/skills/*` | Mirror Claude Code skills: `long-horizon`, `untrusted-content`, `security-review` |
+| `.cursor/rules/*.mdc` (new) | One MDC file per shared partial under `src/templates/partials/`. Frontmatter per partial: safety partials (`untrusted-content`, `fail-safe`, `tool-use-discipline`, `definition-of-done`, `error-handling-self`, `context-budget`, §1.4 deny list, §2.18 AI-complacency) → `alwaysApply: true`. Stack-scoped partials (`api-design`, `accessibility`, `performance`, `concurrency`) → `globs:` narrowed. Docs/ADR partials → `description:` only (Model-Decision mode). |
+| `.cursor/commands/*.md` (new) | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` rendered as Cursor slash commands so `@workflow-plan`, `@workflow-fix`, `@external-review` work from Cursor chat. |
+| `.github/copilot-instructions.md` (new) | Rendered from `AGENTS.md` + universal partials (context-budget, git discipline, security defaults, Definition of Done, AI-complacency guard, dangerous ops, MCP policy). Single-file, repo-wide, Markdown only — Copilot does not parse YAML frontmatter here. |
+| `.github/prompts/*.prompt.md` (new) | `workflow-plan.prompt.md`, `workflow-fix.prompt.md`, `external-review.prompt.md` with YAML frontmatter (`description`, `name`, `argument-hint`, `agent`, `model`, `tools`). `tools:` allow-list acts as the Copilot equivalent of the Claude Code permission allow-list (see Epic 9 extension). |
+| `.windsurf/rules/*.md` (new) | One Windsurf rule per shared partial with activation metadata per partial: safety partials → `activation: always_on`, stack-scoped → `activation: glob` with globs, docs/ADR → `activation: model_decision`, optional/opt-in → `activation: manual`. Legacy `.windsurfrules` is NOT emitted. |
+| `.windsurf/workflows/*.md` (new) | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` as Cascade workflows — invocable via `/workflow-plan` etc. in Cascade. |
 | `SECURITY.md` (new) | §2.2 expanded; ASVS v5.0 mapping; OWASP LLM Top 10 2025 for any LLM integration |
 | `SUPPLY_CHAIN.md` (new) | §2.3 SLSA + SBOM + Sigstore + dependency policy |
 | `docs/decisions/0001-adr-template.md` (new) | MADR 4.0 template seed (§2.14) |
 | `.github/pull_request_template.md` (new) | §1.16 template |
 | `.github/workflows/release.yml` (new/amend) | Syft SBOM generation; cosign keyless sign; SLSA provenance; `actions/*` pinned by SHA; default-deny `permissions:` |
+| `src/templates/partials/polyglot-monorepo.md.ejs` (new) | §1.18 snippet; rendered when ≥2 distinct languages are detected across workspaces; included by `architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `reviewer` |
+| `AGENTS.md` / `CLAUDE.md` | §1.18 `## Workspaces` index table (path → language → package manager → DoD commands) — rendered only in polyglot repos |
+| `src/schema/stack-config.ts` | §1.18 extend `monorepo` with `workspaces: WorkspaceStack[]` (path, language, runtime, framework, packageManager, commands) and a top-level aggregated `languages: string[]` |
+| `src/detector/detect-monorepo.ts` | §1.18 recognise `Cargo.toml [workspace]`, `go.work`, `pyproject.toml [tool.uv.workspace]` / Poetry packages, `.sln` + `.csproj`, CMake `add_subdirectory`, Conan / vcpkg manifests |
+| `src/detector/detect-stack.ts` | §1.18 per-workspace detection loop; aggregate distinct workspace languages into a top-level `languages` field |
+| `src/templates/config/AGENTS.md.ejs` per workspace | §1.18 emit a workspace-scoped nested `AGENTS.md` when languages differ, using that workspace's toolchain commands |
 
 ---
 
@@ -1226,7 +1321,9 @@ The report is grounded primarily in the following dated sources, weighted toward
 
 - **Anthropic** — "Effective context engineering for AI agents" (2025-09-29); "Effective harnesses for long-running agents" (2025-11-26); "How we built our multi-agent research system" (2025-06-13); Claude Code Best Practices (current, code.claude.com/docs/en/best-practices).
 - **OpenAI** — Codex Best Practices, AGENTS.md guide (developers.openai.com/codex/); Codex changelog; "Run long horizon tasks with Codex."
-- **Cursor** — "Best practices for coding with agents" (2026-01-09); "Introducing Plan Mode" (2025-10-07).
+- **Cursor** — "Best practices for coding with agents" (2026-01-09); "Introducing Plan Mode" (2025-10-07); Cursor Docs — Rules (`.cursor/rules/*.mdc`, MDC format, four activation modes) and Plugins Reference (2026); `cursor-agent` headless CLI and Background Agents docs.
+- **GitHub Copilot (VSCode)** — "Adding repository custom instructions for GitHub Copilot" (`.github/copilot-instructions.md`); "Use custom instructions in VS Code"; "Prompt files" (`.github/prompts/*.prompt.md` with YAML frontmatter `description`/`agent`/`model`/`tools`); "Custom agents in VS Code" / custom chat modes; Copilot coding agent docs (all April 2026).
+- **Windsurf** — "Creating & Modifying Rules" (`.windsurf/rules/`, four activation modes: `always_on` / `manual` / `model_decision` / `glob`); "Using Workflows" (`.windsurf/workflows/` + Cascade slash commands); "Cascade Memories"; Cascade approval modes Manual / Auto / Yolo (2026).
 - **Meta** — "Agents Rule of Two" (2025-10-31).
 - **Simon Willison** — "The lethal trifecta" (2025-06-16); "New prompt injection papers" (2025-11-02).
 - **Chroma** — "Context Rot" (2025-07).
@@ -1541,11 +1638,11 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 **Goal.** Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. Deny-first rules and the sandbox are complementary layers; neither is trusted alone.
 
-**Rationale.** `.claude/settings.local.json` exists but is gitignored and local-only, so teammates do not inherit a safe default. `.codex/config.toml` is already sandboxed (`approval_policy = "untrusted"`, `network_access = false`) but is not shared. Both directories are blanket-ignored in `.gitignore`. This epic commits a minimal, merge-not-replace baseline: every existing deny is preserved, no allow rule becomes broader, Codex's stricter `"untrusted"` posture is retained, and network access stays disabled. Web-fetch / network expansion is an explicit non-goal for this round.
+**Rationale.** `.claude/settings.local.json` exists but is gitignored and local-only, so teammates do not inherit a safe default. `.codex/config.toml` is already sandboxed (`approval_policy = "on-failure"`, `network_access = false`) but is not shared. Both directories are blanket-ignored in `.gitignore`. This epic commits a minimal, merge-not-replace baseline: every existing deny is preserved, no allow rule becomes broader, Codex remains sandboxed, and network access stays disabled. Web-fetch / network expansion is an explicit non-goal for this round.
 
 **Acceptance.**
 - `.claude/settings.json` (new, shared) is committed; its deny list is a strict superset of the current `.claude/settings.local.json` deny list. No existing deny is dropped.
-- `.codex/config.toml` is committed unchanged from its current stricter state: `approval_policy = "untrusted"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`.
+- `.codex/config.toml` is committed with `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Epic 10 later tightens `approval_policy` to `"never"` for developer-assisted non-interactive runs while keeping network disabled.
 - `.codex/rules/project.rules` (new) lints clean under `codex execpolicy check --rules .codex/rules/project.rules`.
 - `.gitignore` un-ignores `!/.claude/settings.json`, `!/.codex/config.toml`, `!/.codex/rules/` via negation while `.claude/settings.local.json` and other transient paths stay ignored. Verified via `git check-ignore -v`.
 - Any Claude Code `sandbox` block (`mode`, `allowedDomains`, `autoAllowBashIfSandboxed`) is dropped unless its schema is verified against current Claude Code docs in the implementing PR. Windows hosts treat permission rules as the primary guard since kernel-layer sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
@@ -1564,7 +1661,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ### E9.T3 — `.codex/config.toml` committed + `project.rules` [§1.9] — M
 - **Files**: `.codex/config.toml` (tracked, unchanged content from current local state), `.codex/rules/project.rules` (new).
-- **Change**: Keep `approval_policy = "untrusted"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules for `git push`/`git commit`/`git reset --hard|--merge`/`rm`/`sudo`, and `allow` rules for the Node/TS/Python toolchain (`node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`) plus read-only git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`). No broad `["git"]` prefix allows. No `curl` / `wget` allow.
+- **Change**: Keep `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules for `git push`/`git commit`/`git reset --hard|--merge`/`rm`/`sudo`, and `allow` rules for the Node/TS/Python toolchain (`node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`) plus read-only git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`). No broad `["git"]` prefix allows. No `curl` / `wget` allow. Epic 10 later tightens `approval_policy` to `"never"` for developer-assisted non-interactive runs while keeping network disabled.
 - **Done when**: `codex execpolicy check --rules .codex/rules/project.rules` exits 0; no match/not_match rule conflicts; Codex posture is unchanged or stricter vs. current.
 
 ### E9.T4 — `.gitignore` surgical un-ignore [§1.9] — S
@@ -1583,30 +1680,60 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Change**: One paragraph noting (a) `.claude/settings.json` + `.codex/config.toml` + `.codex/rules/project.rules` are the shared, committed policy; (b) `.claude/settings.local.json` is a per-developer cache and stays gitignored; (c) `~/.codex/rules/default.rules` accumulates approved prompts over sessions and should be pruned periodically; (d) on Windows hosts, permission rules are the primary guard since kernel sandbox primitives do not apply.
 - **Done when**: one paragraph exists pointing to the three shared files and the prune reminder; total added lines ≤ 8.
 
-### E9.T6 — Deferred follow-ups (backlog, not this round) — N/A
-- **Web-fetch / network enablement**: if later enabled, require an explicit Claude Code `allowedDomains` allowlist (once the schema is verified), flip Codex `network_access = true`, and re-audit exfiltration surface — confirm no secrets live inside the workspace (`.env` is gitignored and outside the repo, or managed via a secret manager).
+### E9.T6 — Cursor permission hardening [§1.9] — M
+
+**Context.** Cursor has no kernel-level sandbox and no Claude-style allow/deny JSON. Its primary guards are (a) VSCode workspace trust, (b) project rules (`.cursor/rules/`), and (c) Cursor's per-command approval prompts in Agent mode. Guard-rail parity is therefore achieved via `alwaysApply: true` rules that instruct the agent not to run forbidden commands, plus optional plugin-manifest `allowedTools` on Cursor 2.x.
+
+- **Files**: `.cursor/rules/00-deny-destructive-ops.mdc` (new, generated by E11.T2), `.cursor/rules/05-fail-safe.mdc` (already generated from the `fail-safe` partial), optional `.cursor/plugin.json` allow-list.
+- **Change**: Render a dedicated `00-deny-destructive-ops.mdc` with `alwaysApply: true` mirroring the §1.4 deny list (rm -rf, git push --force, git reset --hard, npm publish, etc.). State explicitly: "These are agent-behavior rules, not kernel enforcement — Cursor has no sandbox. Pair with branch protection and workspace trust."
+- **Change**: When Cursor 2.x plugin manifests ship with an `allowedTools` / `allowedCommands` schema, emit it alongside; until then, rule-level guidance is the ceiling.
+- **Done when**: `.cursor/rules/00-deny-destructive-ops.mdc` renders with `alwaysApply: true`; rule body enumerates every §1.4 deny line verbatim; PR body documents the "no sandbox" caveat.
+
+### E9.T7 — VSCode + Copilot permission hardening [§1.9] — M
+
+**Context.** GitHub Copilot has three complementary guards: (a) `.github/copilot-instructions.md` is advisory (agent-behavior, not kernel); (b) prompt-file `tools:` frontmatter restricts which tools Copilot Agent may invoke for a given prompt; (c) GitHub branch protection rules block force-pushes and unreviewed merges at the server side. VSCode workspace trust is also in play.
+
+- **Files**: `.github/copilot-instructions.md`, `.github/prompts/workflow-plan.prompt.md`, `.github/prompts/workflow-fix.prompt.md`, `.github/prompts/external-review.prompt.md`.
+- **Change**: Emit a "Dangerous operations" section in `.github/copilot-instructions.md` mirroring §1.4 deny items verbatim.
+- **Change**: In each prompt file's YAML frontmatter set `tools:` to the minimum subset for that workflow (e.g., `workflow-plan` does **not** include `runInTerminal` / `editFile` on non-plan files). Never include `bash`, `shell`, or equivalent unbounded command tools in any committed prompt frontmatter; if needed, leave them to per-user opt-in via VSCode settings.
+- **Change**: Document in `README.md` (Epic 11 E11.T7 table) that GitHub branch protection on `main` — disallow force-push, require review — is the server-side backstop for Copilot coding agent, since client-side guards are advisory.
+- **Done when**: `.github/copilot-instructions.md` renders §1.4 verbatim; three prompt files ship with minimal `tools:` arrays; README documents branch-protection dependency; no prompt frontmatter includes an unbounded shell tool.
+
+### E9.T8 — Windsurf permission hardening [§1.9] — M
+
+**Context.** Windsurf Cascade has three approval modes: Manual (ask every command), Auto (ask on destructive patterns), Yolo (never ask). Rules enforced via `.windsurf/rules/` are advisory — they instruct Cascade but do not block at kernel level. For committed repo policy, the target posture is **Manual default** with a `00-forbidden-commands.md` Always-On rule.
+
+- **Files**: `.windsurf/rules/00-forbidden-commands.md` (new, generated by E11.T4), optional `.windsurf/settings.json` if Windsurf exposes a schema for committed approval-mode defaults.
+- **Change**: Render `00-forbidden-commands.md` with `activation: always_on` enumerating the §1.4 deny list verbatim. Add an explicit line: "Yolo mode is forbidden in this repository — use Manual or Auto only."
+- **Change**: Document in `README.md` that per-developer Cascade approval mode must be set to Manual or Auto; Yolo is not supported for this codebase.
+- **Done when**: rule file renders with `always_on`; enumerates every §1.4 deny item; README documents approval-mode requirement; manual smoke test confirms Cascade refuses `git push --force` in Manual mode with the rule active.
+
+### E9.T9 — Deferred follow-ups (backlog, not this round) — N/A
+- **Web-fetch / network enablement**: if later enabled, require an explicit Claude Code `allowedDomains` allowlist (once the schema is verified), flip Codex `network_access = true`, and re-audit exfiltration surface — confirm no secrets live inside the workspace (`.env` is gitignored and outside the repo, or managed via a secret manager). Same audit applies to Cursor / Copilot / Windsurf before enabling their network-capable tools.
 - **Periodic prune ritual**: prune `~/.codex/rules/default.rules` each quarter to remove approved prompts that accumulated over time.
-- **Epic becomes DONE** only after E9.T1–E9.T5 land and the verification smoke tests pass (Claude Code `git push` is blocked from repo root; Codex `curl` is blocked with network disabled).
+- **Cursor / Windsurf kernel sandbox**: when / if either ships a kernel sandbox, replace the advisory rules with enforced policy and revisit this epic.
+- **Epic becomes DONE** only after E9.T1–E9.T8 land and the verification smoke tests pass (Claude Code `git push` is blocked from repo root; Codex `curl` is blocked with network disabled; Cursor Agent refuses forbidden commands via the always-apply rule; Copilot Agent refuses forbidden commands per `copilot-instructions.md`; Windsurf Cascade in Manual mode refuses forbidden commands).
 
 ---
 
-## Epic 10 — Autonomous Non-Interactive Workflow Mode [MUST]
+## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST]
 
-**Goal.** Make both Claude Code and Codex run workflow sessions headlessly by default from repo config (no per-run CLI approval flags), while keeping deny/forbid policy and workspace sandbox boundaries fully active.
+**Goal.** Make both Claude Code and Codex run workflow sessions headlessly by default from repo config (no per-run CLI approval flags), while keeping deny/forbid policy and workspace sandbox boundaries fully active. These sessions are **developer-assisted runs on feature branches**; this epic does not claim or require suitability for unattended CI automation.
 
-**Critical distinction.** This epic targets **non-interactive approvals**, not **sandbox bypass**. Do **not** use:
+**Critical distinction.** This epic targets **non-interactive approvals**, not **sandbox bypass**. "Non-interactive" means approval prompts are skipped; it does not mean the sandbox is relaxed. Do **not** use:
 - Claude: `--dangerously-skip-permissions`
 - Codex: `--dangerously-bypass-approvals-and-sandbox` or `sandbox_mode = "danger-full-access"`
 
 These disable the last-line sandbox controls and are out of bounds for this project.
 
-**Rationale.** Current hardening protects the repo, but recurring interactive prompts slow planned workflows and CI-style runs. Setting defaults in tracked config gives one-line execution while preserving strict layers: deny/forbid rules first, then OS/workspace sandbox enforcement.
+**Rationale.** Current hardening protects the repo, but recurring interactive prompts slow planned developer-assisted workflow sessions. Setting defaults in tracked config gives one-line execution while preserving strict layers: deny/forbid rules first, then OS/workspace sandbox enforcement. A developer monitors the session, reviews the diff (`git diff`) before any manual commit/push, and decides whether to land the changes.
 
 **Acceptance.**
 - `.claude/settings.json` sets `"permissions.defaultMode"` for autonomous execution (default target: `"bypassPermissions"`; optional conservative profile: `"acceptEdits"`).
-- `.codex/config.toml` sets `approval_policy = "never"` with `sandbox_mode = "workspace-write"` and a workspace-write stanza configured for networked runs.
+- `.codex/config.toml` sets `approval_policy = "never"` with `sandbox_mode = "workspace-write"` and `network_access = false` (network enablement is deferred per E9.T6).
 - `.codex/rules/project.rules` remains enforced and unchanged/stricter for forbidden commands (`git push`, `git commit`, destructive shell ops, outside-workspace writes).
-- Docs include canonical one-line invocations for local and logged/CI runs; no dangerous bypass flags appear in examples.
+- Docs include canonical one-line invocations for local and logged runs; no dangerous bypass flags appear in examples.
+- Docs explicitly state: developer-assisted feature-branch runs only; human `git diff` review required before any manual commit/push; not a claim of unattended CI suitability.
 - Verification confirms forbidden/deny and sandbox constraints still win under headless mode.
 
 ### E10.T1 — Claude default autonomous mode in shared config — S
@@ -1630,10 +1757,10 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   sandbox_mode = "workspace-write"
 
   [sandbox_workspace_write]
-  network_access = true
+  network_access = false
   ```
-  Preserve/extend `.codex/rules/project.rules` so forbidden actions remain blocked by policy.
-- **Done when**: `codex exec "<workflow prompt>"` runs without approval prompts and still rejects forbidden rule matches plus outside-workspace writes.
+  Network egress remains disabled (consistent with Epic 9 / E9.T6 deferral). Preserve/extend `.codex/rules/project.rules` so forbidden actions remain blocked by policy.
+- **Done when**: `codex exec "<workflow prompt>"` runs without approval prompts and still rejects forbidden rule matches plus outside-workspace writes; `network_access` is `false` in committed config.
 
 ### E10.T3 — Workflow invocation docs (one-line + logged variants) — S
 - **Files**: `README.md`, `CLAUDE.md`, `AGENTS.md` (short additions under existing workflow sections).
@@ -1648,9 +1775,9 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E10.T4 — Rule-order and protection-boundary documentation — S
 - **Files**: `CLAUDE.md` and `AGENTS.md` (append within existing safety sections).
 - **Change**: Clarify guard order and remaining protections in headless mode:
-  1) deny/forbid rules evaluate first, 2) approval stage (auto-approved in autonomous mode), 3) sandbox boundary enforcement.
-  Include explicit guidance to run autonomous sessions only on feature branches and require human `git diff` review before any manual commit/push.
-- **Done when**: docs explicitly separate "non-interactive" from "unsandboxed" and capture branch + manual review mitigations.
+  1) deny/forbid rules evaluate first, 2) approval stage (auto-approved in semi-autonomous mode), 3) sandbox boundary enforcement.
+  Explicitly document: (a) "non-interactive" ≠ "unsandboxed" — skipping approval prompts does not relax sandbox or deny rules; (b) these sessions are developer-assisted runs on feature branches only; (c) human `git diff` review is required before any manual commit/push; (d) this is not a claim of suitability for unattended CI automation.
+- **Done when**: docs explicitly separate "non-interactive" from "unsandboxed" and capture developer-assisted scope, branch constraint, and manual review mitigations.
 
 ### E10.T5 — Validation smoke tests for autonomous mode safety — M
 - **Files**: `QA.md` (append test protocol) and/or `docs/GOVERNANCE.md` if present.
@@ -1661,6 +1788,197 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   - Capture logs (`run.log`) for audit trail.
 - **Done when**: smoke test checklist is executable by any maintainer and demonstrates "headless + still constrained" behavior.
 
+### E10.T6 — Cursor non-interactive mode — M
+
+**Context.** Cursor ships two relevant headless surfaces in 2025–2026: (a) **Background Agents** (cloud-run agents on a branch, PR-authoring), and (b) the `cursor-agent` headless CLI for local scripted runs. Both execute without a human clicking "accept" on every step, but still respect `.cursor/rules/*.mdc` (including the `alwaysApply: true` deny rules from E9.T6). There is no kernel sandbox — the advisory rules are the only guard.
+
+- **Files**: `CLAUDE.md`, `AGENTS.md`, `README.md`, `QA.md`.
+- **Change**: Document the canonical headless invocation: `cursor-agent --prompt "Read ./AGENTS.md and execute every step in order until complete. Do not ask for input."`; note that Background Agents set the same non-interactive posture server-side. State explicitly that `.cursor/rules/00-deny-destructive-ops.mdc` (from E9.T6) must exist before enabling any non-interactive Cursor run, and that Cursor's agent still prompts the user for forbidden commands unless that rule is active.
+- **Change**: Do **not** recommend or document any `--yolo` / unrestricted flag. If Cursor ships one, document it as forbidden in this repo.
+- **Done when**: README documents `cursor-agent` invocation + Background Agents + the `.cursor/rules/` dependency; smoke test in E10.T5 extended to run the same denial checks via `cursor-agent` when the binary is present.
+
+### E10.T7 — VSCode + Copilot non-interactive mode — M
+
+**Context.** GitHub Copilot has two headless surfaces: (a) **Copilot coding agent** (cloud agent that authors PRs from issues), and (b) VSCode **Agent mode** with `"chat.agent.enabled": true` and prompt files executed from `.github/prompts/`. The `tools:` allow-list in each prompt's frontmatter is the per-prompt capability gate. There is no kernel sandbox for either surface — branch protection on `main` is the server-side backstop.
+
+- **Files**: `CLAUDE.md`, `AGENTS.md`, `README.md`, `.vscode/settings.json` (optional template), `.github/prompts/*.prompt.md` (already covered in E11.T3).
+- **Change**: Document the canonical headless invocation: from VSCode chat run `/workflow-plan` which executes `.github/prompts/workflow-plan.prompt.md`; from the GitHub UI assign an issue to Copilot to invoke the coding agent. State that neither supports an unconditional "bypass" mode — the `tools:` frontmatter is the ceiling. Require that GitHub branch protection on the main branch is enabled before the Copilot coding agent is used, since it is the server-side backstop.
+- **Change**: If the generator emits a `.vscode/settings.json` template, it sets `"chat.agent.enabled": true` and documents the setting; it does **not** set any auto-approve flag.
+- **Done when**: README documents both headless surfaces, the `tools:` allow-list as the capability gate, and branch protection as the backstop; no setting in any emitted config auto-approves a shell tool.
+
+### E10.T8 — Windsurf non-interactive mode — M
+
+**Context.** Windsurf Cascade has three approval modes: Manual, Auto, Yolo. The "non-interactive" posture for a committed repo policy is **Auto with strict rules**, never Yolo. Yolo disables all approval prompts and is equivalent to Claude's `--dangerously-skip-permissions` — explicitly out of bounds for this project. Rules from `.windsurf/rules/` are advisory; there is no kernel sandbox.
+
+- **Files**: `CLAUDE.md`, `AGENTS.md`, `README.md`, `QA.md`.
+- **Change**: Document Cascade's three modes and state that Auto is the repo-recommended mode for non-interactive workflows; Manual is the required mode for new contributors; Yolo is forbidden. Require that `.windsurf/rules/00-forbidden-commands.md` (E9.T8) is present before enabling Auto mode. Document canonical headless invocation of Cascade workflows: `/workflow-plan` etc. from within the Cascade panel, with Auto mode set in the developer's Windsurf settings.
+- **Change**: Do not emit any Windsurf configuration that enables Yolo mode, and explicitly forbid it in `.windsurf/rules/00-forbidden-commands.md`.
+- **Done when**: README documents the three Cascade modes, the Auto-mode requirement, and the Yolo prohibition; smoke test in E10.T5 extended to confirm Cascade in Auto mode still denies forbidden commands.
+
+---
+
+## Epic 11 — Multi-IDE Target Outputs [MUST]
+
+**Goal.** Make `agents-workflows` emit native agent configurations for **five** tools instead of two: Claude Code + Codex CLI (existing) plus Cursor, VSCode + GitHub Copilot, and Windsurf. One shared partial library under `src/templates/partials/` feeds every target so content stays DRY and behaviour is consistent across tools.
+
+**Rationale.** `src/detector/detect-ai-agents.ts` already detects Cursor, Copilot CLI, Windsurf, Aider, Continue.dev, and Gemini CLI on the user's machine, but `askTargets()` in [src/prompt/questions.ts](src/prompt/questions.ts) only offers Claude Code + Codex checkboxes. The detector work is wasted. Meanwhile the 2025–2026 norm is that Copilot, Windsurf, Gemini CLI, Aider, and Continue all read `AGENTS.md` natively — so the existing Claude/Codex pipeline already half-covers five extra tools. This epic finishes the job with dedicated surfaces for the three tools (Cursor, VSCode+Copilot, Windsurf) that require more than `AGENTS.md` to behave well.
+
+**Non-goals.**
+- Aider, Continue.dev, Gemini CLI, Copilot CLI, Cline/Roo as first-class targets — they consume `AGENTS.md` natively and do not need separate surfaces in this round. The generated `AGENTS.md` already covers them.
+- Legacy `.cursorrules` or `.windsurfrules` single-file emission — both are inferior to the directory-based formats and, in Cursor Agent mode, `.cursorrules` is silently ignored. We emit only the modern surfaces.
+- Auto-detection-driven target selection that overrides the user's choice — detector results seed the defaults, the user always confirms.
+
+**Acceptance.**
+- `askTargets()` emits a 5-item checkbox list with defaults seeded from `detectAiAgents()`.
+- Each selected target produces parity output: every partial included in Claude's `AGENTS.md` / `CLAUDE.md` is reachable in the corresponding Cursor / Copilot / Windsurf surface.
+- Re-runs route through Epic 7's `writeFileSafe`, preserving user edits.
+- `pnpm test` covers target-selection defaults, per-target snapshot rendering, and partial parity across targets.
+- `README.md` ships a "Supported targets" table mapping each tool to its output paths.
+
+### E11.T1 — Extend `askTargets()` with three new targets [S]
+
+- **Files**: [src/prompt/questions.ts](src/prompt/questions.ts), [src/prompt/types.ts](src/prompt/types.ts), [src/prompt/defaults.ts](src/prompt/defaults.ts).
+- **Change**: Replace the current two-confirm `askTargets()` with a single `checkbox({ ... })` prompt offering:
+  - `claudeCode` — default `detected.hasClaudeCode || (no other tool detected)`
+  - `codexCli` — default `detected.hasCodexCli`
+  - `cursor` — default from `detected.agents.find(a => a.id === 'cursor')`'s `isDetected`
+  - `copilot` — default from the `copilot` agent record (CLI or env var matched) **or** presence of `.github/` in workspace
+  - `windsurf` — default from the `windsurf` agent record
+- **Change**: Update the `Targets` interface in `src/prompt/types.ts` to include `cursor`, `copilot`, `windsurf` booleans, propagate through `StackConfig`, and default selection in `src/prompt/defaults.ts`.
+- **Done when**: running `agents-workflows init` on a system with Cursor + Windsurf installed pre-checks those boxes; unit test for defaults covers all 2^5 combinations sampled at representative points.
+
+### E11.T2 — Cursor target generator [M]
+
+- **Files**: `src/generator/generate-cursor-config.ts` (new), `src/templates/cursor/rule.mdc.ejs` (new), `src/templates/cursor/command.md.ejs` (new), `src/generator/index.ts` (wire-in).
+- **Change**: For each partial in `src/templates/partials/` emit one `.cursor/rules/NN-<slug>.mdc` file:
+  - Filename ordering prefix (`00-`, `10-`, `20-`, ...) so Cursor loads them in a stable order.
+  - YAML frontmatter keys: `description`, `alwaysApply`, `globs` per partial category — see partial→mode map below.
+  - Body: the already-rendered partial content.
+- **Change**: Also emit `.cursor/commands/{workflow-plan,workflow-fix,external-review}.md` rendered from the same EJS sources as `.claude/commands/`.
+- **Partial → MDC activation map** (authoritative):
+  - `alwaysApply: true` — `untrusted-content`, `fail-safe`, `architect-fail-safe`, `tool-use-discipline`, `definition-of-done`, `error-handling-self`, `context-budget`, `dry-rules`, `git-rules`, `review-checklist`, `ai-complacency` (when added)
+  - `globs:` (file-scoped) — `api-design` → backend globs; `accessibility` → UI globs; `performance` → UI globs; `testing-patterns` → test globs; `concurrency` → server globs
+  - `description:` only (Model-Decision mode) — `docs-reference`, `stack-context`, `code-style`, `file-organization`, `workspaces`
+- **Done when**: rendered `.cursor/rules/` has one file per partial, each parses as MDC, snapshot test in `tests/generate-cursor-config.test.ts` passes; rendered rule count equals partial count.
+
+### E11.T3 — VSCode + GitHub Copilot target generator [M]
+
+- **Files**: `src/generator/generate-copilot-config.ts` (new), `src/templates/copilot/copilot-instructions.md.ejs` (new), `src/templates/copilot/prompt.md.ejs` (new), `src/generator/index.ts` (wire-in).
+- **Change**: Emit a **single** `.github/copilot-instructions.md` that concatenates: project header + context budget + dangerous ops + git discipline + security defaults + Definition of Done + AI-complacency guard + MCP policy + memory discipline. This file does not support YAML frontmatter, so flatten into Markdown sections.
+- **Change**: Emit `.github/prompts/{workflow-plan,workflow-fix,external-review}.prompt.md` with YAML frontmatter: `description`, `name`, `argument-hint`, `agent`, `model`, `tools`. The `tools:` array is the Copilot equivalent of Claude's allow-list (see Epic 9 extension) — scope tightly per prompt.
+- **Change**: Since Copilot also reads repo-root `AGENTS.md` natively, document that the copilot surface is additive (not a replacement for) `AGENTS.md`. When the user selects *only* the Copilot target and does not already have `AGENTS.md`, still emit `AGENTS.md` alongside `copilot-instructions.md` as the universal fallback.
+- **Done when**: `.github/copilot-instructions.md` ≤ 300 lines, contains every safety section; three prompt files render with valid frontmatter; snapshot test asserts `tools:` array matches Epic 9 allow-list for each prompt.
+
+### E11.T4 — Windsurf target generator [M]
+
+- **Files**: `src/generator/generate-windsurf-config.ts` (new), `src/templates/windsurf/rule.md.ejs` (new), `src/templates/windsurf/workflow.md.ejs` (new), `src/generator/index.ts` (wire-in).
+- **Change**: For each partial emit one `.windsurf/rules/NN-<slug>.md` with activation metadata header (Windsurf's in-body activation block or plugin metadata per current docs):
+  - `always_on` — safety + review partials (same list as Cursor `alwaysApply: true`)
+  - `glob` — stack-scoped partials (same globs as Cursor)
+  - `model_decision` — docs/ADR/stack-context partials
+  - `manual` — opt-in partials (e.g. `i18n`, `concurrency` when backend absent)
+- **Change**: Emit `.windsurf/workflows/{workflow-plan,workflow-fix,external-review}.md` as Cascade workflows invocable via `/workflow-plan` etc.
+- **Done when**: every partial has a Windsurf counterpart with correct activation; rendered file count = partial count + 3 workflows; snapshot test in `tests/generate-windsurf-config.test.ts` passes.
+
+### E11.T5 — Route all target writes through `writeFileSafe` [S]
+
+- **Files**: `src/generator/generate-cursor-config.ts`, `src/generator/generate-copilot-config.ts`, `src/generator/generate-windsurf-config.ts`, plus shared `src/generator/write-file.ts` (from Epic 7).
+- **Change**: No direct `fs.writeFile*` call in any new generator. Every write passes through `writeFileSafe({ path, content, merge })`. Markdown outputs use the Markdown-aware merger (Epic 7 E7.T3). Cursor MDC frontmatter blocks are treated as a managed heading equivalent so re-runs do not clobber user-appended body content.
+- **Done when**: re-running `agents-workflows init` on a project that already has hand-edited `.cursor/rules/20-stack.mdc` preserves the user body; ESLint rule (or simple Grep in CI) asserts no `writeFile` in new generators.
+
+### E11.T6 — Tests for multi-target parity [M]
+
+- **Files**: `tests/generate-cursor-config.test.ts` (new), `tests/generate-copilot-config.test.ts` (new), `tests/generate-windsurf-config.test.ts` (new), `tests/target-selection.test.ts` (new).
+- **Change**: Per-target snapshot tests + a parity test that asserts every partial referenced in `AGENTS.md.ejs` is present (by slug) in the rendered Cursor, Copilot, and Windsurf outputs.
+- **Done when**: `pnpm test` green; snapshot diffs reviewed by human; parity test fails if a new partial is added to `AGENTS.md.ejs` without a corresponding Cursor/Windsurf rule + Copilot section.
+
+### E11.T7 — README "Supported targets" table + AGENTS.md note [S]
+
+- **Files**: `README.md`, `src/templates/config/AGENTS.md.ejs`.
+- **Change**: Add a "Supported targets" table to `README.md` listing the five tools, their output paths, activation model, and detection signals. In `AGENTS.md.ejs` add a one-paragraph note under Tooling stating: "This file is the universal surface — Copilot, Windsurf, Gemini CLI, Aider, and Continue.dev read it natively. Claude Code, Codex CLI, and Cursor additionally consume tool-native files under `.claude/`, `.codex/`, and `.cursor/`."
+- **Done when**: README table renders; `AGENTS.md` snapshot test updated; no stale references to "dual output" remain.
+
+---
+
+## Epic 12 — Polyglot Monorepo Support [SHOULD]
+
+**Goal.** `agents-workflows init` produces workspace-aware outputs in polyglot monorepos: each workspace gets its own detected stack and toolchain commands, a nested `AGENTS.md` is emitted per workspace when languages differ, root config carries a `## Workspaces` index table, and every agent routes Definition-of-Done gates through the nearest workspace manifest per §1.18.
+
+**Rationale.** Real-world repos mix JS/TS + Python + Rust + Go + .NET + C++ freely, but today the CLI's `detectMonorepo` recognises only JS-ecosystem workspaces (`pnpm-workspace.yaml`, `package.json workspaces`, `lerna.json`) and `detectLanguage` runs once at repo root. That produces a single language/command set even for polyglot repos, so generated agents happily run one ecosystem's `test`/`lint` at the root or against the wrong workspace. §1.18 closes the rule gap; this epic ships the detection, schema, and template support that makes the rule enforceable.
+
+**Scope.** First-class support for these workspace roots:
+
+- **JS/TS** — `pnpm-workspace.yaml`, `package.json workspaces`, `lerna.json` (already partially shipped; extend to expose per-workspace stacks).
+- **Python** — `pyproject.toml` with `[tool.uv.workspace]` members or `[tool.poetry.packages]`.
+- **Rust** — `Cargo.toml` with `[workspace] members = [...]`.
+- **Go** — `go.work` `use (...)` blocks (multi-module).
+- **.NET** — `*.sln` solution files referencing multiple `*.csproj`.
+- **C++** — `CMakeLists.txt` with `add_subdirectory(...)`, plus `conanfile.txt` / `conanfile.py` / `vcpkg.json` manifests per subdirectory.
+
+**Acceptance.**
+
+- Fixture repos for each supported monorepo type (Cargo workspace, `go.work`, `uv` workspace, `.sln` multi-project, CMake multi-target, hybrid pnpm + Python + Rust) resolve every workspace with correct language, package manager, and `commands.{typeCheck,test,lint,build}`.
+- When ≥2 distinct languages are detected, `polyglot-monorepo.md.ejs` renders into every wired agent and the root `AGENTS.md`/`CLAUDE.md` gain a `## Workspaces` index table.
+- Nested `AGENTS.md` is emitted in each workspace whose language differs from the root.
+- `pnpm test` green; new snapshot tests cover each fixture.
+- Backward compatible: monolingual and JS-only monorepos see no schema-shape regressions (empty `workspaces` array / single workspace).
+
+### E12.T1 — Extend `MonorepoTool` enum and polyglot workspace detection [§1.18] — M
+
+- **Files**: [src/detector/detect-monorepo.ts](src/detector/detect-monorepo.ts).
+- **Change**: Add enum values `cargo`, `go-work`, `uv`, `poetry`, `dotnet-sln`, `cmake`. Add readers for each manifest format that return workspace member globs/paths: parse `Cargo.toml [workspace] members`, `go.work` `use` entries, `pyproject.toml [tool.uv.workspace] members` and `[tool.poetry.packages]`, `*.sln` `Project(...)` entries, and `CMakeLists.txt` `add_subdirectory(...)` calls. Retain existing JS detectors; add detection ordering so JS wins on `package.json workspaces`, Cargo on `[workspace]`, etc.
+- **Done when**: unit tests cover each format against a minimal fixture; `detectMonorepo` resolves workspace paths for each and sets `tool` to the correct value.
+
+### E12.T2 — Per-workspace stack detection [§1.18] — M
+
+- **Files**: [src/detector/detect-stack.ts](src/detector/detect-stack.ts), new `src/detector/detect-workspace-stack.ts`.
+- **Change**: Introduce `detectWorkspaceStack(workspacePath)` that runs the existing pipeline (language, framework, test framework, linter, formatter, package manager, commands) scoped to a workspace directory. `detectStack` becomes workspace-aware: when `monorepo.workspaces` is non-empty, it runs `detectWorkspaceStack` for each and aggregates a top-level `languages: string[]` list of distinct languages found. Keep the root-level single-language path unchanged when no workspaces are present.
+- **Done when**: a TS + Rust + Python fixture resolves three distinct workspace stacks; aggregated `languages` contains exactly `['typescript', 'rust', 'python']`; a monolingual fixture still returns `languages.length <= 1` and an empty `workspaces` array.
+
+### E12.T3 — Schema update for per-workspace stacks [§1.18] — S
+
+- **Files**: [src/schema/stack-config.ts](src/schema/stack-config.ts).
+- **Change**: Extend the `monorepo` object with a `workspaces: WorkspaceStack[]` array whose items carry `path`, `language`, `runtime`, `framework`, `packageManager`, and `commands.{typeCheck,test,lint,build}` (reusing `safeCommandNullable` / `safeCommand` validators). Add a top-level `languages: string[]` aggregate. Default to `[]` when the repo is monolingual to preserve backward compatibility. No broadening of the `SAFE_COMMAND_RE` pattern — workspace commands must still pass the same validation as root commands.
+- **Done when**: schema parses existing fixtures unchanged; new polyglot fixture parses with populated `workspaces` + `languages`; Zod tests assert defaults and safe-command enforcement.
+
+### E12.T4 — New partial `polyglot-monorepo.md.ejs` [§1.18] — S
+
+- **Files**: `src/templates/partials/polyglot-monorepo.md.ejs` (new).
+- **Change**: Render the §1.18 paste-ready snippet verbatim. Include conditionally when `monorepo.workspaces.length > 1` or `languages.length >= 2`. Wire into `architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, and `reviewer` templates via `<%- include('../partials/polyglot-monorepo.md.ejs') %>` under the existing partial-include blocks.
+- **Done when**: partial <80 lines; snapshot tests verify it renders in polyglot fixtures and is absent in monolingual fixtures.
+
+### E12.T5 — Cross-reference workspace routing in existing partials [§1.18] — S
+
+- **Files**: `src/templates/partials/definition-of-done.md.ejs`, `src/templates/partials/fail-safe.md.ejs`, `src/templates/partials/tool-use-discipline.md.ejs`.
+- **Change**: Add conditional lines (gated on the same polyglot predicate) reminding the agent that DoD gates run per touched workspace, that `pwd` + nearest-manifest lookup precedes any command, and that independent per-workspace searches/reads should fan out as parallel tool calls. Do not duplicate the §1.18 snippet — cross-reference it.
+- **Done when**: rendered partials contain the workspace-scoped reminders in polyglot fixtures only; existing monolingual snapshots unchanged.
+
+### E12.T6 — Nested `AGENTS.md` per workspace + root `## Workspaces` table [§1.18] — M
+
+- **Files**: `src/generator/generate-root-config.ts`, `src/templates/config/AGENTS.md.ejs`, new `src/templates/config/workspace-AGENTS.md.ejs`.
+- **Change**: When a workspace's language differs from the root, emit a nested `AGENTS.md` into `<workspacePath>/AGENTS.md` with that workspace's language, package manager, and DoD commands. In the root `AGENTS.md` (and `CLAUDE.md`), render a `## Workspaces` table listing `path | language | package manager | typeCheck | test | lint | build` for each detected workspace. All writes go through the existing `writeFileSafe` helper from Epic 7 — never clobber a hand-edited nested `AGENTS.md`.
+- **Done when**: polyglot fixture produces nested `AGENTS.md` files whose commands match that workspace's toolchain; root table lists every workspace; re-running `init` preserves hand-edited nested files per Epic 7 rules.
+
+### E12.T7 — Prompt flow: confirm detected workspaces [§1.18] — S
+
+- **Files**: [src/prompt/questions.ts](src/prompt/questions.ts), `src/prompt/prompt-flow.ts`.
+- **Change**: After detection, show the detected workspace list (path + language) and let the user deselect workspaces that should not receive generated outputs. Honor the `--yes` / `--no-prompt` / `--merge-strategy` flags from Epic 7's E7.T5 so CI runs are non-interactive. Persist the user's selection into the final stack config.
+- **Done when**: interactive run offers the multi-select; `--yes` keeps all detected workspaces; deselected workspaces receive no nested files and are omitted from the root table.
+
+### E12.T8 — Jest fixtures + snapshot coverage [§1.18] — M
+
+- **Files**: `tests/fixtures/monorepo-cargo/`, `tests/fixtures/monorepo-go-work/`, `tests/fixtures/monorepo-uv/`, `tests/fixtures/monorepo-dotnet-sln/`, `tests/fixtures/monorepo-cmake/`, `tests/fixtures/monorepo-hybrid-pnpm-python-rust/`, plus `tests/detect-monorepo.test.ts`, `tests/detect-workspace-stack.test.ts`, `tests/generate-workspace-agents.test.ts`.
+- **Change**: Minimal fixtures per supported tool (no binaries — just the manifests and 1–2 dummy source files). Tests assert workspace resolution, per-workspace stack output, polyglot partial rendering, nested `AGENTS.md` emission, root `## Workspaces` table contents, and `writeFileSafe` round-trip preserving hand edits.
+- **Done when**: `pnpm test` green; new fixtures add <200 LOC total; snapshots reviewed.
+
+**Non-goals (this Epic).** Explicitly parked:
+
+- Bazel, Buck2, Pants, Moon, and Nx polyglot plugins — tracked in Epic 8 as situational enhancements.
+- JVM monorepos (Gradle multi-module, Maven reactor).
+- Remote-caching integration (Turbo Remote Cache, Nx Cloud, Bazel Remote).
+- CI matrix generation across detected workspaces.
+- Build-graph-based change-detection (only touch affected workspaces).
+
 ---
 
 ## Delivery plan
@@ -1669,10 +1987,12 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 |---|---|---|
 | 1 | Safety & DoD | Epic 1 + Epic 2 + Epic 7 |
 | 2 | Review & Standards | Epic 3 + Epic 4 |
-| 3 | Orchestration | Epic 5 |
-| 4 | Extended standards | Epic 6 |
-| 5 | Policy hardening | Epic 9 |
-| 6 | Autonomous headless runs | Epic 10 |
+| 3 | Multi-IDE targets | Epic 11 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
+| 4 | Orchestration | Epic 5 |
+| 5 | Extended standards | Epic 6 |
+| 6 | Policy hardening | Epic 9 (E9.T1–E9.T5 for Claude/Codex + E9.T6–E9.T8 for Cursor/Copilot/Windsurf) |
+| 7 | Autonomous headless runs | Epic 10 (E10.T1–E10.T5 for Claude/Codex + E10.T6–E10.T8 for Cursor/Copilot/Windsurf) |
+| 8 | Polyglot monorepo support | Epic 12 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
 | Backlog | Situational | Epic 8 |
 
-**Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs.
+**Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.
