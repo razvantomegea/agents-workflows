@@ -94,6 +94,7 @@ export async function updateCommand(
   await backupExistingFiles(projectRoot, changedFiles);
   const writeResult = await writeGeneratedFiles(projectRoot, changedFiles, {
     confirmMarkdownOverwrite: true,
+    confirmOverwrite: options.yes ? async () => true : undefined,
   });
   const nextManifest: AgentsWorkflowsManifest = {
     ...parsed.data,
