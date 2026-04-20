@@ -1590,6 +1590,79 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
+## Epic 10 — Autonomous Non-Interactive Workflow Mode [MUST]
+
+**Goal.** Make both Claude Code and Codex run workflow sessions headlessly by default from repo config (no per-run CLI approval flags), while keeping deny/forbid policy and workspace sandbox boundaries fully active.
+
+**Critical distinction.** This epic targets **non-interactive approvals**, not **sandbox bypass**. Do **not** use:
+- Claude: `--dangerously-skip-permissions`
+- Codex: `--dangerously-bypass-approvals-and-sandbox` or `sandbox_mode = "danger-full-access"`
+
+These disable the last-line sandbox controls and are out of bounds for this project.
+
+**Rationale.** Current hardening protects the repo, but recurring interactive prompts slow planned workflows and CI-style runs. Setting defaults in tracked config gives one-line execution while preserving strict layers: deny/forbid rules first, then OS/workspace sandbox enforcement.
+
+**Acceptance.**
+- `.claude/settings.json` sets `"permissions.defaultMode"` for autonomous execution (default target: `"bypassPermissions"`; optional conservative profile: `"acceptEdits"`).
+- `.codex/config.toml` sets `approval_policy = "never"` with `sandbox_mode = "workspace-write"` and a workspace-write stanza configured for networked runs.
+- `.codex/rules/project.rules` remains enforced and unchanged/stricter for forbidden commands (`git push`, `git commit`, destructive shell ops, outside-workspace writes).
+- Docs include canonical one-line invocations for local and logged/CI runs; no dangerous bypass flags appear in examples.
+- Verification confirms forbidden/deny and sandbox constraints still win under headless mode.
+
+### E10.T1 — Claude default autonomous mode in shared config — S
+- **Files**: `.claude/settings.json`, optional note in `.claude/settings.local.json`.
+- **Change**: Set:
+  ```json
+  {
+    "permissions": {
+      "defaultMode": "bypassPermissions"
+    }
+  }
+  ```
+  Keep existing deny rules and sandbox settings intact. Document optional fallback to `"acceptEdits"` for semi-autonomous operation where shell remains allowlisted/gated.
+- **Done when**: running `claude -p "<workflow prompt>"` from repo root does not ask approval prompts for normal flow, while deny rules still block denied commands before approval stage.
+
+### E10.T2 — Codex default non-interactive mode in tracked config — S
+- **Files**: `.codex/config.toml`.
+- **Change**: Set:
+  ```toml
+  approval_policy = "never"
+  sandbox_mode = "workspace-write"
+
+  [sandbox_workspace_write]
+  network_access = true
+  ```
+  Preserve/extend `.codex/rules/project.rules` so forbidden actions remain blocked by policy.
+- **Done when**: `codex exec "<workflow prompt>"` runs without approval prompts and still rejects forbidden rule matches plus outside-workspace writes.
+
+### E10.T3 — Workflow invocation docs (one-line + logged variants) — S
+- **Files**: `README.md`, `CLAUDE.md`, `AGENTS.md` (short additions under existing workflow sections).
+- **Change**: Add canonical examples:
+  - Claude: `claude -p "Read ./CLAUDE.md and execute every step in order until complete. Do not ask for input."`
+  - Claude logged: `claude -p "..." --output-format stream-json | tee run.log`
+  - Codex: `codex exec "Read ./AGENTS.md and execute every step in order until complete."`
+  - Codex logged: `codex exec --json --ephemeral "..." | tee run.log`
+  Also document: "`--full-auto` != `approval_policy = \"never\"`" (Codex).
+- **Done when**: docs show zero-flag approval setup (config-driven), include both local and pipeline logging examples, and explicitly forbid dangerous sandbox-bypass flags.
+
+### E10.T4 — Rule-order and protection-boundary documentation — S
+- **Files**: `CLAUDE.md` and `AGENTS.md` (append within existing safety sections).
+- **Change**: Clarify guard order and remaining protections in headless mode:
+  1) deny/forbid rules evaluate first, 2) approval stage (auto-approved in autonomous mode), 3) sandbox boundary enforcement.
+  Include explicit guidance to run autonomous sessions only on feature branches and require human `git diff` review before any manual commit/push.
+- **Done when**: docs explicitly separate "non-interactive" from "unsandboxed" and capture branch + manual review mitigations.
+
+### E10.T5 — Validation smoke tests for autonomous mode safety — M
+- **Files**: `QA.md` (append test protocol) and/or `docs/GOVERNANCE.md` if present.
+- **Change**: Add repeatable checks:
+  - Attempt forbidden commands (`git push`, `git commit`, `rm -rf`) in autonomous sessions; verify denial.
+  - Attempt write outside workspace; verify sandbox rejection.
+  - Run one nominal workflow prompt in each tool; verify no approval prompts.
+  - Capture logs (`run.log`) for audit trail.
+- **Done when**: smoke test checklist is executable by any maintainer and demonstrates "headless + still constrained" behavior.
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -1599,6 +1672,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 | 3 | Orchestration | Epic 5 |
 | 4 | Extended standards | Epic 6 |
 | 5 | Policy hardening | Epic 9 |
+| 6 | Autonomous headless runs | Epic 10 |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs.
