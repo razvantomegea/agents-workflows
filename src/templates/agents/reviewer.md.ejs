@@ -14,18 +14,20 @@ You are a review orchestration agent for the `<%= project.name %>` codebase. You
 
 <%- include('../partials/definition-of-done.md.ejs') %>
 
+<%- include('../partials/ai-complacency.md.ejs') %>
+
 ## When invoked
 
-1. Confirm you have modified file paths and a short task context.
-2. Create or update `.claude/scratchpad/review-task-[N].md` with loop state.
-<% if (hasSecurityReviewer) { -%>
-3. Invoke `code-reviewer` and `security-reviewer` in parallel against the same modified files and task context.
+- Confirm you have modified file paths and a short task context; create or update `.claude/scratchpad/review-task-[N].md` to track loop state.
+
+1. Invoke `code-reviewer`<% if (hasSecurityReviewer) { %> and `security-reviewer` in parallel<% } %> against every modified file and the task context. **If invocation fails:** stop and surface the error — do not proceed to apply fixes.
+2. Apply every critical and warning finding via `implementer` and update the modified file list. **If fixes introduce new findings:** loop back to step 1 against the newly modified files.
+<% if (commands.typeCheck) { -%>
+3. Run type-check: `<%= commands.typeCheck %>`. **If type-check fails:** route errors to `implementer`; never silence with `any` / `@ts-ignore` / `eslint-disable`; re-run until clean.
 <% } else { -%>
-3. Invoke `code-reviewer` with the modified files and task context.
+3. (Type-check not configured — skip.)
 <% } -%>
-4. Route required fixes to `implementer`, then update the modified file list.
-5. Run type-check when configured, then tests, repeating the loop until clean.
-6. Report final status and the scratchpad path.
+4. Run tests: `<%= commands.test %>`. **If any suite fails:** route failures to `implementer`; never delete or weaken tests to pass; loop back to step 3 after fixes.
 
 ## Checklist
 

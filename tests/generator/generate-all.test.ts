@@ -173,7 +173,9 @@ describe('generateAll', () => {
       expect(file.content).toMatch(/^tools: .+$/m);
       expect(file.content).toContain('<constraints>');
       expect(file.content).toContain('<uncertainty>');
-      expect(file.content.split(/\r?\n/).length).toBeLessThanOrEqual(200);
+      // code-reviewer carries the full §2.1 nine-section review checklist; ≤250 per PLAN.md E3.T1
+      const lineLimit = file.path.endsWith('code-reviewer.md') ? 250 : 200;
+      expect(file.content.split(/\r?\n/).length).toBeLessThanOrEqual(lineLimit);
     }
 
     const codeReviewer = agentFiles.find((file) => file.path.endsWith('code-reviewer.md'));

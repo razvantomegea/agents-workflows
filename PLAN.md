@@ -1,199 +1,225 @@
-# Plan - Epic 1: Agent Safety Core Protocols
-_Branch: `feature/epic-1-agent-safety-core` | Date: 2026-04-19_
+# Plan - Epic 3 Code Review Depth
+_Branch: `feature/epic-3-code-review-depth` | Date: 2026-04-20_
 
 ## Context
 
-Every generated agent must refuse prompt injection, stop on dirty state, block destructive ops, and respect a finite context budget. Epic 1 adds four new EJS partials (`untrusted-content`, `fail-safe`, `tool-use-discipline`, `context-budget`), wires them into the right agent/config templates per the PRD §4 diff map, hardens `.claude/settings.local.json` with a deny list and PostToolUse lint hook, adds a `## Dangerous operations` section to `AGENTS.md`, and emits a mirrored `.codex/config.toml` for Codex CLI parity.
+Epic 3 upgrades review rigor across the framework: `code-reviewer` gets the full §2.1 nine-section checklist with Conventional Comments, a new §2.18 AI-complacency guard is wired into the three review surfaces, the §1.7 cross-model routing table is paste-ready in `AGENTS.md`, `reviewer` exposes an explicit numbered 4-step gate, and `/external-review` supports a user-specified terminal command with Code Rabbit CLI as the default. This delivers the `[MUST]` review-depth requirement from PRD.md:1492–1520 without touching agents outside the review surface.
 
 ## Pre-implementation checklist
 
-- [ ] Grepped codebase for existing equivalents (partials, constants, helpers)
-- [ ] Verified no type duplication — shared types imported, not redeclared
-- [ ] Confirmed no magic strings — deny patterns live in ONE named constant
+- [ ] Grepped codebase for existing equivalents (components, hooks, utils, types, constants)
+  - `review-checklist.md.ejs` exists as a 9-line table partial driven by `reviewChecklist` context — will be replaced with the §2.1 nine-section static checklist. The dynamic `buildReviewChecklist` / `ReviewChecklistItem` machinery in `src/generator/review-checklist-rules.ts` and `src/generator/types.ts` is kept intact (still referenced by its own `tests/generator/review-checklist.test.ts`); this plan keeps the dynamic rules accessible as an optional rendered appendix inside the new partial so stack-specific rules (Drizzle, Zustand, TanStack Query, React hooks) are not lost.
+  - `definition-of-done.md.ejs`, `fail-safe.md.ejs`, `untrusted-content.md.ejs` show the existing partial shape (H2 heading + wrapper-tag block). New `ai-complacency.md.ejs` follows the same pattern with an `<ai_complacency_guard>` block.
+  - `AGENTS.md.ejs` already has a Sub-agent Routing table (task→agent, lines 17–38). The new "Model routing" table is a separate section inserted after it — do **not** duplicate or replace the existing routing table.
+  - `external-review.md.ejs` is a short command (38 lines) — extend, do not rewrite.
+  - `reviewer.md.ejs` already has a 6-step "When invoked" list that roughly matches the gate; Task E3.T4 rewrites it into the explicit 4-step numbered gate with per-step failure handling.
+- [ ] Verified no type duplication — `GeneratorContext`, `ReviewChecklistItem` in `src/generator/types.ts` are untouched. No new context fields required: new partials contain static markdown only (except the optional dynamic appendix in `review-checklist.md.ejs` which reuses the existing `reviewChecklist` array).
+- [ ] Confirmed no magic numbers — PR size (`≤ 400 LOC`), complexity bounds (`≤15 / ≤20 / ≤4`), and Argon2id params (`m=19456, t=2, p=1`) are pasted verbatim from the PRD source of truth (§2.1 / §1.7); commit subject limit reuses the same `≤72-char` wording as PRD.
 
-## Source-of-truth references
+## Files to be created or modified
 
-- PRD snippets: `PRD.md` §1.1 (lines 45-55), §1.2 (70-81), §1.3 (95-109), §1.4 (122-168), §1.5 (186-213). Diff map: lines 1196-1218; Epic 1 acceptance: lines 1266-1311.
-- Existing partial pattern: `src/templates/partials/dry-rules.md.ejs`, `src/templates/partials/git-rules.md.ejs` (static markdown, no EJS locals unless needed).
-- Include syntax: `<%- include('../partials/FILE.md.ejs') %>` (see `architect.md.ejs:79,83`).
-- `renderTemplate` (`src/utils/template-renderer.ts`) collapses `\n{3,}` to `\n\n` and trims — spacing around includes is forgiving.
-- 200-line cap enforced at `tests/generator/generate-all.test.ts:157` — any agent exceeding 200 rendered lines fails CI.
+- **Create:** `src/templates/partials/ai-complacency.md.ejs`
+- **Modify:** `src/templates/partials/review-checklist.md.ejs`
+- **Modify:** `src/templates/agents/code-reviewer.md.ejs`
+- **Modify:** `src/templates/agents/reviewer.md.ejs`
+- **Modify:** `src/templates/commands/external-review.md.ejs`
+- **Modify:** `src/templates/config/AGENTS.md.ejs`
+- **Create:** `tests/generator/epic-3-review-depth.test.ts`
+
+No generator/TS source files, no schema, no new context fields.
 
 ## Tasks
 
-### Task 1 - Create `untrusted-content.md.ejs` partial [LOGIC] [PARALLEL]
-**Files**: `src/templates/partials/untrusted-content.md.ejs`
-**Input**: Verbatim snippet from `PRD.md` §1.5, lines 186-213 (the `<untrusted_content_protocol>` block: DATA-not-INSTRUCTIONS source list, STOP triggers, Rule of Two from Meta 2025-10-31).
-**Output**: Static EJS partial wrapped with a `## Untrusted content protocol` H2 heading; no EJS locals (pure static content).
-**Notes**:
-- Hard cap <60 lines per PRD acceptance.
-- DRY: sole source of truth for `<untrusted_content_protocol>`; do not inline bullets anywhere else.
-- Do not escape angle brackets — `renderTemplate` preserves XML-style tags.
-- Include the Meta Rule of Two paragraph verbatim.
-- No `include(...)` inside this partial.
+### Task 1 - E3.T1 Rewrite review-checklist partial with §2.1 nine-section checklist [LOGIC] [PARALLEL]
 
-### Task 2 - Create `fail-safe.md.ejs` partial [LOGIC] [PARALLEL]
-**Files**: `src/templates/partials/fail-safe.md.ejs`
-**Input**: Verbatim `<fail_safe>` block from `PRD.md` §1.3, lines 95-109 (pwd / git status / git branch --show-current, ambiguity >10 lines rule, two-strike rule).
-**Output**: Static EJS partial with a `## Fail-safe behaviors` H2 heading above the XML-tagged block.
-**Notes**:
-- Hard cap <40 lines.
-- DRY: included by 10 of 10 agents — do not duplicate sentences elsewhere.
-- No locals; no interpolation.
+**Files**
+- `src/templates/partials/review-checklist.md.ejs`
 
-### Task 3 - Create `tool-use-discipline.md.ejs` partial [LOGIC] [PARALLEL]
-**Files**: `src/templates/partials/tool-use-discipline.md.ejs`
-**Input**: Verbatim `<tool_use_discipline>` block from `PRD.md` §1.2, lines 70-81 (search-before-act, no invented imports/paths/packages, slopsquatting clause, parallel tool calls, post-edit type-check).
-**Output**: Static EJS partial with `## Tool-use discipline` H2 heading above the XML-tagged block.
-**Notes**:
-- Hard cap <40 lines.
-- Include the phrase "parallel tool calls" verbatim — Task 5 test greps it.
-- DRY: referenced by 3 agents (architect, implementer, react-ts-senior).
-- No locals.
+**Input**
+- PRD §2.1 (PRD.md:676–765) paste-ready checklist content.
+- Existing partial body (9-line dynamic table) driven by `reviewChecklist` context.
 
-### Task 4 - Create `context-budget.md.ejs` partial [LOGIC] [PARALLEL]
-**Files**: `src/templates/partials/context-budget.md.ejs`
-**Input**: Verbatim context-budget block from `PRD.md` §1.1, lines 45-55 ("Treat context as a finite attention budget"; rules for file size, rg vs full reads, linking docs, NOTES.md + /clear, nested-package precedence).
-**Output**: Static EJS partial with `## Context budget` H2 heading.
-**Notes**:
-- Hard cap <30 lines.
-- DRY: wired into `AGENTS.md.ejs` and `CLAUDE.md.ejs` only.
-- Preserve literal phrase "finite attention budget" (test anchor in Task 5).
-- No locals.
+**Output**
+- Replace partial body with the nine H3 sections (`### 1. Correctness` … `### 9. AI-specific`) exactly as specified in §2.1, followed by the Conventional Comments footer (`nit:` non-blocking, `(blocking)` for must-fix, "Delegate style entirely to formatters").
+- Append a final `### Stack-specific rules` sub-section that renders the existing dynamic `reviewChecklist` table (the prior partial body) so stack-specific rules are preserved. Guard with `<% if (reviewChecklist && reviewChecklist.length > 0) { -%>` so environments without this context still render cleanly.
 
-### Task 5 - Wire partials into agent templates + root config + update generator test [LOGIC] [TEST]
-**Files**:
-- `src/templates/config/AGENTS.md.ejs`
-- `src/templates/config/CLAUDE.md.ejs`
-- `src/templates/agents/architect.md.ejs`
-- `src/templates/agents/implementer.md.ejs`
+**Notes**
+- DRY: keep the dynamic table logic inside this file rather than duplicating it in `code-reviewer.md.ejs`.
+- Rendered `code-reviewer.md` must stay ≤ 250 lines — verified by Task 7 test. The static checklist is ~75 lines; code-reviewer already includes 4 partials + ~55 lines of shell. Net addition ≈ 65 lines, comfortably under 250.
+- Do not introduce new context keys; `reviewChecklist` already exists in `GeneratorContext`.
+- Acceptance hooks (Task 7): `review-checklist includes all nine §2.1 section headings`, `code-reviewer rendered output stays ≤ 250 lines`, `review-checklist includes Conventional Comments footer`.
+
+### Task 2 - E3.T2a Create ai-complacency partial [LOGIC]
+
+**Files**
+- `src/templates/partials/ai-complacency.md.ejs` (new)
+
+**Input**
+- PRD §2.18 (PRD.md:1247–1267) paste-ready snippet.
+
+**Output**
+- New partial following the existing H2 + wrapper-tag idiom (see `definition-of-done.md.ejs`):
+  - H2 heading: `## AI-authored code (Thoughtworks Radar v33 — "Hold" on AI complacency)`.
+  - Wrapper: `<ai_complacency_guard>` / `</ai_complacency_guard>`.
+  - Bullets for each of the 6 verification rules from §2.18, including the final `Never auto-merge on AI approval alone.` clause verbatim.
+
+**Notes**
+- DRY: self-contained partial, no nested includes.
+- Wrapper tag `<ai_complacency_guard>` is unique (grep: only PRD.md currently contains `ai_complacency`).
+- Must live at `src/templates/partials/` so all three consumers can include it with `'../partials/ai-complacency.md.ejs'`.
+
+### Task 3 - E3.T2b Wire ai-complacency into code-reviewer, reviewer, external-review [LOGIC]
+
+**Files**
 - `src/templates/agents/code-reviewer.md.ejs`
-- `src/templates/agents/security-reviewer.md.ejs`
-- `src/templates/agents/code-optimizer.md.ejs`
-- `src/templates/agents/test-writer.md.ejs`
-- `src/templates/agents/e2e-tester.md.ejs`
 - `src/templates/agents/reviewer.md.ejs`
-- `src/templates/agents/ui-designer.md.ejs`
-- `src/templates/agents/react-ts-senior.md.ejs`
-- `tests/generator/generate-all.test.ts` (extend, do not replace)
+- `src/templates/commands/external-review.md.ejs`
 
-**Input**: Partials produced by Tasks 1-4. Exact diff map (honor strictly — do NOT blanket-include all four everywhere):
+**Input**
+- New `ai-complacency.md.ejs` from Task 2.
 
-| Template file | Partials to include |
-|---|---|
-| `config/AGENTS.md.ejs` | `context-budget` (Task 7 adds `## Dangerous operations` inline) |
-| `config/CLAUDE.md.ejs` | `context-budget` |
-| `agents/architect.md.ejs` | `tool-use-discipline` + `fail-safe` + `untrusted-content` |
-| `agents/implementer.md.ejs` | `tool-use-discipline` + `fail-safe` + `untrusted-content` |
-| `agents/code-reviewer.md.ejs` | `fail-safe` + `untrusted-content` |
-| `agents/security-reviewer.md.ejs` | `untrusted-content` + `fail-safe` |
-| `agents/code-optimizer.md.ejs` | `fail-safe` |
-| `agents/test-writer.md.ejs` | `fail-safe` |
-| `agents/e2e-tester.md.ejs` | `fail-safe` |
-| `agents/reviewer.md.ejs` | `fail-safe` |
-| `agents/ui-designer.md.ejs` | `untrusted-content` + `fail-safe` |
-| `agents/react-ts-senior.md.ejs` | `tool-use-discipline` + `fail-safe` + `untrusted-content` |
+**Output**
+- Add a single `<%- include('../partials/ai-complacency.md.ejs') %>` in each file:
+  - `code-reviewer.md.ejs`: directly after the `review-checklist` include (after line 13), before `docs-reference`.
+  - `reviewer.md.ejs`: directly after the `definition-of-done` include (after line 15), before `## When invoked`.
+  - `external-review.md.ejs`: directly before the final `## Rules` section, so the guard applies to findings emitted by the external tool.
 
-**Placement rule**: Insert each include immediately after the existing `docs-reference` include and before `## When invoked` (agents), or inside the managed markers (AGENTS.md/CLAUDE.md). Pattern: `<%- include('../partials/FILE.md.ejs') %>` with blank lines above and below.
+**Notes**
+- DRY: single partial, three consumers — no copy-paste of §2.18 content.
+- Commands and agents are both one level below `src/templates/`, so `../partials/...` relative paths resolve identically (confirmed by `generate-commands.ts` reusing the same `renderTemplate`).
+- Depends on Task 2; share-file constraint with Tasks 5 and 6 for `reviewer.md.ejs` and `external-review.md.ejs` — sequence: Task 5 → Task 3 (reviewer), Task 6 → Task 4 → Task 3 (external-review), or fold all three edits for one file into a single editing session.
+- Acceptance hooks (Task 7): `ai-complacency partial appears in code-reviewer, reviewer, external-review only`, `ai-complacency enforces no-auto-merge clause`.
 
-**Output**: Each agent template renders with mapped safety partials, in mapped order. `generate-all.test.ts` grows a new `describe('Epic 1 safety partials', ...)` block asserting substring anchors:
-- `untrusted-content`: `'<untrusted_content_protocol>'`
-- `fail-safe`: `'<fail_safe>'`
-- `tool-use-discipline`: `'<tool_use_discipline>'` and `'parallel tool calls'`
-- `context-budget`: `'finite attention budget'`
+### Task 4 - E3.T3 Insert §1.7 model-routing table and external-review family-diff rule [LOGIC] [PARALLEL]
 
-Plus negative assertions: partials NOT mapped to a file must NOT appear (e.g., `test-writer.md` must not contain `<tool_use_discipline>`).
-
-**Notes**:
-- 200-line cap already enforced at `generate-all.test.ts:157`. Verify rendered line counts for architect, implementer, react-ts-senior, ui-designer (multi-partial agents).
-- DRY: include-only — never paste XML blocks.
-- Use substring anchors (repo pattern), not Jest snapshots.
-- No EJS locals in these includes.
-
-**Depends on**: Tasks 1, 2, 3, 4.
-
-### Task 6 - Harden `settings-local.json.ejs` deny list + PostToolUse hook [SCHEMA] [LOGIC] [TEST]
-**Files**:
-- `src/generator/permissions.ts` (extend; do not duplicate `buildPermissions`)
-- `src/templates/config/settings-local.json.ejs`
-- `tests/generator/permissions.test.ts`
-- `src/generator/build-context.ts` (wire new returns through context)
-- `src/generator/types.ts` (add typed fields `denyList: readonly string[]` and `postToolUseHooks: readonly PostToolUseHook[]`)
-
-**Input**:
-- Deny patterns from `PRD.md` §1.4, lines 130-140: `Bash(rm -rf:*)`, `Bash(rm -r:*)`, `Bash(git push --force:*)`, `Bash(git push -f:*)`, `Bash(git reset --hard:*)`, `Bash(git clean -fd:*)`, `Bash(git branch -D:*)`, `Bash(npm publish:*)`, `Bash(pnpm publish:*)`, `Bash(terraform apply:*)`, `Bash(kubectl apply:*)`, `Bash(kubectl delete namespace:*)`, `Edit(.env*)`, `Edit(**/*.key)`, `Edit(**/*.pem)`, `Edit(migrations/**)`.
-- PostToolUse hook from §1.4, lines 142-146: `{ matcher: "Edit|Write", command: "<lint-fix-command> || true" }` — derive from `config.commands.lint`; append ` --fix` if not already present; omit hooks block entirely when `commands.lint` is null.
-
-**Output**:
-1. Module-level `UPPER_SNAKE_CASE` constant `DENY_PATTERNS` in `permissions.ts` containing the 16 patterns in declared order.
-2. Exported `buildDenyList(): string[]` returning a shallow copy of `DENY_PATTERNS`.
-3. Exported `buildPostToolUseHooks(input: { lintCommand: string | null }): PostToolUseHook[]` that conditionally emits the lint `--fix` hook.
-4. `PostToolUseHook` interface exported from `types.ts`; imported in `permissions.ts` and `build-context.ts`.
-5. `GeneratorContext` gains `denyList: readonly string[]` and `postToolUseHooks: readonly PostToolUseHook[]`.
-6. `settings-local.json.ejs` rewritten to emit `permissions.allow`, `permissions.deny`, and `hooks.PostToolUse` arrays (valid JSON; omit hooks block when empty).
-7. Four new `permissions.test.ts` cases:
-   - `buildDenyList` returns 16 patterns in documented order.
-   - `buildPostToolUseHooks` emits one hook when `lintCommand` is non-null.
-   - Returns empty array when `lintCommand` is null.
-   - Does not double-append `--fix`.
-8. One `generate-all.test.ts` case: parses rendered `.claude/settings.local.json` and asserts `permissions.deny.includes('Bash(rm -rf:*)')`, `permissions.deny.includes('Edit(.env*)')`, `hooks.PostToolUse[0].matcher === 'Edit|Write'`.
-
-**Notes**:
-- DRY: deny list lives in ONE place. Task 8 imports from `permissions.ts`.
-- Keep `permissions.ts` under 200 lines (currently 31).
-- No `any`; use `PostToolUseHook` interface, `readonly` arrays.
-- Functions >2 params use single object param (CLAUDE.md rule).
-- Template must NOT hardcode `"npm run lint"` — derive from hook object.
-
-**Depends on**: None structurally; land after Task 5 to minimize test churn.
-
-### Task 7 - Add `## Dangerous operations` section to `AGENTS.md.ejs` [LOGIC] [PARALLEL]
-**Files**:
+**Files**
 - `src/templates/config/AGENTS.md.ejs`
-- `tests/generator/generate-all.test.ts` (one new `it` block)
+- `src/templates/commands/external-review.md.ejs`
 
-**Input**: Verbatim block from `PRD.md` §1.4, lines 152-168 (rm -rf, git push --force, DROP/TRUNCATE, kubectl/terraform non-local, npm/pnpm/cargo/pypi publish, writes outside project root, --dry-run preference, four-question pre-flight: what/where/reversibility/blast-radius).
+**Input**
+- PRD §1.7 (PRD.md:266–297) paste-ready model-routing block with 9-role table and the "never let the writer be its own final reviewer" rule.
 
-**Output**: New `## Dangerous operations — require explicit confirmation` section inside managed markers of `AGENTS.md.ejs`, between `## Rules` and `<!-- agents-workflows:managed-end -->`. Inline bullet block as static markdown. Test asserts rendered `AGENTS.md` contains `'Dangerous operations'` and `'rm -rf'`.
+**Output**
+- `AGENTS.md.ejs`: insert H2 section `## Model routing (verify current model IDs in vendor docs)` directly after the Sub-agent Routing block (after line 38, before `## Planning Workflow` at line 40). Include the full 9-row table verbatim (architect, implementer, code-reviewer, reviewer, external-review, code-optimizer, test-writer, e2e-tester, ui-designer) and the trailing rule paragraph starting with `Rule: never let the writer be its own final reviewer.`
+- `external-review.md.ejs`: add H2 section `## Cross-model requirement` after step 2 of `## Instructions` (or just before `## Output`) stating: the external review tool **must** run on a different model family than the implementer/code-reviewer used for the diff; family parity between writer and final reviewer is forbidden.
 
-**Notes**:
-- Per diff map, this content is ONLY in `AGENTS.md`; agents get the fail-safe partial via Task 5.
-- No EJS interpolation.
-- Keep section under 25 lines to preserve 200-line budget.
-- Independent of Tasks 1-6.
+**Notes**
+- DRY: existing Sub-agent Routing *task→agent* table (AGENTS.md.ejs:17–38) is different data (task mapping) from the *role→model family* table — keep both.
+- Table content is static markdown, no EJS conditionals. No pipes inside cell content, safe as pasted.
+- Shares `external-review.md.ejs` with Tasks 3 and 6 — coordinate edits.
+- Acceptance hooks (Task 7): `AGENTS.md contains model-routing table with 9 roles`, `external-review enforces different-family rule`.
 
-### Task 8 - Create `codex-config.toml.ejs` mirror + wire generator [LOGIC] [TEST]
-**Files**:
-- `src/templates/config/codex-config.toml.ejs` (new)
-- `src/generator/generate-root-config.ts` (extend `config.targets.codexCli` branch)
-- `tests/generator/generate-all.test.ts` (add codex-parity test)
+### Task 5 - E3.T4 Make reviewer gate explicit 4-step numbered list with failure handling [LOGIC] [PARALLEL]
 
-**Input**:
-- Deny list from `DENY_PATTERNS` in `permissions.ts` (Task 6). Pass through `GeneratorContext.denyList`.
-- Codex `config.toml` schema: top-level `[permissions]` table with `deny = [...]` string array.
+**Files**
+- `src/templates/agents/reviewer.md.ejs`
 
-**Output**:
-1. `codex-config.toml.ejs` renders TOML with a `[permissions]` table whose `deny` array contains the exact same 16 strings. Use same `forEach` + comma pattern as `settings-local.json.ejs`. ≤40 lines.
-2. `generate-root-config.ts` emits one `GeneratedFile` with path `.codex/config.toml` when `config.targets.codexCli` is true.
-3. New `generate-all.test.ts` test: `expect(paths).toContain('.codex/config.toml')` and parity — every string in Claude `permissions.deny` also appears in Codex `config.toml`.
+**Input**
+- Current 6-step `## When invoked` list (reviewer.md.ejs:17–28).
+- PRD §1.6 Definition of Done context (PRD.md:231–264).
 
-**Notes**:
-- DRY-critical: must render from `context.denyList`, not redeclare.
-- `generate-root-config.ts` stays under 200 lines (currently 23).
-- No TOML parser dependency — hand-render.
-- No `any`.
+**Output**
+- Replace `## When invoked` body with an explicit numbered 4-step gate (in order: code-reviewer → apply fixes → type-check → tests). Each step carries a failure-handling clause:
+  1. Invoke `code-reviewer` (and `security-reviewer` in parallel when `hasSecurityReviewer`). **If invocation fails:** stop and surface the error — do not proceed to fixes.
+  2. Route every critical/warning finding to `implementer` and re-check. **If a fix introduces new findings:** loop back to step 1 against the newly modified files.
+  3. Run type-check (`<%= commands.typeCheck %>`) when configured. **If type-check fails:** route errors to `implementer`; do not silence with `any`/`@ts-ignore`/`eslint-disable`; re-run until clean.
+  4. Run tests (`<%= commands.test %>`). **If any suite fails:** route failures to `implementer`; never delete or weaken tests to pass. Loop back to step 3 after fixes.
+- Keep the scratchpad bookkeeping item as a preamble bullet (not a numbered gate step), so the 4 numbered items are exactly the four gate steps.
+- Keep the existing `<%- include('../partials/definition-of-done.md.ejs') %>`; Task 3 adds the `ai-complacency` include adjacent to it.
 
-**Depends on**: Task 6 (needs `DENY_PATTERNS` + `context.denyList`) and Task 5 (test harness).
+**Notes**
+- DRY: reuse `commands.typeCheck` and `commands.test` from `GeneratorContext` (already used in this file and in `AGENTS.md.ejs`).
+- Shares file with Task 3's reviewer edit — apply Task 5 first, then Task 3's one-line include addition.
+- Acceptance hooks (Task 7): `reviewer gate lists four numbered steps in order`, `reviewer gate states per-step failure handling`.
+
+### Task 6 - E3.T5 Document terminal command override and Code Rabbit CLI default in external-review [LOGIC] [PARALLEL]
+
+**Files**
+- `src/templates/commands/external-review.md.ejs`
+
+**Input**
+- Current short command template (38 lines).
+- PRD §1.7 mention: `external-review | DIFFERENT family, fresh context | high | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent`.
+
+**Output**
+- Add H2 section `## Command selection` (between `## Instructions` and `## Output`) documenting:
+  - Users may pass a terminal command after the slash command (e.g. `/external-review cursor-bugbot review --base <mainBranch>`) to override the default tool; the agent must run exactly that command and parse its output into `QA.md`.
+  - When no terminal command is supplied, the default tool is the **Code Rabbit CLI** (`coderabbit review` or vendor-current equivalent — verify availability via `coderabbit --version`).
+  - If Code Rabbit CLI is not installed, halt and instruct the user to either install it or re-invoke with an explicit command argument; do not silently substitute another tool.
+- Update step 1 of `## Instructions` from `Verify the external review tool is available.` to `Verify the external review tool is available (user-supplied command, or Code Rabbit CLI default).`
+
+**Notes**
+- DRY: shares file with Tasks 3 and 4. All three edits may be applied in one editing pass by the implementer; tag separately to keep test coverage atomic.
+- Acceptance hooks (Task 7): `external-review documents terminal command override`, `external-review documents Code Rabbit CLI default`.
+
+### Task 7 - Add Epic 3 acceptance tests [TEST]
+
+**Files**
+- `tests/generator/epic-3-review-depth.test.ts` (new)
+
+**Input**
+- `generateAll` fixture pattern used by `tests/generator/epic-2-quality.test.ts` (including `getAgentContent`, `getCommandContent`, `assertInclusion`, `assertStepOrder`). Copy only the helpers needed — Rule of Three not yet met for epic-1/epic-2/epic-3 helper extraction.
+
+**Output**
+- New Jest test file with `describe('Epic 3 review depth', ...)`:
+  1. `renders all nine §2.1 section headings in code-reviewer` — asserts each of `### 1. Correctness`, `### 2. Security (OWASP Top 10 2025 baseline)`, `### 3. Tests`, `### 4. Design`, `### 5. Readability / naming`, `### 6. Observability`, `### 7. Documentation`, `### 8. Git hygiene`, `### 9. AI-specific` is present in the rendered `.claude/agents/code-reviewer.md`.
+  2. `code-reviewer rendered output stays ≤ 250 lines` — `expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(250)`.
+  3. `review-checklist includes Conventional Comments footer` — asserts `Use Conventional Comments` and `(blocking)` present.
+  4. `ai-complacency partial renders in code-reviewer, reviewer, and external-review only` — inclusion assertion over agents plus check for `.claude/commands/external-review.md`; asserts `<ai_complacency_guard>` absent from other agents.
+  5. `ai-complacency enforces no-auto-merge clause` — asserts `Never auto-merge on AI approval alone` in all three consumers.
+  6. `AGENTS.md contains model-routing table with nine roles` — asserts header row plus each of the 9 role names appears; asserts `never let the writer be its own final reviewer` is present.
+  7. `external-review enforces different-family rule` — asserts the exact wording used in Task 4 (e.g. `different model family`) in rendered `.claude/commands/external-review.md`.
+  8. `reviewer gate has four numbered steps in order` — `assertStepOrder` on rendered reviewer content checking: `code-reviewer`, `apply` (fixes), `pnpm check-types` (type-check literal from fixture), `pnpm test`. Also asserts each step has a failure clause keyword chosen in Task 5.
+  9. `external-review documents terminal command override and Code Rabbit CLI default` — asserts both `Code Rabbit CLI` and `override` (or the exact wording from Task 6) appear.
+
+**Notes**
+- Keep the file ≤ 200 lines. If helper duplication with `epic-2-quality.test.ts` reaches 3 occurrences, file a follow-up to extract — do not extract in this PR.
+- No `any` types — use `GeneratedFile[]` explicitly; object params when >2.
+- Depends on Tasks 1–6 landing first.
+
+## Risks and rollback
+
+- **Risk:** Replacing the dynamic `reviewChecklist` table breaks `tests/generator/review-checklist.test.ts`. Mitigation: Task 1 keeps the dynamic table as a final `### Stack-specific rules` sub-section; the TS unit test for `buildReviewChecklist` stays untouched.
+- **Risk:** Rendered `code-reviewer.md` exceeds 250 lines after pasting §2.1 verbatim. Mitigation: Task 1 projects net size ≈ 170 lines; Task 7's line-count assertion catches regression.
+- **Risk:** EJS include path resolution differs between `agents/` and `commands/` subdirectories. Mitigation: both directories are one level deep from `src/templates/`; existing command templates and agents use the same `../partials/` pattern and the same `renderTemplate` helper.
+- **Rollback:** all edits are contained to template files and one new test file. A single `git revert` on the feature-branch commits restores previous behavior; no schema, no generator logic, no build artifacts are touched.
+
+## Out of scope (explicit non-goals)
+
+- No changes to `src/generator/review-checklist-rules.ts` or the `ReviewChecklistItem` type.
+- No changes to `security-reviewer.md.ejs` (Epic 4 territory).
+- No changes to `implementer.md.ejs`, `code-optimizer.md.ejs`, or other non-review agents.
+- No changes to `CLAUDE.md.ejs` model-routing (PRD §1.7 scopes the table to `AGENTS.md`; avoid drift).
+- No new context fields in `GeneratorContext`.
+- No commit or push — user drives merges.
+- Do not mark PRD.md Epic 3 as `[DONE]` inside this plan's implementation; the user appends the DONE marker after reviewing the merged branch.
 
 ## Post-implementation checklist
 
 - [ ] `pnpm check-types` - zero errors
-- [ ] `pnpm test` - all suites pass (incl. new Epic 1 cases)
+- [ ] `pnpm test` - all suites pass (including new `epic-3-review-depth.test.ts`)
 - [ ] `pnpm lint` - zero warnings
-- [ ] Every agent template renders ≤200 lines
-- [ ] Run `code-reviewer` + `security-reviewer` on all modified files — critical/warning findings fixed
-- [ ] DRY scan complete — `DENY_PATTERNS` defined once; safety partials referenced via include only
+- [ ] Run `code-reviewer` agent on all modified files - all critical and warning findings fixed
+- [ ] Run `security-reviewer` agent in parallel - all critical and warning findings fixed
+- [ ] DRY scan complete - §2.1 lives only in `review-checklist.md.ejs`; §2.18 only in `ai-complacency.md.ejs`; §1.7 table only in `AGENTS.md.ejs`
+- [ ] Rendered `.claude/agents/code-reviewer.md` verified ≤ 250 lines
+- [ ] PRD.md Epic 3 header (PRD.md:1492) ready for user to append `— [DONE]` marker
+- [ ] PLAN.md External errors section reviewed
 
 ## External errors
 
-<!-- Reserved for errors surfaced during execution that are caused outside Epic 1's scope. Leave empty at plan time. -->
+- **security-reviewer W1** — `project.name` / `project.description` are interpolated verbatim by EJS templates via the repo's identity-escape renderer. Root cause lives in `src/schema/stack-config.ts` (Zod schema lacks max-length + newline/angle-bracket regex on project metadata). Out of Epic 3 scope. Follow-up: tighten `stackConfigSchema.project` with `z.string().max(...).regex(/^[^\n\r<>]+$/, ...)`, mirroring the existing `SAFE_BRANCH_RE` / `SAFE_COMMAND_RE` discipline.
+- **code-reviewer W1** — Test helpers (`getAgentContent`, `getCommandContent`, `assertStepOrder`) are now duplicated across `tests/generator/epic-2-quality.test.ts` and `tests/generator/epic-3-review-depth.test.ts` (Rule of Two met). Extract to `tests/generator/test-helpers.ts` in the next epic-test PR before a third copy lands; also reconciles the blank-line drift in `assertStepOrder`.
+- **final-reviewer observation** — `tests/generator/generate-all.test.ts` is 212 lines (exceeds project 200-line cap). Predates Epic 3; Epic 3 added only 2 lines. Split or slim in a follow-up cleanup PR.
+
+## Task summary
+
+| ID | Title | Type | Parallel? | Files |
+|---|---|---|---|---|
+| E3.T1 | Rewrite review-checklist partial with §2.1 nine-section checklist | [LOGIC] | [PARALLEL] | `src/templates/partials/review-checklist.md.ejs` |
+| E3.T2a | Create ai-complacency partial | [LOGIC] | — | `src/templates/partials/ai-complacency.md.ejs` |
+| E3.T2b | Wire ai-complacency into code-reviewer, reviewer, external-review | [LOGIC] | — (after T2a) | 3 files |
+| E3.T3 | Insert §1.7 model-routing table + external-review family-diff rule | [LOGIC] | [PARALLEL] | `AGENTS.md.ejs`, `external-review.md.ejs` |
+| E3.T4 | Explicit 4-step numbered reviewer gate | [LOGIC] | [PARALLEL] (share-file with T2b reviewer edit) | `reviewer.md.ejs` |
+| E3.T5 | Terminal command override + Code Rabbit CLI default | [LOGIC] | [PARALLEL] (share-file with T3, T2b) | `external-review.md.ejs` |
+| E3.TESTS | Epic 3 acceptance tests | [TEST] | — (after T1–T5) | `tests/generator/epic-3-review-depth.test.ts` |

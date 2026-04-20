@@ -669,6 +669,81 @@ flowchart TD
 
 ---
 
+## 1.19 Stack-aware agent selection
+
+**Rule.** The generated agent set MUST reflect the detected stack. A pure-backend project does not ship `ui-designer` or `react-ts-senior`; a Python FastAPI project ships `python-senior` instead; a Rust workspace ships `rust-senior`; a Vue/Nuxt project ships `vue-senior`, not `react-ts-senior`. Non-matching seniors are hidden from the interactive agent-selection prompt and default-off in `--yes` runs. Universal agents — `architect`, `implementer`, `code-reviewer`, `security-reviewer`, `code-optimizer`, `test-writer`, `reviewer` — remain always available regardless of stack. At most **one** language/framework senior is auto-enabled per workspace (via detected language + framework); the user can still opt additional seniors in manually from the full list when working on hybrid codebases.
+
+**Scope of covered stacks (2025–2026 top tier).** Backend: `python-senior` (Python + FastAPI / Django / Flask), `node-ts-backend-senior` (TS/JS + NestJS / Express / Fastify / Hono), `go-senior`, `rust-senior`, `java-spring-senior` (Java + Spring Boot), `dotnet-csharp-senior` (C# + ASP.NET Core). Frontend: keep `react-ts-senior` (React / Next.js / Expo / React Native / Remix + TS), add `vue-senior` (Vue / Nuxt), `angular-senior`, `svelte-senior` (SvelteKit). Priorities track the Stack Overflow 2025 Developer Survey (JS/TS 65.6%, Python 49.3%, TS 38.5%, Java 33.4%, Go 14.3%, Rust 13.1%) and the JetBrains 2025 Developer Ecosystem Report (TS / Rust / Go as fastest-growing; NestJS +40% YoY; FastAPI dominant for ML APIs; Spring Boot dominant in enterprise Java).
+
+**Verdict.** **Partially covered.** `reactTsSenior` is gated correctly in [src/prompt/questions.ts](src/prompt/questions.ts) via `supportsReactTsStack`, but `uiDesigner` defaults to `isFrontend` only and is still offered to backend-only stacks via the checkbox UI. No other language/framework seniors exist. A Python or Rust developer today gets a bare `implementer` with no stack-native senior, and is still offered `ui-designer` unless they uncheck it.
+
+**Priority.** **[MUST].**
+
+**Where to add.** New agent templates under `src/templates/agents/` (9 new files), a shared `src/templates/partials/senior-core.md.ejs` extracted from [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) for DRY (§2.10), new detector signals in [src/detector/detect-framework.ts](src/detector/detect-framework.ts) (Spring Boot via `pom.xml` / `build.gradle` `spring-boot-starter`; ASP.NET Core via `Microsoft.AspNetCore.*` in `*.csproj`), a new `src/generator/senior-routing.ts` exporting `getApplicableSeniorAgent(detected)`, and schema additions in [src/schema/stack-config.ts](src/schema/stack-config.ts). Drives Epic 13.
+
+**Decision flow:**
+```mermaid
+flowchart TD
+    Detect[Detected language and framework] --> Cat{Stack category}
+    Cat -->|Frontend framework| FE[Frontend branch]
+    Cat -->|Backend only| BE[Backend branch]
+    Cat -->|Fullstack JS/TS| FS[Fullstack branch]
+    FE --> MapFE{Framework}
+    MapFE -->|React + TS| RTS[react-ts-senior + ui-designer]
+    MapFE -->|Vue / Nuxt| VUE[vue-senior + ui-designer]
+    MapFE -->|Angular| ANG[angular-senior + ui-designer]
+    MapFE -->|SvelteKit| SVK[svelte-senior + ui-designer]
+    BE --> MapBE{Language}
+    MapBE -->|Python| PY[python-senior, no ui-designer]
+    MapBE -->|TS/JS backend| NODE[node-ts-backend-senior, no ui-designer]
+    MapBE -->|Go| GO[go-senior, no ui-designer]
+    MapBE -->|Rust| RUST[rust-senior, no ui-designer]
+    MapBE -->|Java + Spring| JAVA[java-spring-senior, no ui-designer]
+    MapBE -->|C# + ASP.NET| NET[dotnet-csharp-senior, no ui-designer]
+    FS --> MapFS[Same routing as FE branch]
+    RTS --> Out[Final agent set]
+    VUE --> Out
+    ANG --> Out
+    SVK --> Out
+    PY --> Out
+    NODE --> Out
+    GO --> Out
+    RUST --> Out
+    JAVA --> Out
+    NET --> Out
+    MapFS --> Out
+    Out --> Universals[Always add universal agents: architect, implementer, code-reviewer, security-reviewer, code-optimizer, test-writer, reviewer]
+```
+
+---
+
+## 1.20 Post-init workspace refinement prompt
+
+**Rule.** After every `init` / `update` run, the CLI MUST emit a dedicated `AGENTS_REFINE.md` prompt at the project root AND print a "next step" console line pointing to it. The prompt is the executable handoff the user gives their agent so that the freshly-generated — and intentionally generic — agent files get tailored to the real workspace: its domain vocabulary, architectural patterns, preferred libraries and idioms, deployment targets, data layer, and team conventions that the detector cannot infer. The prompt is **planning-only**: it instructs the agent to audit and propose changes (per §1.13 planning protocol) without editing anything until the user confirms (per §1.3 fail-safe). Refinement output is tracked via the standard review loop (§1.6 DoD + §2.1 review checklist).
+
+**Filename choice.** The artifact is a dedicated file (`AGENTS_REFINE.md`), not `PLAN.md` and not `QA.md`. `PLAN.md` is already the single source of truth for feature-level work (§1.13, Epic 2); reusing it would clobber in-flight plans. `QA.md` is a thin status file (currently single-line). Using a distinct name avoids both collisions and makes the artifact's purpose self-documenting.
+
+**Verdict.** **Missing.** Today [src/cli/init-command.ts](src/cli/init-command.ts) prints a 3-line "Next steps" block (review / add project rules / re-run `update`) with no handoff to a refinement agent. [src/cli/update-command.ts](src/cli/update-command.ts) does not print a comparable next-step message at all. Users are left without a structured way to move the generated agents from "detector-accurate" to "workspace-accurate."
+
+**Priority.** **[SHOULD].**
+
+**Where to add.** New template `src/templates/refine/AGENTS_REFINE.md.ejs` (rendered with the full `StackConfig` context so the prompt can reference detected language / framework / paths / commands / enabled agents verbatim); new `src/generator/generate-refine-prompt.ts` wired into [src/generator/index.ts](src/generator/index.ts); updated "Next steps" block in [src/cli/init-command.ts](src/cli/init-command.ts) and [src/cli/update-command.ts](src/cli/update-command.ts); CLI flag `--no-refine-prompt` on both commands. All writes go through `writeFileSafe` (Epic 7) so hand-edits survive re-runs. Drives Epic 14.
+
+**Prior art.** SkillMD's `create-plans` and `qa-plan` patterns establish the "executable prompt as markdown file" convention: the markdown IS the agent's instruction, not documentation about the instruction. Epic 14 adopts the same shape but scopes the prompt to post-generation agent-file refinement rather than feature planning or QA triage.
+
+**Prompt anatomy (sections that must render):**
+
+1. **Your mission** — one paragraph stating the agent's job: audit `.claude/agents/*.md` and `.codex/skills/**/SKILL.md` against this workspace and propose file-level changes.
+2. **Inputs to read first** — explicit list: `PRD.md`, `AGENTS.md`, `CLAUDE.md` (if present), `<%= project.docsFile %>` (if set), every file under `.claude/agents/` and `.codex/skills/`, plus representative source files from `<%= paths.sourceRoot %>`.
+3. **Audit targets** — for each generated agent, check: (a) does the stack-context partial match the real primary modules? (b) do the DoD commands match what actually runs in CI? (c) are the cited paths present? (d) do the language/framework idioms match the codebase's conventions? (e) are domain-specific nouns and services named?
+4. **Propose changes (do not edit yet)** — output format is a numbered list: `agent file path` → `section heading` → `proposed diff` (as a unified-diff or before/after block) → `rationale citing PRD § or code path`.
+5. **Stop conditions** — explicit rules: do not edit any file until the user replies "apply"; if more than ~15 change items accumulate, chunk by agent file; if uncertain about a domain term, ask the user per §1.3.
+6. **Verification hand-off** — after edits are applied, run the §1.6 DoD commands (`<%= commands.typeCheck %>`, `<%= commands.test %>`, `<%= commands.lint %>`) and loop through the reviewer agent per §2.1.
+
+**Console message contract.** Both `init` and `update` append to the "Next steps" block: `N. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.` The `N` renumbers relative to existing next steps.
+
+---
+
 # Part 2 — Universal coding-rule gaps
 
 The agents are only as good as what they enforce on the code under edit. This part is what `code-reviewer`, `implementer`, `code-optimizer`, `test-writer`, `e2e-tester`, and `reviewer` should check and produce.
@@ -1489,7 +1564,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 3 — Code Review Depth [MUST]
+## Epic 3 — Code Review Depth [MUST] [DONE 2026-04-20]
+
+**Landed on** `feature/epic-3-code-review-depth`.
 
 **Goal.** `code-reviewer` enforces the full OWASP/Conventional-Comments/AI-complacency checklist; `reviewer` uses a different model family.
 
@@ -2231,6 +2308,138 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 ---
 
+## Epic 13 — Stack-Aware Dedicated Senior Agents [MUST]
+
+**Goal.** Generate only the language/framework-specific senior agents that match the detected stack. Hide `ui-designer` and React seniors from pure-backend projects. Add 9 new senior templates covering 2025–2026's most-used stacks (see §1.19). Preserve the existing `react-ts-senior`. Extract the shared senior-agent body into a single partial so every senior template stays small (§2.10 DRY).
+
+**Acceptance.**
+
+- Detection + schema wired for nine new seniors: `pythonSenior`, `nodeTsBackendSenior`, `goSenior`, `rustSenior`, `javaSpringSenior`, `dotnetCsharpSenior`, `vueSenior`, `angularSenior`, `svelteSenior`. `reactTsSenior` unchanged.
+- `askAgentSelection` in [src/prompt/questions.ts](src/prompt/questions.ts) shows the universal set always, shows `ui-designer` only when a frontend framework is detected, and shows at most the single senior keyed to the detected stack (plus a "More seniors..." affordance for hybrid repos that opens the full list).
+- `--yes` / default-config flow auto-enables exactly one senior via `getApplicableSeniorAgent(detected)`; no senior is enabled when no match is found.
+- New shared partial `src/templates/partials/senior-core.md.ejs` owns the common structure (stack context, code style, DRY rules, file organization, docs reference, tool-use discipline, fail-safe, untrusted content, workflow steps, constraints, uncertainty) so each senior template is a <=40-line file that only contributes the language/framework-specific idioms + testing notes.
+- Snapshot tests cover one fixture per senior flavor plus the React regression fixture.
+- `pnpm check-types && pnpm lint && pnpm test` all green; `reviewer` + `security-reviewer` loop (§1.6) passes on the branch.
+
+### E13.T1 — Detector enrichments [§1.19] — S
+
+- **Files**: [src/detector/detect-framework.ts](src/detector/detect-framework.ts), [src/constants/frameworks.ts](src/constants/frameworks.ts), new `src/detector/detect-jvm-framework.ts`, new `src/detector/detect-dotnet-framework.ts`.
+- **Change**: Add Spring Boot detection by reading `pom.xml` (`<artifactId>spring-boot-starter*</artifactId>`) and `build.gradle` / `build.gradle.kts` (`org.springframework.boot`). Add ASP.NET Core detection by scanning the first `*.csproj` for `Microsoft.AspNetCore.*` package references. Export new helpers `isBackendFramework(framework)`, `isFullstackJsFramework(framework)` in [src/constants/frameworks.ts](src/constants/frameworks.ts) (Next.js / Nuxt / Remix / SvelteKit are fullstack; NestJS / Express / Fastify / Hono / FastAPI / Django / Flask / Spring Boot / ASP.NET Core are backend). Keep existing exports intact.
+- **Done when**: unit tests cover one fixture per new detector (Maven Spring, Gradle Spring, ASP.NET Core .csproj); `isBackendFramework` / `isFullstackJsFramework` flip correctly for every covered framework.
+
+### E13.T2 — Schema + routing predicate [§1.19] — S
+
+- **Files**: [src/schema/stack-config.ts](src/schema/stack-config.ts), new `src/generator/senior-routing.ts`.
+- **Change**: Extend the `agents` object in `stackConfigSchema` with nine new booleans defaulting to `false`: `pythonSenior`, `nodeTsBackendSenior`, `goSenior`, `rustSenior`, `javaSpringSenior`, `dotnetCsharpSenior`, `vueSenior`, `angularSenior`, `svelteSenior`. In `senior-routing.ts` export `getApplicableSeniorAgent(detected: DetectedStack): keyof StackConfig['agents'] | null` — single-match decision function driven by language + framework. Never return more than one key. Return `null` for unknown stacks.
+- **Done when**: Zod parses existing fixtures unchanged; TS unit tests verify each (language, framework) input produces the expected single key; backward-compat: monolingual JS/TS React projects still route to `reactTsSenior`.
+
+### E13.T3 — Shared `senior-core.md.ejs` partial [§1.19 §2.10] — M
+
+- **Files**: new `src/templates/partials/senior-core.md.ejs`.
+- **Change**: Extract the shared body from [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) — the partial includes for stack-context, code-style, dry-rules, file-organization, docs-reference, tool-use-discipline, fail-safe, untrusted-content; the Workflow / Boundaries / `<output_format>` / `<constraints>` / `<uncertainty>` blocks; and the testing section. Parameterize with: `language`, `framework`, `testFramework`, `conventions`, `paths`, `project`, plus an optional `specificsBlock` slot where each senior injects its language/framework specifics. Keep the partial under 120 lines.
+- **Done when**: rendering `senior-core.md.ejs` against the react-ts fixture produces output byte-identical to the current `react-ts-senior` output (modulo the pluggable specifics block). Snapshot locked.
+
+### E13.T4 — Nine new senior templates [§1.19] — L
+
+- **Files**: new `src/templates/agents/python-senior.md.ejs`, `src/templates/agents/node-ts-backend-senior.md.ejs`, `src/templates/agents/go-senior.md.ejs`, `src/templates/agents/rust-senior.md.ejs`, `src/templates/agents/java-spring-senior.md.ejs`, `src/templates/agents/dotnet-csharp-senior.md.ejs`, `src/templates/agents/vue-senior.md.ejs`, `src/templates/agents/angular-senior.md.ejs`, `src/templates/agents/svelte-senior.md.ejs`; modify [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) to consume `senior-core.md.ejs`.
+- **Change**: Each new template is a thin wrapper: YAML frontmatter (`name`, `description` tied to the stack, `tools`, `model: sonnet`, `color`), a one-line "You are a senior <framework> <language> agent…" header, `<%- include('../partials/senior-core.md.ejs', { specificsBlock: '…' }) %>`. Each `specificsBlock` (<=30 lines) covers: (a) language/framework idioms (e.g., Python: `async def` + type hints + Pydantic models; Go: error-return idiom + `context.Context` propagation; Rust: `Result` + `?` + ownership; Spring Boot: `@RestController` + DI patterns; ASP.NET Core: minimal APIs vs controllers; Vue 3: Composition API + `<script setup>`; Angular: standalone components + signals; SvelteKit: runes + load functions; Nest/Express: DTOs + guards/interceptors), (b) testing conventions matching the detected framework (pytest / go test / cargo test / JUnit + Spring test / xUnit + WebApplicationFactory / Vitest / Vitest+Testing-Library-Vue / Jest+TestBed / Vitest+@testing-library/svelte / jest+supertest), (c) one "common pitfalls" bullet list (<=5 items) specific to that stack.
+- **Done when**: all 10 templates render against their matching fixture; each wrapper template <=40 lines; total new-template LOC <=400.
+
+### E13.T5 — Prompt gating [§1.19] — M
+
+- **Files**: [src/prompt/questions.ts](src/prompt/questions.ts).
+- **Change**: Rewrite `askAgentSelection` to accept `params: Readonly<{ detected: DetectedStack }>` and derive `isFrontend`, `isReactTs`, plus the single applicable senior via `getApplicableSeniorAgent`. Build the checkbox choice list so that: (a) universals are always present and checked; (b) the matching senior is present and checked; (c) `ui-designer` is present only when `isFrontendFramework(detected.framework.value)`, defaulting checked; (d) a separator item "More seniors (hybrid codebases)" expands into the full senior list, all unchecked. `askCommandSelection` and `askTargets` unchanged.
+- **Done when**: interactive snapshots for backend-python, backend-go, frontend-vue, and fullstack-next fixtures each show only the expected senior plus universals; `ui-designer` absent from pure-backend snapshots.
+
+### E13.T6 — Default-config gating [§1.19] — S
+
+- **Files**: [src/prompt/prompt-flow.ts](src/prompt/prompt-flow.ts).
+- **Change**: In `createDefaultConfig`, replace the hard-coded `reactTsSenior: isReactTs` line with a single computed senior key from `getApplicableSeniorAgent(detected)`, and map it into the `agents` object so exactly one senior is `true` (or none if unmatched). Set `uiDesigner: isFrontend` unchanged. Ensure the non-`--yes` interactive path in `runPromptFlow` maps the user's checkbox selection back through the new schema keys.
+- **Done when**: calling `createDefaultConfig` with a Python fixture produces `agents.pythonSenior === true` and every other `*Senior` key `false`; with a Rust fixture, `agents.rustSenior === true`; backward-compat regression: React-TS fixture still produces `agents.reactTsSenior === true`.
+
+### E13.T7 — Generator wiring [§1.19] — S
+
+- **Files**: [src/generator/generate-agents.ts](src/generator/generate-agents.ts).
+- **Change**: Extend the `AGENT_DEFINITIONS` array with nine new entries mapping each new schema key to its template file and output filename (`python-senior.md`, `node-ts-backend-senior.md`, `go-senior.md`, `rust-senior.md`, `java-spring-senior.md`, `dotnet-csharp-senior.md`, `vue-senior.md`, `angular-senior.md`, `svelte-senior.md`). Order: universals first, then seniors grouped by frontend vs backend. Do not modify `convertToSkill`.
+- **Done when**: generator emits only the agent files whose schema flag is `true`; Claude + Codex target round-trip both work; snapshot diff covers each senior.
+
+### E13.T8 — Snapshot tests [§1.19] — M
+
+- **Files**: new `tests/generator/stack-aware-agents.test.ts`, new fixtures `tests/fixtures/backend-python-fastapi/`, `tests/fixtures/backend-go/`, `tests/fixtures/backend-rust/`, `tests/fixtures/backend-java-spring/`, `tests/fixtures/backend-dotnet/`, `tests/fixtures/frontend-vue/`, `tests/fixtures/frontend-angular/`, `tests/fixtures/frontend-svelte/`, `tests/fixtures/backend-node-nestjs/`; reuse the existing React-TS fixture as regression.
+- **Change**: Each fixture ships the minimal manifest(s) needed for detection (e.g., `pyproject.toml` with `fastapi` dep, `Cargo.toml`, `go.mod` + one `.go` file, `pom.xml` with Spring Boot starter, `.csproj` with `Microsoft.AspNetCore.App`, `package.json` with `vue`/`@angular/core`/`@sveltejs/kit`/`@nestjs/core`). Tests assert: (a) `getApplicableSeniorAgent` returns the expected key; (b) `createDefaultConfig` wires only that senior `true`; (c) generator emits exactly the expected agent files for Claude and Codex targets; (d) `ui-designer` is absent from backend fixtures and present in frontend fixtures; (e) the React-TS fixture is unchanged vs prior snapshot.
+- **Done when**: `pnpm test` green; new fixtures add <300 LOC total; snapshots reviewed.
+
+### E13.T9 — README stack matrix + AGENTS.md note [§1.19] — S
+
+- **Files**: `README.md`, [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
+- **Change**: Add a "Stack matrix" table to `README.md` listing each supported (language, framework) pair and the senior it routes to. In `AGENTS.md.ejs`'s `## Sub-agent Routing` table, render the currently-enabled senior conditionally so the emitted `AGENTS.md` only lists the senior present in this workspace (avoid advertising agents the user did not generate).
+- **Done when**: README renders the matrix; emitted `AGENTS.md` for a Python project lists `python-senior` in the routing table and does not list `react-ts-senior`.
+
+**Non-goals (this epic — parked in Epic 8 Situational backlog).**
+
+- Mobile seniors: `flutter-dart-senior`, `kotlin-android-senior`, `swift-ios-senior`. Mobile frameworks (`react-native`, `expo`) continue to route to `react-ts-senior`.
+- Tier-2 languages: PHP/Laravel, Ruby on Rails, C++. Add only when the senior-core extraction (E13.T3) has stabilized.
+- Per-workspace senior routing inside polyglot monorepos — covered by Epic 12's nested `AGENTS.md` emission; Epic 13 operates on the root stack.
+
+---
+
+## Epic 14 — Post-Init Workspace Refinement Prompt [SHOULD]
+
+**Goal.** Emit a dedicated `AGENTS_REFINE.md` prompt at the project root after every `init` and `update`, and print a console "next step" line pointing to it. The prompt is the executable handoff users give their agent to tailor the generated agent files to workspace reality (domain vocabulary, architecture, preferred libraries, deployment targets, data layer, team conventions). The prompt is **planning-only** (§1.13): the agent audits and proposes changes; it does not edit files until the user confirms (§1.3 fail-safe).
+
+**Acceptance.**
+
+- `AGENTS_REFINE.md` renders with full detected-stack metadata: project name/description, detected language / framework / runtime, enabled agents (from `config.agents`), paths (`sourceRoot`, `utilsDir`, `componentsDir` if set), commands (`typeCheck`, `test`, `lint`, `build`), and the list of generated agent file paths.
+- Prompt body implements the six mandated sections from §1.20 (Your mission / Inputs to read first / Audit targets / Propose changes (do not edit yet) / Stop conditions / Verification hand-off) and cross-references PRD §1.3, §1.6, §1.13, §2.1 by number.
+- Init and update "Next steps" console blocks include the new line: `N. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.`
+- All writes go through `writeFileSafe` (Epic 7). First run creates `AGENTS_REFINE.md`; subsequent runs regenerate only when the user has not hand-edited it, otherwise surface a diff and preserve hand-edits.
+- CLI flag `--no-refine-prompt` on both `init` and `update` skips emission entirely (for CI runs that already consume the template out-of-band).
+- `pnpm test` green with a new snapshot covering required sections and cross-references.
+
+### E14.T1 — Refinement prompt template [§1.20] — M
+
+- **Files**: new `src/templates/refine/AGENTS_REFINE.md.ejs`.
+- **Change**: Render the six sections from §1.20 with EJS placeholders driven by the full `StackConfig`. Reference enabled agents dynamically via `<% for (const [key, enabled] of Object.entries(agents)) { if (enabled) { %>...<% } } %>`. Include the DoD commands from `commands.{typeCheck,test,lint}` verbatim in the "Verification hand-off" section. Cite PRD sections (§1.3, §1.6, §1.13, §2.1) with anchor syntax. Keep the template under 200 lines.
+- **Done when**: rendering against the current repo's stack produces a prompt that names every currently-enabled agent file under `.claude/agents/` (and/or `.codex/skills/`), references the project's real `pnpm` commands, and includes each mandated section.
+
+### E14.T2 — Generator entry [§1.20] — S
+
+- **Files**: new `src/generator/generate-refine-prompt.ts`, [src/generator/index.ts](src/generator/index.ts).
+- **Change**: Add `generateRefinePrompt(config, context)` returning `{ path: 'AGENTS_REFINE.md', content }` via `renderTemplate('refine/AGENTS_REFINE.md.ejs', context)`. Wire into `generateAll` behind a boolean passed through from the CLI option (default on). Never emit the file when `config` opts it off.
+- **Done when**: `generateAll({ refinePrompt: true })` appends the file to the generated set; `generateAll({ refinePrompt: false })` omits it; no changes to any other generator's output.
+
+### E14.T3 — Init next-step message [§1.20] — S
+
+- **Files**: [src/cli/init-command.ts](src/cli/init-command.ts).
+- **Change**: After the existing `Next steps:` block, append a new numbered line: `  N. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.` — renumber so it becomes step 4 (existing steps 1–3 shift unchanged). Suppress the line only when `--no-refine-prompt` is passed.
+- **Done when**: running `init` with the flag omits both the file and the message; running without the flag emits both.
+
+### E14.T4 — Update command parity [§1.20] — S
+
+- **Files**: [src/cli/update-command.ts](src/cli/update-command.ts).
+- **Change**: Print the same `Hand AGENTS_REFINE.md…` next-step line after a successful update. Re-render the refinement prompt every run (it is derived deterministically from the manifest) and route it through `writeFileSafe`, so hand-edits are preserved via the standard diff-confirm flow. If the file is new or unchanged, write silently; if the user has edited it, emit a diff preview and require confirmation per Epic 7.
+- **Done when**: `update` on a project with no hand-edited `AGENTS_REFINE.md` rewrites it silently; a hand-edited version triggers the Epic 7 diff-confirm flow and is preserved on "no".
+
+### E14.T5 — CLI flag plumbing [§1.20] — S
+
+- **Files**: [src/cli/init-command.ts](src/cli/init-command.ts), [src/cli/update-command.ts](src/cli/update-command.ts), [src/cli/index.ts](src/cli/index.ts) (option definitions), `InitCommandOptions` / `UpdateCommandOptions` types.
+- **Change**: Add `--no-refine-prompt` as a boolean option on both commands. Thread the flag into the options interface (`refinePrompt?: boolean`, default `true`) and propagate to `generateAll` plus the console message suppression in E14.T3/T4.
+- **Done when**: `agents-workflows init --no-refine-prompt` produces no `AGENTS_REFINE.md` and no refinement next-step line; `agents-workflows update --no-refine-prompt` does the same; help text documents the flag.
+
+### E14.T6 — Snapshot test [§1.20] — S
+
+- **Files**: new `tests/generator/refine-prompt.test.ts`.
+- **Change**: Render the template against a representative `StackConfig` fixture and assert: (a) the six §1.20 sections are present (headings match verbatim); (b) every enabled agent from `config.agents` appears by file path; (c) `commands.test` / `commands.lint` / `commands.typeCheck` are rendered verbatim; (d) PRD section cross-references (`§1.3`, `§1.6`, `§1.13`, `§2.1`) appear at least once; (e) the disabled-senior agents do NOT appear. Add a second fixture for `refinePrompt: false` confirming the generator omits the file.
+- **Done when**: both cases snapshot-locked and green in `pnpm test`.
+
+### E14.T7 — README "After init" section [§1.20] — S
+
+- **Files**: `README.md`.
+- **Change**: Add a short "After init — refine the generated agents" section that (a) explains the purpose of `AGENTS_REFINE.md`, (b) shows the one-liner command to hand the file to an agent (one example for Claude Code, one for Codex CLI), (c) documents the `--no-refine-prompt` opt-out, (d) clarifies that the refinement agent must not edit files without confirmation (§1.3).
+- **Done when**: README renders; example commands reference real CLI invocations; opt-out flag is documented.
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -2243,6 +2452,8 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 | 6 | Policy hardening | Epic 9 (E9.T1–E9.T5 for Claude/Codex + E9.T6–E9.T8 for Cursor/Copilot/Windsurf) |
 | 7 | Autonomous headless runs | Epic 10 (E10.T1–E10.T5 for Claude/Codex + E10.T6–E10.T8 for Cursor/Copilot/Windsurf) |
 | 8 | Polyglot monorepo support | Epic 12 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
+| 9 | Stack-aware senior agents | Epic 13 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
+| 10 | Workspace refinement prompt | Epic 14 (depends on Epic 7 safe-writes + Epic 13 agent set) |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.

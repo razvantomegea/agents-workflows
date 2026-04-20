@@ -1,9 +1,86 @@
-## Review Checklist
+## Review checklist (run in order; cite file:line)
 
-Every review **must** verify each applicable rule. Violations are **critical** when they cause bugs or data loss, **warning** otherwise, **suggestion** for style/maintainability.
+### 1. Correctness
+- Does the diff do what the task said, and only that?
+- Edge cases: empty input, null/undefined, boundary values, concurrency,
+  large inputs, unicode, timezones, daylight-saving, leap year.
+- Error paths tested? Cancellation paths tested?
+
+### 2. Security (OWASP Top 10 2025 baseline)
+- A01 Broken Access Control + SSRF: every resource access is authZ'd
+  server-side; no user-supplied role/tenant IDs trusted.
+- A02 Misconfiguration: no permissive CORS, no wildcard CSP, no
+  debug endpoints enabled.
+- A03 Supply chain: any new dependency justified; pinned; scanned.
+- A04 Crypto: Argon2id for passwords; no MD5/SHA-1 for security;
+  random via CSPRNG.
+- A05 Injection: parameterized queries only; contextual output
+  encoding; no `dangerouslySetInnerHTML`/`eval`/`shell=True`.
+- A07 AuthN: OAuth 2.1 rules (PKCE required, no implicit flow,
+  exact redirect_uri match).
+- A09 Logging: no PII, tokens, or secrets in logs.
+- A10 Exceptional conditions: no stack traces to clients; no
+  silent catches; fail closed.
+- RFC 9457 Problem Details for HTTP errors.
+
+### 3. Tests
+- Branch coverage ≥ repo baseline on changed lines.
+- No new flaky tests. Deterministic (time, random, UUID injected).
+- Integration > unit when mocks would dominate.
+- No test was deleted or weakened to make the build pass.
+
+### 4. Design
+- Composition over inheritance.
+- Errors-as-values where the language allows; exceptions for bugs
+  only; no silent catches; errors carry context (`Error.cause`, `%w`,
+  exception chaining).
+- No premature abstraction (Rule of Three; see Metz "wrong
+  abstraction"). Duplication > wrong abstraction.
+- Deep modules, not shallow ones (Ousterhout). Flag `IFooService`
+  interfaces with one implementation.
+- Locality of behavior: colocate tests/types/styles/small helpers.
+
+### 5. Readability / naming
+- Variables: noun phrases; booleans prefixed `is/has/can/should`.
+- Functions: verb phrases; `get*` pure, `fetch*` hits I/O,
+  `compute*` expensive-pure.
+- Units in scalar names: `timeoutMs`, `sizeBytes`, `priceCents`.
+- No single-letter names outside ≤5-line scopes or math conventions.
+- Cyclomatic complexity ≤15; cognitive complexity ≤20; nesting ≤4.
+
+### 6. Observability
+- Structured logs (JSON/logfmt); include `trace_id`, `span_id`.
+- OpenTelemetry spans on HTTP/RPC/DB boundaries.
+- Log levels used correctly; PII redacted at the logger, not ad hoc.
+
+### 7. Documentation
+- Public/exported symbols have docstrings (args, returns, errors,
+  side effects).
+- Comments explain *why* and invariants, never what the next line does.
+- ADR (MADR 4) for any architecturally significant decision
+  (auth, storage, framework, external integration).
+
+### 8. Git hygiene
+- Conventional Commits 1.0 (`type(scope): subject`; ≤72-char subject,
+  imperative, no trailing period; body explains why).
+- Atomic, bisectable commits.
+- PR ≤ 400 LOC; if larger, insist on splitting.
+
+### 9. AI-specific (Thoughtworks Radar v33 — Hold on "AI complacency")
+- For every AI-generated line: did a human understand it?
+- No leftover TODO/FIXME/console.log/debug statements.
+- No `any`, `@ts-ignore`, `eslint-disable` without `// reason:`.
+- No hallucinated imports or packages (verify on registry).
+
+Use Conventional Comments: `nit:` = non-blocking; `(blocking)` tag
+required for must-fix items. Delegate style entirely to formatters.
+
+<% if (reviewChecklist && reviewChecklist.length > 0) { -%>
+### Stack-specific rules
 
 | # | Rule | How to verify | Severity |
 |---|------|---------------|----------|
 <% reviewChecklist.forEach(function(rule, i) { -%>
 | <%= i + 1 %> | **<%= rule.name %>** | <%= rule.howToVerify %> | <%= rule.severity %> |
 <% }); -%>
+<% } -%>

@@ -37,6 +37,27 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | UI/UX design & review | `ui-designer` |
 <% } -%>
 
+## Model routing (verify current model IDs in vendor docs)
+
+| Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
+|----------------|-------------------------------|------------------|--------------------------|
+| architect      | Opus-class (thinking on)      | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
+| implementer    | Sonnet-class / Codex-class    | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
+| code-reviewer  | Same family as implementer    | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
+| reviewer       | DIFFERENT family from implementer | high         | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
+| external-review| DIFFERENT family, fresh context   | high         | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent |
+| code-optimizer | Sonnet-class                  | medium           | same as implementer |
+| test-writer    | Sonnet-class                  | medium           | same as implementer |
+| e2e-tester     | Sonnet-class                  | medium           | same as implementer |
+| ui-designer    | Sonnet-class                  | medium           | same as implementer |
+
+Rule: never let the writer be its own final reviewer. A fresh-context
+session with a different model family is the cheapest diversity gain
+available. This rule applies identically across Claude Code, Codex CLI,
+Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
+picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
+Copilot Agent on GPT-5, or vice versa).
+
 ## Planning Workflow
 
 - For complex work, require a simple, explicit `PLAN.md` task breakdown before any implementation starts.
