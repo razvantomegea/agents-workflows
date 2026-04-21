@@ -135,7 +135,7 @@ describe('Epic 1 safety partials', () => {
     expect(codexConfig).toBeDefined();
     const toml = codexConfig!.content;
 
-    expect(toml).toContain('approval_policy = "on-failure"');
+    expect(toml).toContain('approval_policy = "on-request"');
     expect(toml).toContain('sandbox_mode = "workspace-write"');
     expect(toml).toContain('[sandbox_workspace_write]');
     expect(toml).toContain('network_access = false');

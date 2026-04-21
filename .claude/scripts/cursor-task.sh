@@ -44,13 +44,13 @@ echo "" >> "${SCRATCHPAD}/current-task.md"
 sed -n "/^### Task ${TASK_NUM} /p" "$PLAN_FILE" >> "${SCRATCHPAD}/current-task.md"
 echo "$TASK_CONTENT" >> "${SCRATCHPAD}/current-task.md"
 
-FILES_HEADER_COUNT=$(echo "$TASK_CONTENT" | grep -c '\*\*Files\*\*:' || true)
+FILES_HEADER_COUNT=$(echo "$TASK_CONTENT" | grep -c '\*\*Files\*\*:?' || true)
 
 FILES=$(echo "$TASK_CONTENT" | awk '
 BEGIN { in_files = 0 }
-/\*\*Files\*\*:/ {
+/\*\*Files\*\*:?/ {
   rest = $0
-  sub(/.*\*\*Files\*\*:[[:space:]]*/, "", rest)
+  sub(/.*\*\*Files\*\*:?[[:space:]]*/, "", rest)
   gsub(/`/, "", rest)
   gsub(/[[:space:]]+$/, "", rest)
   if (rest != "") {
@@ -86,6 +86,37 @@ if [[ "$FILES_HEADER_COUNT" -gt 0 ]] && [[ -z "$FILES" ]]; then
   exit 1
 fi
 
+resolve_candidate_path() {
+  local file_path="$1"
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$REPO_ROOT" "$file_path" <<'PY'
+import os
+import sys
+
+repo_root = sys.argv[1]
+file_path = sys.argv[2]
+
+try:
+    candidate_input = file_path if os.path.isabs(file_path) else os.path.join(repo_root, file_path)
+    normalized = os.path.normpath(os.path.abspath(candidate_input))
+except Exception as exc:
+    print(f"Error: failed to normalize path '{file_path}': {exc}", file=sys.stderr)
+    raise SystemExit(1)
+
+sys.stdout.write(normalized)
+PY
+    return 0
+  fi
+
+  if command -v node >/dev/null 2>&1; then
+    node -e "const path = require('node:path').posix; process.stdout.write(path.resolve(process.argv[1], process.argv[2]));" "$REPO_ROOT" "$file_path"
+    return 0
+  fi
+
+  return 1
+}
+
 echo "=== Task ${TASK_NUM} ==="
 sed -n "/^### Task ${TASK_NUM} /p" "$PLAN_FILE"
 echo "$TASK_CONTENT"
@@ -99,7 +130,11 @@ if [[ -n "$FILES" ]]; then
   FILE_ARGS=()
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    CANDIDATE="$(cd "$REPO_ROOT" && realpath -m "$f" 2>/dev/null || echo "")"
+    CANDIDATE=""
+    if ! CANDIDATE="$(resolve_candidate_path "$f")"; then
+      echo "Warning: could not resolve path '${f}' - skipping"
+      continue
+    fi
     if [[ -z "$CANDIDATE" ]]; then
       echo "Warning: could not resolve path '${f}' — skipping"
       continue

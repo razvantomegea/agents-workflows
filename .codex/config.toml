@@ -5,14 +5,14 @@
 # register). Until Epic 9 hardening (E9.T10–E9.T15) lands and the smoke suite
 # is green on this host, this file stays on the safe posture.
 #
-# - approval_policy = "on-failure" runs sandboxed commands without prompting
-#   and asks only when a command fails because it needs more access.
+# - approval_policy = "on-request" runs sandboxed commands without prompting
+#   and asks only when a command requests more access.
 # - sandbox_mode = "workspace-write" confines writes to the project root
 #   (blocks edits to .env outside the workspace, shell rc files, system packages).
 # - sandbox_workspace_write.network_access = false blocks outbound network
 #   egress until the Epic 9 exfil denies (E9.T11) and allowlist (E9.T13) land.
 
-approval_policy = "on-failure"
+approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]

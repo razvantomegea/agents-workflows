@@ -39,7 +39,15 @@ Fix all QA issues listed in QA.md on the current feature branch.
 
    - NEVER run `git stash` or any git working-tree manipulation.
    - Only fix errors in files related to the current QA issue.
+<% if (commands.typeCheck && commands.test) { -%>
    - If `<%= commands.typeCheck %>` or `<%= commands.test %>` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
+<% } else if (commands.typeCheck) { -%>
+   - If `<%= commands.typeCheck %>` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
+<% } else if (commands.test) { -%>
+   - If `<%= commands.test %>` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
+<% } else { -%>
+   - If verification reveals failures in files **unrelated** to the current QA fixes, **stop the loop immediately** and report them as **unresolved external failures**. Do not fix unrelated files.
+<% } -%>
 
 7. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
 

@@ -54,7 +54,7 @@ After writing the plan, **immediately execute every task** in order:
 
    - NEVER run `git stash` or any git working-tree manipulation during verification.
    - Only fix errors in files that the **current task** explicitly modified.
-   - If `pnpm check-types` or `pnpm test` fails on files **outside** the current task's scope, record the failure under **External errors** and do not fix unrelated files.
+   - If `pnpm check-types` or `pnpm test` fails on files **outside** the current task's scope, record the failure under **External errors**, do not fix unrelated files, and immediately halt the task loop with the workflow marked failed (non-zero exit status).
 
 2. **Post-implementation optimization**: After all tasks and reviews, run the `code-optimizer` sub-agent on all modified files. Apply any critical findings via `implementer`.
 
