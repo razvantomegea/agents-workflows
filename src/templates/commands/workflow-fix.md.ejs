@@ -15,9 +15,11 @@ Fix all QA issues listed in QA.md on the current feature branch.
    - Read the relevant files to understand current state.
    - Confirm the issue is real and the suggested fix is correct.
 <% if (hasUiDesigner) { -%>
-   - **If the fix touches UI/UX**: first run the `ui-designer` sub-agent to approve the visual approach, then use `implementer` to apply.
+   - **If the fix touches UI/UX** (layout, visual design, component styling, interaction states, accessibility, responsive behavior): **mandatory** — first run the `ui-designer` sub-agent to approve the visual approach and produce implementation guidance, then hand off to `implementer` to apply the change. Never route UI/UX fixes straight to `implementer`.
+   - For all other (non-UI/UX) fixes, use the `implementer` sub-agent directly.
+<% } else { -%>
+   - Use the `implementer` sub-agent to apply the fix.
 <% } -%>
-   - For non-UI fixes, use the `implementer` sub-agent directly.
    - Mark the issue as done in `QA.md` with `[x]`.
 6. After all fixes, run the `code-reviewer` sub-agent on all modified files. Apply every critical and warning finding via `implementer`.
 7. Run the `reviewer` sub-agent for the mandatory review loop:

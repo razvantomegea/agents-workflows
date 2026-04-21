@@ -147,9 +147,53 @@ describe('Epic 3 review depth', () => {
     expect(content).toContain('**If any suite fails:**');
   });
 
-  it('external-review documents terminal command override and Code Rabbit CLI default', () => {
+  it('external-review declares CodeRabbit CLI as mandatory default', () => {
     const content = getCommandContent(files, 'external-review');
+    expect(content).toContain('mandatory default');
+    expect(content).toContain('CodeRabbit CLI');
     expect(content).toContain('Code Rabbit CLI');
-    expect(content).toContain('override');
+  });
+
+  it('external-review documents all three platform invocations', () => {
+    const content = getCommandContent(files, 'external-review');
+    expect(content).toContain('wsl -d Ubuntu');
+    expect(content).toContain('/mnt/c/');
+    expect(content).toContain('cr review --agent --base main');
+    expect(content).toContain('brew install coderabbit');
+    expect(content).toContain('curl -fsSL https://cli.coderabbit.ai/install.sh');
+  });
+
+  it('external-review documents WSL PATH pitfall', () => {
+    const content = getCommandContent(files, 'external-review');
+    expect(content).toContain('~/.local/bin/cr');
+    expect(content).toContain('wslpath -a');
+  });
+
+  it('external-review QA.md format uses grouped-by-file structure', () => {
+    const content = getCommandContent(files, 'external-review');
+    expect(content).toContain('## CodeRabbit Review —');
+    expect(content).toContain('[critical]');
+    expect(content).toContain('[warning]');
+    expect(content).toContain('[suggestion]');
+    expect(content).toContain('All good!');
+  });
+
+  it('external-review preserves allowlist escape hatch', () => {
+    const content = getCommandContent(files, 'external-review');
+    expect(content).toContain('coderabbit review');
+    expect(content).toContain('curl --head');
+    expect(content).toContain('gh pr view');
+    expect(content).toContain('Advanced: terminal-command override');
+  });
+
+  it('workflow-plan runs external-review as mandatory final gate', () => {
+    const workflowPlan = getCommandContent(files, 'workflow-plan');
+    expect(workflowPlan).toContain('/external-review');
+    expect(workflowPlan).toContain('Mandatory external review');
+    assertStepOrder(workflowPlan, [
+      'Final review loop',
+      'Mandatory external review',
+      'Record final summary inputs',
+    ]);
   });
 });

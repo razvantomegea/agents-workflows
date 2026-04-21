@@ -1,0 +1,76 @@
+## CodeRabbit CLI setup
+
+CodeRabbit CLI binary is `coderabbit` with `cr` as the short alias. The sections below cover install, authentication, version check, and invocation per platform. Emit all three platforms; users pick the one that matches their host.
+
+> **Supply-chain note:** the `curl ... | sh` installer is pulled from `cli.coderabbit.ai` (the CodeRabbit vendor domain) over HTTPS with `-fsSL` (fail-on-error, follow-redirects, silent, show-errors). On macOS prefer `brew install coderabbit` so Homebrew handles pinning and verification. `<%= mainBranch %>` is pre-validated by the `safeBranch` schema (`[a-zA-Z0-9._/-]+` only), so embedding it inside a double-quoted `bash -lc` string is shell-safe.
+
+### Windows (WSL Ubuntu)
+
+> CodeRabbit CLI does not ship a native Windows binary. Run it inside WSL Ubuntu so the POSIX shell is available.
+
+**Install (one-time):**
+
+```bash
+wsl -d Ubuntu -- bash -lc 'curl -fsSL https://cli.coderabbit.ai/install.sh | sh'
+```
+
+The installer drops the binary at the WSL user's `~/.local/bin/cr` (for example `/home/<user>/.local/bin/cr`) — **not** `/root/.local/bin/cr`. Always use `bash -lc` so the login shell sources the user's PATH.
+
+**Authenticate (one-time):**
+
+```bash
+wsl -d Ubuntu -- bash -lc 'cr auth login'
+```
+
+**Verify installation:**
+
+```bash
+wsl -d Ubuntu -- bash -lc 'cr --version'
+```
+
+**Run the review:**
+
+```bash
+wsl -d Ubuntu -- bash -lc "cd /mnt/c/Projects/<repo-name> && cr review --agent --base <%= mainBranch %> --config CLAUDE.md"
+```
+
+Substitute the correct `/mnt/c/...` path for your repo. Pass `/mnt/c/...` **directly** — do NOT pipe through `wslpath -a` (it double-prefixes paths that are already WSL-style).
+
+### Linux / macOS
+
+**Install (one-time):**
+
+```bash
+curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+```
+
+macOS alternative via Homebrew:
+
+```bash
+brew install coderabbit
+```
+
+**Authenticate (one-time):**
+
+```bash
+cr auth login
+```
+
+**Verify installation:**
+
+```bash
+cr --version
+```
+
+**Run the review:**
+
+```bash
+cr review --agent --base <%= mainBranch %> --config CLAUDE.md
+```
+
+### Sources
+
+- https://www.coderabbit.ai/cli
+- https://docs.coderabbit.ai/cli
+- https://cli.coderabbit.ai/install.sh
+- https://formulae.brew.sh/cask/coderabbit

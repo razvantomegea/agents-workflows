@@ -211,6 +211,8 @@ No generator/TS source files, no schema, no new context fields.
 - **security-reviewer W1** — `project.name` / `project.description` are interpolated verbatim by EJS templates via the repo's identity-escape renderer. Root cause lives in `src/schema/stack-config.ts` (Zod schema lacks max-length + newline/angle-bracket regex on project metadata). Out of Epic 3 scope. Follow-up: tighten `stackConfigSchema.project` with `z.string().max(...).regex(/^[^\n\r<>]+$/, ...)`, mirroring the existing `SAFE_BRANCH_RE` / `SAFE_COMMAND_RE` discipline.
 - **code-reviewer W1** — Test helpers (`getAgentContent`, `getCommandContent`, `assertStepOrder`) are now duplicated across `tests/generator/epic-2-quality.test.ts` and `tests/generator/epic-3-review-depth.test.ts` (Rule of Two met). Extract to `tests/generator/test-helpers.ts` in the next epic-test PR before a third copy lands; also reconciles the blank-line drift in `assertStepOrder`.
 - **final-reviewer observation** — `tests/generator/generate-all.test.ts` is 212 lines (exceeds project 200-line cap). Predates Epic 3; Epic 3 added only 2 lines. Split or slim in a follow-up cleanup PR.
+- **E3.T6 pre-existing working-tree state** — `src/templates/commands/workflow-fix.md.ejs` shows as modified in `git status` but was not edited by any E3.T6 task. Change (stricter UI/UX routing to `ui-designer` before `implementer`) was pre-existing uncommitted work from a prior session. Left untouched per scope rule.
+- **E3.T6 observation** — `QA.md` was staged as modified at session start but is absent from `git status` at session end. Likely reset by a hook or a prior generator run. Not touched by E3.T6.
 
 ## Task summary
 

@@ -282,7 +282,7 @@ than papering over them.
 | implementer    | Sonnet-class / Codex-class    | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
 | code-reviewer  | Same family as implementer    | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
 | reviewer       | DIFFERENT family from implementer | high         | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
-| external-review| DIFFERENT family, fresh context   | high         | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent |
+| external-review| DIFFERENT family, fresh context   | high         | CodeRabbit CLI (mandatory default) · terminal override (allowlisted) · Cursor BugBot · Copilot PR review agent |
 | code-optimizer | Sonnet-class                  | medium           | same as implementer |
 | test-writer    | Sonnet-class                  | medium           | same as implementer |
 | e2e-tester     | Sonnet-class                  | medium           | same as implementer |
@@ -295,6 +295,8 @@ Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
 picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
 Copilot Agent on GPT-5, or vice versa).
 ```
+
+**External-review mandate.** CodeRabbit CLI is the mandatory default external reviewer across Windows (WSL Ubuntu), Linux, and macOS. Alternative CLIs remain available only via the terminal-override allowlist documented in `external-review.md`; they require explicit opt-in per invocation. `/external-review` must run at the end of `/workflow-plan` as the final cross-model gate — after the reviewer loop and lint have passed — and any critical or warning findings in `QA.md` block workflow completion until resolved by `/workflow-fix`.
 
 ## 1.8 Long-horizon harness (initializer + coder + progress.txt + feature_list.json)
 
@@ -671,48 +673,48 @@ flowchart TD
 
 ## 1.19 Stack-aware agent selection
 
-**Rule.** The generated agent set MUST reflect the detected stack. A pure-backend project does not ship `ui-designer` or `react-ts-senior`; a Python FastAPI project ships `python-senior` instead; a Rust workspace ships `rust-senior`; a Vue/Nuxt project ships `vue-senior`, not `react-ts-senior`. Non-matching seniors are hidden from the interactive agent-selection prompt and default-off in `--yes` runs. Universal agents — `architect`, `implementer`, `code-reviewer`, `security-reviewer`, `code-optimizer`, `test-writer`, `reviewer` — remain always available regardless of stack. At most **one** language/framework senior is auto-enabled per workspace (via detected language + framework); the user can still opt additional seniors in manually from the full list when working on hybrid codebases.
+**Rule.** The generated agent set MUST reflect the detected stack by **replacing** the generic implementer with a stack-specific variant — not by adding parallel `*-senior.md` files. The emitted filename remains the single canonical `implementer.md` (Claude) and `.codex/skills/implementer/SKILL.md` (Codex) regardless of the detected stack; only the template body changes. A Python FastAPI project's `implementer.md` is a Python/FastAPI implementer; a Rust workspace's `implementer.md` is a Rust implementer; a Vue/Nuxt project's `implementer.md` is a Vue implementer. When no variant matches, the generic implementer body is rendered. `ui-designer` is hidden entirely from pure-backend stacks. Universal agents — `architect`, `code-reviewer`, `security-reviewer`, `code-optimizer`, `test-writer`, `reviewer` — remain always available. Exactly **one** implementer file is produced per workspace. This design keeps every downstream reference to `implementer` stable — the routing table in [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs) and all three command templates ([src/templates/commands/workflow-plan.md.ejs](src/templates/commands/workflow-plan.md.ejs), [src/templates/commands/workflow-fix.md.ejs](src/templates/commands/workflow-fix.md.ejs), [src/templates/commands/external-review.md.ejs](src/templates/commands/external-review.md.ejs)) continue to address the agent by the name `implementer` without modification.
 
-**Scope of covered stacks (2025–2026 top tier).** Backend: `python-senior` (Python + FastAPI / Django / Flask), `node-ts-backend-senior` (TS/JS + NestJS / Express / Fastify / Hono), `go-senior`, `rust-senior`, `java-spring-senior` (Java + Spring Boot), `dotnet-csharp-senior` (C# + ASP.NET Core). Frontend: keep `react-ts-senior` (React / Next.js / Expo / React Native / Remix + TS), add `vue-senior` (Vue / Nuxt), `angular-senior`, `svelte-senior` (SvelteKit). Priorities track the Stack Overflow 2025 Developer Survey (JS/TS 65.6%, Python 49.3%, TS 38.5%, Java 33.4%, Go 14.3%, Rust 13.1%) and the JetBrains 2025 Developer Ecosystem Report (TS / Rust / Go as fastest-growing; NestJS +40% YoY; FastAPI dominant for ML APIs; Spring Boot dominant in enterprise Java).
+**Scope of covered variants (2025–2026 top tier).** Backend variants: `python` (Python + FastAPI / Django / Flask), `node-ts-backend` (TS/JS + NestJS / Express / Fastify / Hono), `go`, `rust`, `java-spring` (Java + Spring Boot), `dotnet-csharp` (C# + ASP.NET Core). Frontend variants: `react-ts` (React / Next.js / Expo / React Native / Remix + TS), `vue` (Vue / Nuxt), `angular`, `svelte` (SvelteKit). Fallback: `generic` (no match). Priorities track the Stack Overflow 2025 Developer Survey (JS/TS 65.6%, Python 49.3%, TS 38.5%, Java 33.4%, Go 14.3%, Rust 13.1%) and the JetBrains 2025 Developer Ecosystem Report (TS / Rust / Go as fastest-growing; NestJS +40% YoY; FastAPI dominant for ML APIs; Spring Boot dominant in enterprise Java).
 
-**Verdict.** **Partially covered.** `reactTsSenior` is gated correctly in [src/prompt/questions.ts](src/prompt/questions.ts) via `supportsReactTsStack`, but `uiDesigner` defaults to `isFrontend` only and is still offered to backend-only stacks via the checkbox UI. No other language/framework seniors exist. A Python or Rust developer today gets a bare `implementer` with no stack-native senior, and is still offered `ui-designer` unless they uncheck it.
+**Verdict.** **Partially covered.** `reactTsSenior` is gated in [src/prompt/questions.ts](src/prompt/questions.ts) via `supportsReactTsStack`, but it is **additive** — a React-TS project today ships both `implementer.md` and `react-ts-senior.md`, splitting authority between two agents and contradicting §2.1 AI-complacency guidance (Radar v33 Hold on "AI complacency"). No variant exists for Python, Go, Rust, Java, .NET, Vue, Angular, or Svelte. `uiDesigner` defaults to `isFrontend` only but is still offered as a checkbox to backend-only stacks. A Python or Rust developer today gets a generic `implementer` plus an irrelevant `ui-designer` checkbox.
 
 **Priority.** **[MUST].**
 
-**Where to add.** New agent templates under `src/templates/agents/` (9 new files), a shared `src/templates/partials/senior-core.md.ejs` extracted from [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) for DRY (§2.10), new detector signals in [src/detector/detect-framework.ts](src/detector/detect-framework.ts) (Spring Boot via `pom.xml` / `build.gradle` `spring-boot-starter`; ASP.NET Core via `Microsoft.AspNetCore.*` in `*.csproj`), a new `src/generator/senior-routing.ts` exporting `getApplicableSeniorAgent(detected)`, and schema additions in [src/schema/stack-config.ts](src/schema/stack-config.ts). Drives Epic 13.
+**Where to add.** New variant template folder `src/templates/agents/implementer-variants/<variant>.md.ejs` (11 files: `generic`, `react-ts`, `node-ts-backend`, `python`, `go`, `rust`, `java-spring`, `dotnet-csharp`, `vue`, `angular`, `svelte`). Shared body extracted to `src/templates/partials/implementer-core.md.ejs` for DRY (§2.10) — consumed by every variant. New detector signals in [src/detector/detect-framework.ts](src/detector/detect-framework.ts) (Spring Boot via `pom.xml` / `build.gradle` `spring-boot-starter`; ASP.NET Core via `Microsoft.AspNetCore.*` in `*.csproj`). New `src/generator/implementer-routing.ts` exporting `getApplicableImplementerVariant(detected)`. Schema addition in [src/schema/stack-config.ts](src/schema/stack-config.ts): `agents.implementerVariant` enum; deprecate `reactTsSenior` with a legacy-manifest migration that rewrites `reactTsSenior: true` → `implementerVariant: 'react-ts'`. The standalone [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) file is removed; its content migrates into `implementer-variants/react-ts.md.ejs`. Drives Epic 13.
 
 **Decision flow:**
 ```mermaid
-flowchart TD
-    Detect[Detected language and framework] --> Cat{Stack category}
-    Cat -->|Frontend framework| FE[Frontend branch]
-    Cat -->|Backend only| BE[Backend branch]
-    Cat -->|Fullstack JS/TS| FS[Fullstack branch]
-    FE --> MapFE{Framework}
-    MapFE -->|React + TS| RTS[react-ts-senior + ui-designer]
-    MapFE -->|Vue / Nuxt| VUE[vue-senior + ui-designer]
-    MapFE -->|Angular| ANG[angular-senior + ui-designer]
-    MapFE -->|SvelteKit| SVK[svelte-senior + ui-designer]
-    BE --> MapBE{Language}
-    MapBE -->|Python| PY[python-senior, no ui-designer]
-    MapBE -->|TS/JS backend| NODE[node-ts-backend-senior, no ui-designer]
-    MapBE -->|Go| GO[go-senior, no ui-designer]
-    MapBE -->|Rust| RUST[rust-senior, no ui-designer]
-    MapBE -->|Java + Spring| JAVA[java-spring-senior, no ui-designer]
-    MapBE -->|C# + ASP.NET| NET[dotnet-csharp-senior, no ui-designer]
-    FS --> MapFS[Same routing as FE branch]
-    RTS --> Out[Final agent set]
-    VUE --> Out
-    ANG --> Out
-    SVK --> Out
-    PY --> Out
-    NODE --> Out
-    GO --> Out
-    RUST --> Out
-    JAVA --> Out
-    NET --> Out
-    MapFS --> Out
-    Out --> Universals[Always add universal agents: architect, implementer, code-reviewer, security-reviewer, code-optimizer, test-writer, reviewer]
+flowchart LR
+    Detect[detectStack] --> Route[getApplicableImplementerVariant]
+    Route -->|React + TS| VarRts[implementer-variants/react-ts.md.ejs]
+    Route -->|Vue / Nuxt| VarVue[implementer-variants/vue.md.ejs]
+    Route -->|Angular| VarNg[implementer-variants/angular.md.ejs]
+    Route -->|SvelteKit| VarSv[implementer-variants/svelte.md.ejs]
+    Route -->|Python| VarPy[implementer-variants/python.md.ejs]
+    Route -->|TS/JS backend| VarNode[implementer-variants/node-ts-backend.md.ejs]
+    Route -->|Go| VarGo[implementer-variants/go.md.ejs]
+    Route -->|Rust| VarRs[implementer-variants/rust.md.ejs]
+    Route -->|Java + Spring| VarJava[implementer-variants/java-spring.md.ejs]
+    Route -->|C# + ASP.NET| VarNet[implementer-variants/dotnet-csharp.md.ejs]
+    Route -->|no match| VarGen[implementer-variants/generic.md.ejs]
+    VarRts --> Core[partials/implementer-core.md.ejs]
+    VarVue --> Core
+    VarNg --> Core
+    VarSv --> Core
+    VarPy --> Core
+    VarNode --> Core
+    VarGo --> Core
+    VarRs --> Core
+    VarJava --> Core
+    VarNet --> Core
+    VarGen --> Core
+    Core --> Out["Single output: implementer.md"]
+    Out --> UI{"isFrontendFramework?"}
+    UI -->|yes| AddUI[Also emit ui-designer.md]
+    UI -->|no| SkipUI[Skip ui-designer entirely]
+    AddUI --> Universals[Always emit: architect, code-reviewer, security-reviewer, code-optimizer, test-writer, reviewer]
+    SkipUI --> Universals
 ```
 
 ---
@@ -735,7 +737,7 @@ flowchart TD
 
 1. **Your mission** — one paragraph stating the agent's job: audit `.claude/agents/*.md` and `.codex/skills/**/SKILL.md` against this workspace and propose file-level changes.
 2. **Inputs to read first** — explicit list: `PRD.md`, `AGENTS.md`, `CLAUDE.md` (if present), `<%= project.docsFile %>` (if set), every file under `.claude/agents/` and `.codex/skills/`, plus representative source files from `<%= paths.sourceRoot %>`.
-3. **Audit targets** — for each generated agent, check: (a) does the stack-context partial match the real primary modules? (b) do the DoD commands match what actually runs in CI? (c) are the cited paths present? (d) do the language/framework idioms match the codebase's conventions? (e) are domain-specific nouns and services named?
+3. **Audit targets** — the agent set emitted in this repo is the single canonical `implementer.md` (rendered from the matching variant per §1.19), plus `architect.md`, `code-reviewer.md`, `security-reviewer.md`, `code-optimizer.md`, `test-writer.md`, `reviewer.md`, optionally `ui-designer.md` (frontend only) and `e2e-tester.md`. For each generated agent file, check: (a) does the stack-context partial match the real primary modules? (b) do the DoD commands match what actually runs in CI? (c) are the cited paths present? (d) do the language/framework idioms match the codebase's conventions? (e) are domain-specific nouns and services named? For `implementer.md` specifically, verify the rendered variant matches the actual primary stack (e.g., if the repo is majority Go but the variant is `generic`, flag the mismatch).
 4. **Propose changes (do not edit yet)** — output format is a numbered list: `agent file path` → `section heading` → `proposed diff` (as a unified-diff or before/after block) → `rationale citing PRD § or code path`.
 5. **Stop conditions** — explicit rules: do not edit any file until the user replies "apply"; if more than ~15 change items accumulate, chunk by agent file; if uncertain about a domain term, ask the user per §1.3.
 6. **Verification hand-off** — after edits are applied, run the §1.6 DoD commands (`<%= commands.typeCheck %>`, `<%= commands.test %>`, `<%= commands.lint %>`) and loop through the reviewer agent per §2.1.
@@ -1412,8 +1414,8 @@ Recommended placement of every addition above:
 | `e2e-tester.md` | §2.5 Testing philosophy (E2E tier) · §1.6 Definition of Done (end-to-end verification) · §2.12 Accessibility smoke (keyboard, zoom, screen reader) |
 | `reviewer.md` | §1.7 Cross-model review (prefer different family) · §2.18 AI-complacency guard · §1.3 Fail-safe · §1.12 Sub-agent delegation · explicit ordering of the 4-step gate |
 | `ui-designer.md` | §2.12 Accessibility WCAG 2.2 AA · §2.13 i18n · §2.11 Performance (INP, LCP, CLS) |
-| `workflow-plan.md` | §1.13 Planning protocol · §1.1 Context budget · add a `--long-horizon` flag path (§1.8) |
-| `workflow-fix.md` | §1.3 Fail-safe · §1.17 Error-handling (self) · §2.5 "write failing test first" |
+| `workflow-plan.md` | §1.13 Planning protocol · §1.1 Context budget · add a `--long-horizon` flag path (§1.8) · **UI/UX routing rule (§1.12)**: when `ui-designer` is enabled, any task whose change touches UI/UX (layout, visual design, component styling, interaction states, accessibility, responsive behavior) — whether explicitly tagged `[UI]` or not — MUST first go through `ui-designer` for design review and implementation guidance, then hand off to `implementer` to write the code. Never skip the `ui-designer` step on UI/UX work. |
+| `workflow-fix.md` | §1.3 Fail-safe · §1.17 Error-handling (self) · §2.5 "write failing test first" · **UI/UX routing rule (§1.12)**: when `ui-designer` is enabled, any QA fix that touches UI/UX (layout, visual design, component styling, interaction states, accessibility, responsive behavior) MUST first go through `ui-designer` to approve the visual approach, then hand off to `implementer` to apply the change. Non-UI/UX fixes go straight to `implementer`. |
 | `external-review.md` | §1.7 Cross-model routing (different family mandatory) · §2.18 AI-complacency guard · §2.1 full checklist |
 | `.codex/config.toml` | Mirror the Claude Code allow/deny list; enable approval + sandbox modes |
 | `.codex/skills/*` | Mirror Claude Code skills: `long-horizon`, `untrusted-content`, `security-review` |
@@ -1593,6 +1595,11 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Files**: `src/templates/commands/external-review.md.ejs`
 - **Change**: Allow users to specify in terminal the command used for `/external-review`; set Code Rabbit CLI as the default setup when no explicit command is provided.
 - **Done when**: rendered external-review instructions document both terminal override usage and Code Rabbit CLI default behavior.
+
+### E3.T6 — CodeRabbit mandatory default + cross-platform invocation + workflow-plan gate [§1.7] — M
+- **Files**: `src/templates/partials/coderabbit-setup.md.ejs` (new), `src/templates/commands/external-review.md.ejs`, `src/templates/commands/workflow-plan.md.ejs`, `tests/generator/epic-3-review-depth.test.ts`.
+- **Change**: CodeRabbit CLI becomes the mandatory default external reviewer with platform-specific install/auth/invocation samples for Windows (WSL Ubuntu), Linux, and macOS. QA.md format aligns with the grouped-by-file + severity-prefixed checklist spec (`[critical]` / `[warning]` / `[suggestion]`). `/external-review` runs at the tail of `/workflow-plan` as a mandatory final gate after the reviewer loop and lint pass. Terminal-override escape hatch remains available only via the existing allowlist; E3.T5 is subsumed but retained.
+- **Done when**: rendered `external-review.md` contains all three platform invocations + the new QA.md format; rendered `workflow-plan.md` invokes `/external-review` as a mandatory final step after lint; Epic 3 tests in `epic-3-review-depth.test.ts` assert all new contracts and pass.
 
 ---
 
@@ -2308,17 +2315,20 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 ---
 
-## Epic 13 — Stack-Aware Dedicated Senior Agents [MUST]
+## Epic 13 — Stack-Aware Implementer Variants [MUST]
 
-**Goal.** Generate only the language/framework-specific senior agents that match the detected stack. Hide `ui-designer` and React seniors from pure-backend projects. Add 9 new senior templates covering 2025–2026's most-used stacks (see §1.19). Preserve the existing `react-ts-senior`. Extract the shared senior-agent body into a single partial so every senior template stays small (§2.10 DRY).
+**Goal.** Replace the generic implementer with a stack-specific variant when the detected stack matches a supported tier. The emitted filename stays canonical — `implementer.md` (Claude) and `.codex/skills/implementer/SKILL.md` (Codex) — so every downstream reference to `implementer` in [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs), [src/templates/commands/workflow-plan.md.ejs](src/templates/commands/workflow-plan.md.ejs), [src/templates/commands/workflow-fix.md.ejs](src/templates/commands/workflow-fix.md.ejs), and [src/templates/commands/external-review.md.ejs](src/templates/commands/external-review.md.ejs) stays valid without change. Only the template body changes. Drop the parallel `reactTsSenior` additive output model (which today produces both `implementer.md` and `react-ts-senior.md`). Hide `ui-designer` from pure-backend stacks. At most one implementer file per workspace.
 
 **Acceptance.**
 
-- Detection + schema wired for nine new seniors: `pythonSenior`, `nodeTsBackendSenior`, `goSenior`, `rustSenior`, `javaSpringSenior`, `dotnetCsharpSenior`, `vueSenior`, `angularSenior`, `svelteSenior`. `reactTsSenior` unchanged.
-- `askAgentSelection` in [src/prompt/questions.ts](src/prompt/questions.ts) shows the universal set always, shows `ui-designer` only when a frontend framework is detected, and shows at most the single senior keyed to the detected stack (plus a "More seniors..." affordance for hybrid repos that opens the full list).
-- `--yes` / default-config flow auto-enables exactly one senior via `getApplicableSeniorAgent(detected)`; no senior is enabled when no match is found.
-- New shared partial `src/templates/partials/senior-core.md.ejs` owns the common structure (stack context, code style, DRY rules, file organization, docs reference, tool-use discipline, fail-safe, untrusted content, workflow steps, constraints, uncertainty) so each senior template is a <=40-line file that only contributes the language/framework-specific idioms + testing notes.
-- Snapshot tests cover one fixture per senior flavor plus the React regression fixture.
+- Schema: [src/schema/stack-config.ts](src/schema/stack-config.ts) `agents` has a single `implementerVariant` Zod enum (`generic | react-ts | node-ts-backend | python | go | rust | java-spring | dotnet-csharp | vue | angular | svelte`) defaulting to `generic`. `reactTsSenior` is removed.
+- Manifest migration: loading an existing `.agents-workflows.json` that carries `"reactTsSenior": true` rewrites it to `"implementerVariant": "react-ts"` without user action (via a Zod `.preprocess` or a dedicated migration helper in [src/schema/manifest.ts](src/schema/manifest.ts)).
+- Generator: exactly one `implementer.md` (and one Codex skill) is emitted per workspace, chosen by variant. No `*-senior.md` file is ever produced. The legacy [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) is deleted; its content migrates into `implementer-variants/react-ts.md.ejs`.
+- Prompt flow: `askAgentSelection` in [src/prompt/questions.ts](src/prompt/questions.ts) drops every `*-senior` entry. A new single-select `askImplementerVariant` question (auto-filled from detection, confirmable in interactive runs) picks the variant; `ui-designer` remains a checkbox gated on `isFrontendFramework`; universals are always checked.
+- `--yes` / default-config flow auto-selects the detected variant via `getApplicableImplementerVariant(detected)`, falling back to `generic` when unmatched.
+- Shared partial `src/templates/partials/implementer-core.md.ejs` owns the common body (stack context, code style, DRY, file organization, docs reference, tool-use discipline, fail-safe, untrusted content, DoD, error-handling-self, TDD, Workflow / Checklist / `<output_format>` / `<constraints>` / `<uncertainty>`). Each variant template is a thin wrapper <=40 lines that only contributes the language/framework specifics.
+- Stale-file cleanup: on `update`, a pre-existing `.claude/agents/react-ts-senior.md` and/or `.codex/skills/react-ts-senior/SKILL.md` trigger the Epic 7 safe-delete confirmation flow. Never hard-delete without confirmation.
+- Snapshot tests assert (a) `implementer.md` body differs per variant, (b) filename is always `implementer.md`, (c) no `*-senior.md` appears in the generated set for any fixture, (d) a legacy manifest with `reactTsSenior: true` still loads and produces the expected React-TS variant body.
 - `pnpm check-types && pnpm lint && pnpm test` all green; `reviewer` + `security-reviewer` loop (§1.6) passes on the branch.
 
 ### E13.T1 — Detector enrichments [§1.19] — S
@@ -2327,59 +2337,72 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - **Change**: Add Spring Boot detection by reading `pom.xml` (`<artifactId>spring-boot-starter*</artifactId>`) and `build.gradle` / `build.gradle.kts` (`org.springframework.boot`). Add ASP.NET Core detection by scanning the first `*.csproj` for `Microsoft.AspNetCore.*` package references. Export new helpers `isBackendFramework(framework)`, `isFullstackJsFramework(framework)` in [src/constants/frameworks.ts](src/constants/frameworks.ts) (Next.js / Nuxt / Remix / SvelteKit are fullstack; NestJS / Express / Fastify / Hono / FastAPI / Django / Flask / Spring Boot / ASP.NET Core are backend). Keep existing exports intact.
 - **Done when**: unit tests cover one fixture per new detector (Maven Spring, Gradle Spring, ASP.NET Core .csproj); `isBackendFramework` / `isFullstackJsFramework` flip correctly for every covered framework.
 
-### E13.T2 — Schema + routing predicate [§1.19] — S
+### E13.T2 — Schema migration + variant routing [§1.19] — M
 
-- **Files**: [src/schema/stack-config.ts](src/schema/stack-config.ts), new `src/generator/senior-routing.ts`.
-- **Change**: Extend the `agents` object in `stackConfigSchema` with nine new booleans defaulting to `false`: `pythonSenior`, `nodeTsBackendSenior`, `goSenior`, `rustSenior`, `javaSpringSenior`, `dotnetCsharpSenior`, `vueSenior`, `angularSenior`, `svelteSenior`. In `senior-routing.ts` export `getApplicableSeniorAgent(detected: DetectedStack): keyof StackConfig['agents'] | null` — single-match decision function driven by language + framework. Never return more than one key. Return `null` for unknown stacks.
-- **Done when**: Zod parses existing fixtures unchanged; TS unit tests verify each (language, framework) input produces the expected single key; backward-compat: monolingual JS/TS React projects still route to `reactTsSenior`.
+- **Files**: [src/schema/stack-config.ts](src/schema/stack-config.ts), [src/schema/manifest.ts](src/schema/manifest.ts), new `src/generator/implementer-routing.ts`.
+- **Change**: Replace `reactTsSenior: z.boolean().default(false)` in `stackConfigSchema.agents` with `implementerVariant: z.enum(['generic', 'react-ts', 'node-ts-backend', 'python', 'go', 'rust', 'java-spring', 'dotnet-csharp', 'vue', 'angular', 'svelte']).default('generic')`. Add a Zod `.preprocess` on the `agents` object (or an explicit `migrateLegacyAgents(raw)` helper invoked from `manifestSchema` loading) that: (a) when input has `reactTsSenior: true` and no `implementerVariant`, sets `implementerVariant: 'react-ts'` and drops `reactTsSenior`; (b) strips any other legacy `*Senior: true` flags silently. In `implementer-routing.ts` export `getApplicableImplementerVariant(detected: DetectedStack): ImplementerVariant` returning the enum value (never `null`; falls back to `'generic'`).
+- **Done when**: Zod parses existing fixtures unchanged except for the variant field; a fixture manifest with `"reactTsSenior": true` round-trips to `implementerVariant: 'react-ts'` and no `reactTsSenior` key remains; TS unit tests verify every (language, framework) input produces the expected variant enum value.
 
-### E13.T3 — Shared `senior-core.md.ejs` partial [§1.19 §2.10] — M
+### E13.T3 — Shared `implementer-core.md.ejs` partial [§1.19 §2.10] — M
 
-- **Files**: new `src/templates/partials/senior-core.md.ejs`.
-- **Change**: Extract the shared body from [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) — the partial includes for stack-context, code-style, dry-rules, file-organization, docs-reference, tool-use-discipline, fail-safe, untrusted-content; the Workflow / Boundaries / `<output_format>` / `<constraints>` / `<uncertainty>` blocks; and the testing section. Parameterize with: `language`, `framework`, `testFramework`, `conventions`, `paths`, `project`, plus an optional `specificsBlock` slot where each senior injects its language/framework specifics. Keep the partial under 120 lines.
-- **Done when**: rendering `senior-core.md.ejs` against the react-ts fixture produces output byte-identical to the current `react-ts-senior` output (modulo the pluggable specifics block). Snapshot locked.
+- **Files**: new `src/templates/partials/implementer-core.md.ejs`.
+- **Change**: Extract the shared body from [src/templates/agents/implementer.md.ejs](src/templates/agents/implementer.md.ejs) — the partial includes for stack-context, code-style, dry-rules, file-organization, docs-reference, tool-use-discipline, fail-safe, untrusted-content, definition-of-done, error-handling-self, tdd-discipline; plus the universal Workflow / Checklist / `<output_format>` / `<constraints>` / `<uncertainty>` blocks. Parameterize with `language`, `framework`, `testFramework`, `conventions`, `paths`, `project`, plus a `specificsBlock` slot where each variant injects language/framework specifics. Keep the partial under 120 lines. The current [src/templates/agents/implementer.md.ejs](src/templates/agents/implementer.md.ejs) is deleted — replaced by `implementer-variants/generic.md.ejs` (see E13.T4), which is the byte-identical wrapper for the existing output.
+- **Done when**: rendering the `generic` variant produces output byte-identical to the current [src/templates/agents/implementer.md.ejs](src/templates/agents/implementer.md.ejs) output (modulo the empty specifics block). Snapshot locked.
 
-### E13.T4 — Nine new senior templates [§1.19] — L
+### E13.T4 — Eleven variant templates [§1.19] — L
 
-- **Files**: new `src/templates/agents/python-senior.md.ejs`, `src/templates/agents/node-ts-backend-senior.md.ejs`, `src/templates/agents/go-senior.md.ejs`, `src/templates/agents/rust-senior.md.ejs`, `src/templates/agents/java-spring-senior.md.ejs`, `src/templates/agents/dotnet-csharp-senior.md.ejs`, `src/templates/agents/vue-senior.md.ejs`, `src/templates/agents/angular-senior.md.ejs`, `src/templates/agents/svelte-senior.md.ejs`; modify [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) to consume `senior-core.md.ejs`.
-- **Change**: Each new template is a thin wrapper: YAML frontmatter (`name`, `description` tied to the stack, `tools`, `model: sonnet`, `color`), a one-line "You are a senior <framework> <language> agent…" header, `<%- include('../partials/senior-core.md.ejs', { specificsBlock: '…' }) %>`. Each `specificsBlock` (<=30 lines) covers: (a) language/framework idioms (e.g., Python: `async def` + type hints + Pydantic models; Go: error-return idiom + `context.Context` propagation; Rust: `Result` + `?` + ownership; Spring Boot: `@RestController` + DI patterns; ASP.NET Core: minimal APIs vs controllers; Vue 3: Composition API + `<script setup>`; Angular: standalone components + signals; SvelteKit: runes + load functions; Nest/Express: DTOs + guards/interceptors), (b) testing conventions matching the detected framework (pytest / go test / cargo test / JUnit + Spring test / xUnit + WebApplicationFactory / Vitest / Vitest+Testing-Library-Vue / Jest+TestBed / Vitest+@testing-library/svelte / jest+supertest), (c) one "common pitfalls" bullet list (<=5 items) specific to that stack.
-- **Done when**: all 10 templates render against their matching fixture; each wrapper template <=40 lines; total new-template LOC <=400.
+- **Files**: new `src/templates/agents/implementer-variants/generic.md.ejs`, `.../react-ts.md.ejs`, `.../node-ts-backend.md.ejs`, `.../python.md.ejs`, `.../go.md.ejs`, `.../rust.md.ejs`, `.../java-spring.md.ejs`, `.../dotnet-csharp.md.ejs`, `.../vue.md.ejs`, `.../angular.md.ejs`, `.../svelte.md.ejs`. Delete [src/templates/agents/react-ts-senior.md.ejs](src/templates/agents/react-ts-senior.md.ejs) and [src/templates/agents/implementer.md.ejs](src/templates/agents/implementer.md.ejs).
+- **Change**: Each variant template is a thin wrapper with YAML frontmatter (`name: implementer` constant — never `name: python-senior` etc.; description references the variant stack; `tools: Read, Edit, Write, Bash, Grep, Glob`; `model: sonnet`; `color: green`), a one-line header ("You are a senior <framework> / <language> implementer for the `<%= project.name %>` project…"), `<%- include('../../partials/implementer-core.md.ejs', { specificsBlock: '...' }) %>`, and a variant `specificsBlock` (<=30 lines) covering: (a) language/framework idioms (Python: `async def` + type hints + Pydantic; Go: error-return + `context.Context`; Rust: `Result` + `?` + ownership; Spring Boot: `@RestController` + DI; ASP.NET Core: minimal APIs vs controllers; Vue 3: Composition API + `<script setup>`; Angular: standalone components + signals; SvelteKit: runes + load functions; Nest/Express: DTOs + guards/interceptors; React-TS: existing `react-ts-senior` content migrated verbatim), (b) testing conventions (pytest / go test / cargo test / JUnit + Spring test / xUnit + WebApplicationFactory / Vitest / Vitest+Testing-Library-Vue / Jest+TestBed / Vitest+@testing-library/svelte / jest+supertest), (c) a "common pitfalls" list (<=5 items). The `generic` variant's specifics block is empty (it reproduces today's implementer behaviour).
+- **Done when**: all 11 variant templates render against their matching fixture; each wrapper <=40 lines; the React-TS variant body is a superset of the previous `react-ts-senior.md` content; the `generic` variant body matches the previous `implementer.md` output byte-for-byte.
 
-### E13.T5 — Prompt gating [§1.19] — M
+### E13.T5 — Prompt flow: `askImplementerVariant` + gated `ui-designer` [§1.19] — M
 
-- **Files**: [src/prompt/questions.ts](src/prompt/questions.ts).
-- **Change**: Rewrite `askAgentSelection` to accept `params: Readonly<{ detected: DetectedStack }>` and derive `isFrontend`, `isReactTs`, plus the single applicable senior via `getApplicableSeniorAgent`. Build the checkbox choice list so that: (a) universals are always present and checked; (b) the matching senior is present and checked; (c) `ui-designer` is present only when `isFrontendFramework(detected.framework.value)`, defaulting checked; (d) a separator item "More seniors (hybrid codebases)" expands into the full senior list, all unchecked. `askCommandSelection` and `askTargets` unchanged.
-- **Done when**: interactive snapshots for backend-python, backend-go, frontend-vue, and fullstack-next fixtures each show only the expected senior plus universals; `ui-designer` absent from pure-backend snapshots.
+- **Files**: [src/prompt/questions.ts](src/prompt/questions.ts), [src/prompt/prompt-flow.ts](src/prompt/prompt-flow.ts).
+- **Change**: Remove the `reactTsSenior` row from `askAgentSelection` and never introduce `*-senior` rows. Gate `ui-designer` on `isFrontendFramework(detected.framework.value)` — hidden (not merely unchecked) when absent. Add `askImplementerVariant(detected)` returning `ImplementerVariant`: a single-select question whose default is `getApplicableImplementerVariant(detected)` and whose choices are the full enum plus inline labels describing each variant. In `runPromptFlow`, call the new question after `askStack` and thread the result into `agents.implementerVariant`. Drop the `isReactTs` parameter from `askAgentSelection`.
+- **Done when**: interactive snapshots for backend-python, backend-go, frontend-vue, and fullstack-next fixtures show only universals plus (optionally) `ui-designer`; pure-backend fixtures never show `ui-designer`; the implementer-variant default matches detection in each case.
 
-### E13.T6 — Default-config gating [§1.19] — S
+### E13.T6 — Default-config wiring [§1.19] — S
 
 - **Files**: [src/prompt/prompt-flow.ts](src/prompt/prompt-flow.ts).
-- **Change**: In `createDefaultConfig`, replace the hard-coded `reactTsSenior: isReactTs` line with a single computed senior key from `getApplicableSeniorAgent(detected)`, and map it into the `agents` object so exactly one senior is `true` (or none if unmatched). Set `uiDesigner: isFrontend` unchanged. Ensure the non-`--yes` interactive path in `runPromptFlow` maps the user's checkbox selection back through the new schema keys.
-- **Done when**: calling `createDefaultConfig` with a Python fixture produces `agents.pythonSenior === true` and every other `*Senior` key `false`; with a Rust fixture, `agents.rustSenior === true`; backward-compat regression: React-TS fixture still produces `agents.reactTsSenior === true`.
+- **Change**: In `createDefaultConfig`, replace the hard-coded `reactTsSenior: isReactTs` line with `implementerVariant: getApplicableImplementerVariant(detected)`. Drop `isReactTs` from the `agents` object wiring. `uiDesigner: isFrontend` unchanged. Ensure the non-`--yes` path in `runPromptFlow` maps `askImplementerVariant`'s return value into `agents.implementerVariant`.
+- **Done when**: calling `createDefaultConfig` with a Python fixture yields `agents.implementerVariant === 'python'`; with a Rust fixture, `'rust'`; with a React-TS fixture, `'react-ts'`; with an unknown stack, `'generic'`. No `reactTsSenior` key is emitted in the resulting config.
 
-### E13.T7 — Generator wiring [§1.19] — S
+### E13.T7 — Generator variant routing [§1.19] — M
 
 - **Files**: [src/generator/generate-agents.ts](src/generator/generate-agents.ts).
-- **Change**: Extend the `AGENT_DEFINITIONS` array with nine new entries mapping each new schema key to its template file and output filename (`python-senior.md`, `node-ts-backend-senior.md`, `go-senior.md`, `rust-senior.md`, `java-spring-senior.md`, `dotnet-csharp-senior.md`, `vue-senior.md`, `angular-senior.md`, `svelte-senior.md`). Order: universals first, then seniors grouped by frontend vs backend. Do not modify `convertToSkill`.
-- **Done when**: generator emits only the agent files whose schema flag is `true`; Claude + Codex target round-trip both work; snapshot diff covers each senior.
+- **Change**: Remove the `reactTsSenior` entry from `AGENT_DEFINITIONS`. Change the `implementer` entry so its `templateFile` is resolved dynamically as `` `agents/implementer-variants/${config.agents.implementerVariant}.md.ejs` `` (treat the entry as a special case inside `generateAgents`, or promote `templateFile` to a function `(config) => string`). Output name stays `implementer.md` for Claude and `.codex/skills/implementer/SKILL.md` for Codex. Add a startup invariant: exactly one `implementer.md` is scheduled per enabled target; emit a fatal error if the variant file is missing. `convertToSkill` unchanged.
+- **Done when**: generator emits exactly one `implementer.md` per enabled target for every fixture; no `react-ts-senior.md` or any other `*-senior.md` ever appears; Claude + Codex round-trip both pass.
 
-### E13.T8 — Snapshot tests [§1.19] — M
+### E13.T8 — Migration on update: remove stale senior files [§1.19 §1.4] — S
+
+- **Files**: [src/cli/update-command.ts](src/cli/update-command.ts), and/or a helper under `src/installer/` (co-locate with `diff-files.ts` / `backup.ts`).
+- **Change**: Before writing, scan the project for `.claude/agents/react-ts-senior.md` and `.codex/skills/react-ts-senior/SKILL.md`. If found, route them through the Epic 7 safe-delete confirmation path: show a one-line message (`Removing stale file replaced by implementer variant: <path>`) and a `y/N` prompt (skipped when `--yes` is passed). Never hard-delete without confirmation; back up via `backupExistingFiles` first so a restore is possible if the user declines. Log skipped removals as warnings.
+- **Done when**: a fixture that starts with both `implementer.md` and `react-ts-senior.md` ends with only `implementer.md` after `update --yes`; interactive `update` without `--yes` prompts before deletion and leaves the file in place on "no"; backup tarball is created per Epic 7 semantics.
+
+### E13.T9 — Snapshot tests [§1.19] — M
 
 - **Files**: new `tests/generator/stack-aware-agents.test.ts`, new fixtures `tests/fixtures/backend-python-fastapi/`, `tests/fixtures/backend-go/`, `tests/fixtures/backend-rust/`, `tests/fixtures/backend-java-spring/`, `tests/fixtures/backend-dotnet/`, `tests/fixtures/frontend-vue/`, `tests/fixtures/frontend-angular/`, `tests/fixtures/frontend-svelte/`, `tests/fixtures/backend-node-nestjs/`; reuse the existing React-TS fixture as regression.
-- **Change**: Each fixture ships the minimal manifest(s) needed for detection (e.g., `pyproject.toml` with `fastapi` dep, `Cargo.toml`, `go.mod` + one `.go` file, `pom.xml` with Spring Boot starter, `.csproj` with `Microsoft.AspNetCore.App`, `package.json` with `vue`/`@angular/core`/`@sveltejs/kit`/`@nestjs/core`). Tests assert: (a) `getApplicableSeniorAgent` returns the expected key; (b) `createDefaultConfig` wires only that senior `true`; (c) generator emits exactly the expected agent files for Claude and Codex targets; (d) `ui-designer` is absent from backend fixtures and present in frontend fixtures; (e) the React-TS fixture is unchanged vs prior snapshot.
+- **Change**: Each fixture ships the minimal manifest(s) needed for detection (e.g., `pyproject.toml` with `fastapi` dep, `Cargo.toml`, `go.mod` + one `.go` file, `pom.xml` with Spring Boot starter, `.csproj` with `Microsoft.AspNetCore.App`, `package.json` with `vue` / `@angular/core` / `@sveltejs/kit` / `@nestjs/core`). Tests assert: (a) `getApplicableImplementerVariant` returns the expected enum value; (b) `createDefaultConfig` wires that variant; (c) generator emits exactly one `implementer.md` per enabled target and zero `*-senior.md` files across every fixture; (d) `implementer.md` body for the Python fixture contains the Python specifics and for the Rust fixture contains the Rust specifics; (e) `ui-designer.md` is absent from backend fixtures and present in frontend fixtures; (f) loading a legacy manifest with `reactTsSenior: true` migrates to `implementerVariant: 'react-ts'` and produces the React-TS `implementer.md`.
 - **Done when**: `pnpm test` green; new fixtures add <300 LOC total; snapshots reviewed.
 
-### E13.T9 — README stack matrix + AGENTS.md note [§1.19] — S
+### E13.T10 — Routing-table cleanup in `AGENTS.md.ejs` [§1.19] — S
 
-- **Files**: `README.md`, [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
-- **Change**: Add a "Stack matrix" table to `README.md` listing each supported (language, framework) pair and the senior it routes to. In `AGENTS.md.ejs`'s `## Sub-agent Routing` table, render the currently-enabled senior conditionally so the emitted `AGENTS.md` only lists the senior present in this workspace (avoid advertising agents the user did not generate).
-- **Done when**: README renders the matrix; emitted `AGENTS.md` for a Python project lists `python-senior` in the routing table and does not list `react-ts-senior`.
+- **Files**: [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
+- **Change**: Remove the conditional `| Implementation (React + TypeScript) | \`react-ts-senior\` |` row (current lines 23-24) and the surrounding `<% if (hasReactTsSenior) { -%>` guard. Extend the existing `| Implementation | \`implementer\` |` row so it renders an optional variant label when non-`generic`, e.g. `| Implementation | \`implementer\` (<%= implementerVariant %> variant) |`. Keep the Model routing table's `implementer` row unchanged. Drop every `hasReactTsSenior` reference from the template's context.
+- **Done when**: emitted `AGENTS.md` for a Python project shows `Implementation | implementer (python variant)`; for a React-TS project shows `Implementation | implementer (react-ts variant)`; for an unknown stack shows `Implementation | implementer`; `react-ts-senior` no longer appears in any rendered `AGENTS.md`.
+
+### E13.T11 — README stack matrix [§1.19] — S
+
+- **Files**: `README.md`.
+- **Change**: Add a "Stack matrix" table listing each supported (language, framework) pair and the `implementerVariant` value it routes to. Add a one-paragraph note clarifying that the emitted filename is always `implementer.md` (and `.codex/skills/implementer/SKILL.md`); the active variant is recorded in `.agents-workflows.json` under `agents.implementerVariant`. Document the legacy `reactTsSenior: true` migration so readers upgrading from prior releases know what happens on first `update`.
+- **Done when**: README renders the matrix; migration paragraph cites the legacy field name; no README example still references `react-ts-senior.md`.
 
 **Non-goals (this epic — parked in Epic 8 Situational backlog).**
 
-- Mobile seniors: `flutter-dart-senior`, `kotlin-android-senior`, `swift-ios-senior`. Mobile frameworks (`react-native`, `expo`) continue to route to `react-ts-senior`.
-- Tier-2 languages: PHP/Laravel, Ruby on Rails, C++. Add only when the senior-core extraction (E13.T3) has stabilized.
-- Per-workspace senior routing inside polyglot monorepos — covered by Epic 12's nested `AGENTS.md` emission; Epic 13 operates on the root stack.
+- Mobile variants: `flutter-dart`, `kotlin-android`, `swift-ios`. Mobile frameworks (`react-native`, `expo`) continue to route to the `react-ts` variant.
+- Tier-2 variants: PHP/Laravel, Ruby on Rails, C++. Add only after the `implementer-core.md.ejs` extraction (E13.T3) stabilizes and the eleven initial variants have shipped.
+- Per-workspace variant routing inside polyglot monorepos — covered by Epic 12's nested `AGENTS.md` emission; Epic 13 selects a single variant at the repo root.
+- A "fullstack-specific" variant separate from the existing framework variants (Next.js, Nuxt, Remix, SvelteKit already route to their framework variant).
 
 ---
 

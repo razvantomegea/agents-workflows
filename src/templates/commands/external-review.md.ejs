@@ -3,38 +3,85 @@ name: external-review
 description: "Run an external review tool and write findings to QA.md."
 ---
 
-Run an external code review tool to review all changes on the current branch.
+Run an external code review on the current branch diff. **CodeRabbit CLI** (also called Code Rabbit CLI) is the mandatory default external reviewer. It runs cross-platform (Windows via WSL Ubuntu, Linux, macOS) and its findings land in `QA.md` for `/workflow-fix` to address.
 
-## Instructions
+## Step 1 — Verify prerequisites
 
-1. Verify the external review tool is available (user-supplied command, or Code Rabbit CLI default).
-2. Run the review tool against all changes on the current branch compared to `<%= mainBranch %>`.
-3. Format the findings into `QA.md` with severity tags:
-   - `[critical]` — must fix before merge
-   - `[warning]` — should fix, may defer with justification
-   - `[suggestion]` — nice to have, can skip
-4. Print a summary: total findings by severity, top 3 most important issues.
+- Confirm the current branch is NOT `<%= mainBranch %>`. If it is, abort:
+  `Cannot run CodeRabbit review on <%= mainBranch %>. Switch to a feature branch first.`
+- The review covers all changes on the current branch compared to `<%= mainBranch %>`.
+- Verify `cr --version` works (use the platform-appropriate invocation from Step 2). If it fails,
+  abort and point the user to the install block in Step 2.
 
-## Command selection
+## Step 2 — Run CodeRabbit
 
-Users may pass a terminal command after the slash command to override the default tool.
-Example: `/external-review cursor-bugbot review --base <%= mainBranch %>`
+<%- include('../partials/coderabbit-setup.md.ejs') %>
 
-When a terminal command is supplied, the agent must run exactly that command and parse its
-output into `QA.md`. Do not alter or substitute the supplied command.
+Capture the full output. If the command fails, report the error and abort.
+
+## Step 3 — Format QA.md
+
+If there are no findings, overwrite `QA.md` with the single literal line `All good!` and stop.
+
+Otherwise, overwrite `QA.md` (do NOT append) with the following structure:
+
+```markdown
+# QA Review
+
+## CodeRabbit Review — YYYY-MM-DD
+
+> **Warning**: These findings come from an automated tool (CodeRabbit) and may be inaccurate or
+> based on incomplete context. Before applying any fix, verify the observation against the actual
+> code. Skip findings that are wrong or do not apply.
+
+### path/to/file.tsx
+- [ ] [severity] Description of finding...
+
+### path/to/another-file.ts
+- [ ] [severity] Description of finding...
+```
+
+Group findings by file. Use severity tags when CodeRabbit provides them (`[critical]`, `[warning]`,
+`[suggestion]`). Default to `[suggestion]` when the severity is missing.
+
+## Step 4 — Summary
+
+Print total findings count, breakdown by file, and:
+`Run /workflow-fix QA.md to address these findings (recommended: use Codex CLI).`
+
+## Advanced: terminal-command override
+
+Use this path only when CodeRabbit CLI is unavailable or an alternative reviewer is required. Pass
+the override command after the slash command, e.g.
+`/external-review coderabbit review --base <%= mainBranch %>`.
+
+When a terminal command is supplied, parse it and allow execution only when the binary and first
+subcommand (or first flag for flag-first CLIs such as `curl`) are explicitly allowlisted.
+Allowed pairs:
+- `coderabbit review` (or the short alias `cr review`)
+- `coderabbit --version` (or `cr --version`)
+- `git diff`
+- `git show`
+- `gh pr view`
+- `gh pr diff`
+- `curl --head` (HTTPS URL only)
+- `curl --silent` (HTTPS URL only)
+
+If the binary/subcommand pair is not allowlisted, halt and ask the user to confirm or replace
+the command. Do not execute unallowlisted commands, and do NOT silently substitute a different
+tool.
+
+For allowlisted commands, run the supplied command as written and parse its output into `QA.md`.
+For `curl`, reject any command containing upload or write flags (`--data`, `--data-binary`,
+`--upload-file`, `-T`, `--form`, `-F`, `-o`, `-O`, `--output`, `--config`, `--unix-socket`) or
+non-HTTPS URLs.
 
 Before executing any user-supplied command, verify it does not contain shell metacharacters
 that suggest command substitution, piping to a shell, or destructive operations
 (e.g. `$(...)`, backtick substitution, `| sh`, `| bash`, `rm -rf`, `>`,
-`&&` chained destructive ops). If the command looks suspicious, halt and ask the user
-to confirm before proceeding; do NOT silently substitute a different tool.
-
-When no terminal command is supplied, the default tool is the **Code Rabbit CLI**
-(`coderabbit review` or vendor-current equivalent — verify availability via
-`coderabbit --version`).
-
-If Code Rabbit CLI is not installed, halt and instruct the user to either install it or
-re-invoke with an explicit command argument. Do NOT silently substitute another tool.
+`&&` chained destructive ops, `;`, `||`, `<`, `${...}`, or encoded/newline payloads). If the
+command looks suspicious, halt and ask the user to confirm before proceeding; do NOT silently
+substitute a different tool.
 
 ## Cross-model requirement
 
@@ -42,25 +89,10 @@ The external review tool **must** run on a different model family than the imple
 code-reviewer used for the diff. Family parity between the writer and the final reviewer is
 forbidden. See §1.7 of the project PRD for the full model-routing rationale.
 
-## Output
-
-Write findings to `QA.md` in the repository root with this format:
-
-```markdown
-# QA Review
-
-_Generated by external review tool on YYYY-MM-DD_
-
-> **Note**: These findings are automated and may be inaccurate. Always verify before applying fixes.
-
-## Findings
-
-- [ ] [severity] **Title** — Description. File: `path/to/file.ts:line`
-```
-
 <%- include('../partials/ai-complacency.md.ejs') %>
 
 ## Rules
 
-- NEVER commit or push.
-- Include a disclaimer that automated findings may be inaccurate.
+- `NEVER commit or push.`
+- `Always overwrite QA.md completely (previous content is not preserved).`
+- `Always include the automated-tool accuracy warning in QA.md.`
