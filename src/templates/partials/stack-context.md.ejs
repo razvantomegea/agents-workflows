@@ -1,5 +1,5 @@
 ## Stack Context
 
-<% stackItems.forEach(function(item) { -%>
+<% stackItems.forEach(function(item) { if (item.toLowerCase() !== 'none') { -%>
 - <%= item %>
-<% }); -%>
+<% } }); -%>

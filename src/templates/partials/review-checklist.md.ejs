@@ -16,8 +16,14 @@
   random via CSPRNG.
 - A05 Injection: parameterized queries only; contextual output
   encoding; no `dangerouslySetInnerHTML`/`eval`/`shell=True`.
+- A06 Insecure Design: threat modeling completed; secure-by-design
+  principles applied; abuse cases reviewed; least privilege and
+  secure defaults enforced at design time.
 - A07 AuthN: OAuth 2.1 rules (PKCE required, no implicit flow,
   exact redirect_uri match).
+- A08 Software/Data Integrity: signed artifacts; SBOM and
+  supply-chain verification; CI/CD pipeline signing; runtime
+  integrity checks in place.
 - A09 Logging: no PII, tokens, or secrets in logs.
 - A10 Exceptional conditions: no stack traces to clients; no
   silent catches; fail closed.

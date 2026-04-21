@@ -41,6 +41,12 @@ prefix_rule(
 )
 
 prefix_rule(
+  pattern = ["terraform", "destroy"],
+  decision = "forbidden",
+  justification = "No infra changes",
+)
+
+prefix_rule(
   pattern = ["kubectl", ["apply", "delete"]],
   decision = "forbidden",
   justification = "No cluster changes",

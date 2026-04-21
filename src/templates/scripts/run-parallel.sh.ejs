@@ -12,7 +12,7 @@ if [[ ! -f "$PLAN_FILE" ]]; then
   exit 1
 fi
 
-PARALLEL_TASKS=$(grep -oP '### Task (\d+).*\[PARALLEL\]' "$PLAN_FILE" | grep -oP '\d+' || true)
+PARALLEL_TASKS=$(awk '/^### Task [0-9]+.*\[PARALLEL\]/{match($0, /[0-9]+/); print substr($0, RSTART, RLENGTH)}' "$PLAN_FILE" || true)
 
 if [[ -z "$PARALLEL_TASKS" ]]; then
   echo "No [PARALLEL] tasks found in PLAN.md"
