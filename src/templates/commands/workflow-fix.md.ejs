@@ -9,20 +9,29 @@ Fix all QA issues listed in QA.md on the current feature branch.
 
 1. Read `QA.md` from the repository root. Each issue may include a description, steps to reproduce, expected vs actual behavior, and affected files.
 2. **Critical evaluation**: QA.md observations may not all be correct — some come from automated tools. Before applying any fix, verify the observation against the actual code. Skip incorrect observations and note why.
-3. If `QA.md` says "All good" or contains no unchecked issues, skip to step 7.
+3. If `QA.md` says "All good" or contains no unchecked issues, skip to step 6.
 4. Read `PLAN.md` to understand what was recently implemented and which files were modified.
 5. Fix every **verified** issue in `QA.md`, one at a time:
    - Read the relevant files to understand current state.
    - Confirm the issue is real and the suggested fix is correct.
 <% if (hasUiDesigner) { -%>
-   - **If the fix touches UI/UX**: first run the `ui-designer` sub-agent to approve the visual approach, then use `implementer` to apply.
+   - **If the fix touches UI/UX** (layout, visual design, component styling, interaction states, accessibility, responsive behavior): **mandatory** — first run the `ui-designer` sub-agent to approve the visual approach and produce implementation guidance, then hand off to `implementer` to apply the change. Never route UI/UX fixes straight to `implementer`.
+   - For all other (non-UI/UX) fixes, use the `implementer` sub-agent directly.
+<% } else { -%>
+   - Use the `implementer` sub-agent to apply the fix.
 <% } -%>
-   - For non-UI fixes, use the `implementer` sub-agent directly.
    - Mark the issue as done in `QA.md` with `[x]`.
-6. After all fixes, run the `code-reviewer` sub-agent on all modified files. Apply every critical and warning finding via `implementer`.
-7. Run the `reviewer` sub-agent for the mandatory review loop:
-   1. `code-reviewer` on all modified files
-   2. `implementer` applies all critical/warning findings
+6. Run the mandatory review loop on all modified files:
+<% if (hasSecurityReviewer) { -%>
+   1. Run `code-reviewer` and `security-reviewer` in parallel on all modified files
+<% } else { -%>
+   1. Run `code-reviewer` on all modified files
+<% } -%>
+<% if (hasSecurityReviewer) { -%>
+   2. `implementer` applies all critical/warning findings from both reviewers
+<% } else { -%>
+   2. `implementer` applies all critical/warning findings from `code-reviewer`
+<% } -%>
 <% if (commands.typeCheck) { -%>
    3. `<%= commands.typeCheck %>` — must pass
 <% } -%>
@@ -31,22 +40,30 @@ Fix all QA issues listed in QA.md on the current feature branch.
 <% } -%>
    Repeat until all listed checks pass.
 <% if (commands.lint) { -%>
-   Also run `<%= commands.lint %>` after the loop passes.
+   Also run `<%= commands.lint %>` after the loop passes (intentional: final hygiene gate once type-check and tests are green).
 <% } -%>
 
    **Verification rules**
 
    - NEVER run `git stash` or any git working-tree manipulation.
    - Only fix errors in files related to the current QA issue.
-   - If verification fails on unrelated files, report in summary but do not fix.
+<% if (commands.typeCheck && commands.test) { -%>
+   - If `<%= commands.typeCheck %>` or `<%= commands.test %>` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
+<% } else if (commands.typeCheck) { -%>
+   - If `<%= commands.typeCheck %>` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
+<% } else if (commands.test) { -%>
+   - If `<%= commands.test %>` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
+<% } else { -%>
+   - If verification reveals failures in files **unrelated** to the current QA fixes, **stop the loop immediately** and report them as **unresolved external failures**. Do not fix unrelated files.
+<% } -%>
 
-8. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
+7. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
 
 <% if (docsFile) { -%>
-9. **Update `<%= docsFile %>` (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching PRD checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched PRD items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
-10. Print a final summary: which issues were fixed, which were skipped (and why), files changed, PRD items marked done, any unmatched PRD items, and any unresolved issues.
+8. **Update `<%= docsFile %>` (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching PRD checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched PRD items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
+9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, PRD items marked done, any unmatched PRD items, and any unresolved issues.
 <% } else { -%>
-9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, and any unresolved issues.
+8. Print a final summary: which issues were fixed, which were skipped (and why), files changed, and any unresolved issues.
 <% } -%>
 
 ## Git rules

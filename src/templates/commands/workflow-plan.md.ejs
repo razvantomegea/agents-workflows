@@ -43,7 +43,7 @@ After writing the plan, **immediately execute every task** in order:
 1. For each task in PLAN.md (respecting dependency order):
    - **Route to the correct sub-agent by task tag:**
 <% if (hasUiDesigner) { -%>
-     - `[UI]` tasks: **mandatory** — first run the `ui-designer` sub-agent for a design review, then use `implementer` to implement.
+     - `[UI]` tasks — or any task whose change touches UI/UX (layout, visual design, component styling, interaction states, accessibility, responsive behavior): **mandatory** — first run the `ui-designer` sub-agent for a design review and implementation guidance, then hand the approved design notes to `implementer` to write the code. Never skip the `ui-designer` step on UI/UX work, even when the task is tagged something other than `[UI]`.
 <% } -%>
      - `[TEST]` tasks (unit tests): use the `test-writer` sub-agent.
 <% if (hasE2eTester) { -%>
@@ -80,7 +80,9 @@ After writing the plan, **immediately execute every task** in order:
    1. Append a short line to `PLAN.md` under `## External errors`.
    2. Do NOT edit unrelated files.
 
-4. Record final summary inputs: what was implemented, files changed, any open questions, and any external errors.
+4. **Mandatory external review**: invoke the `/external-review` slash command after the reviewer loop and lint are clean. This runs CodeRabbit CLI against the diff on the current branch and writes findings to `QA.md`. External-review findings (critical and warning) must be resolved via `/workflow-fix QA.md` (pass `QA.md` as the argument) before the workflow is considered complete. Do NOT skip this gate — it is the final cross-model check required by §1.7 of the PRD.
+
+5. Record final summary inputs: what was implemented, files changed, any open questions, and any external errors.
 
 <% if (docsFile) { -%>
 ### Phase 4 — Mark epic done in `<%= docsFile %>` (if applicable)

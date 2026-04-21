@@ -114,7 +114,9 @@ describe('Epic 1 safety partials', () => {
       expect.arrayContaining(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)']),
     );
     expect(parsed.permissions.allow).not.toContain('Read(./**)');
+    expect(parsed.permissions.allow.filter((rule: string) => rule.includes('|'))).toEqual([]);
     expect(parsed.permissions.deny).toHaveLength(30);
+    expect(parsed.permissions.deny.filter((rule: string) => rule.includes('|'))).toEqual([]);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');
     expect(parsed.permissions.deny).toContain('Bash(rm --recursive:*)');
     expect(parsed.permissions.deny).toContain('Bash(cargo publish:*)');
@@ -133,7 +135,7 @@ describe('Epic 1 safety partials', () => {
     expect(codexConfig).toBeDefined();
     const toml = codexConfig!.content;
 
-    expect(toml).toContain('approval_policy = "on-failure"');
+    expect(toml).toContain('approval_policy = "on-request"');
     expect(toml).toContain('sandbox_mode = "workspace-write"');
     expect(toml).toContain('[sandbox_workspace_write]');
     expect(toml).toContain('network_access = false');

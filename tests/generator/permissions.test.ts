@@ -50,6 +50,14 @@ describe('buildPermissions', () => {
     });
     expect(perms).toEqual(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)', 'Bash(pnpm:*)', 'WebSearch']);
   });
+
+  it('contains no pipe-pattern entries in the allow list', () => {
+    const perms = buildPermissions({
+      tooling: { packageManagerPrefix: 'pnpm' },
+      commands: { test: 'pnpm test', typeCheck: 'pnpm check-types', lint: 'pnpm lint' },
+    });
+    expect(perms.filter((rule) => rule.includes('|'))).toEqual([]);
+  });
 });
 
 describe('buildDenyList', () => {
@@ -77,6 +85,12 @@ describe('buildDenyList', () => {
     const b = buildDenyList();
     expect(a).not.toBe(b);
     expect(a).toEqual(b);
+  });
+
+  it('contains no pipe-pattern entries in the deny list', () => {
+    const deny = buildDenyList();
+    const pipeEntries = deny.filter((rule) => rule.includes('|'));
+    expect(pipeEntries).toEqual([]);
   });
 });
 

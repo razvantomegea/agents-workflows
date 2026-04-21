@@ -1,0 +1,11 @@
+## AI-authored code (Thoughtworks Radar v33 — "Hold" on AI complacency)
+
+<ai_complacency_guard>
+When reviewing AI-generated code, verify explicitly:
+- Correctness: tests fail on wrong behavior (not vacuous).
+- No hallucinated imports, APIs, or package names.
+- No mocking-the-SUT or testing-the-mock anti-patterns.
+- No `any` / `@ts-ignore` / `eslint-disable` added to pass CI.
+- A human read and understood every line before approval.
+- Never auto-merge on AI approval alone.
+</ai_complacency_guard>
