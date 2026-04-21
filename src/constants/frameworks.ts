@@ -41,3 +41,17 @@ export function supportsReactTsStack(
 export function isMobileFramework(framework: string | null): boolean {
   return isFrameworkIn(framework, MOBILE_FRAMEWORKS);
 }
+
+export const BACKEND_FRAMEWORKS = [
+  'express',
+  'fastify',
+  'hono',
+  'nestjs',
+  'fastapi',
+  'django',
+  'flask',
+] as const;
+
+export function isBackendFramework(framework: string | null): boolean {
+  return isFrameworkIn(framework, BACKEND_FRAMEWORKS);
+}

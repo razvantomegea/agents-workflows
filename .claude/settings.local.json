@@ -5,7 +5,10 @@
       "MultiEdit(./**)",
       "Write(./**)",
       "Bash(pnpm:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git checkout *)",
+      "Bash(node --experimental-vm-modules node_modules/jest/bin/jest.js tests/generator/generate-all.test.ts --verbose)",
+      "Bash(node *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -45,7 +48,10 @@
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "pnpm lint --fix || true" }
+          {
+            "type": "command",
+            "command": "pnpm lint --fix || true"
+          }
         ]
       }
     ]

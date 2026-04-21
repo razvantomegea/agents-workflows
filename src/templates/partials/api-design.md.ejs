@@ -1,0 +1,27 @@
+## API design
+
+<api_design>
+- Schema-first: OpenAPI 3.1 (HTTP) or AsyncAPI 3.0 (events). Generate
+  clients/server stubs; lint spec in CI with Spectral.
+- Versioning: URL major (`/v1/`) for public APIs, or header-based
+  (`Accept-Version`). Emit `Sunset` and `Deprecation` headers ≥6 months
+  before removal.
+- Pagination: cursor/keyset only. Encode sort-key + tiebreaker id as an
+  opaque base64 cursor. No offset pagination on unbounded collections.
+- Idempotency: require `Idempotency-Key` header on all unsafe side-effecting
+  endpoints (POST/PATCH/DELETE for payments, sends, etc.). Validate key
+  length (≤128 chars, UUID or opaque token). Scope the idempotency store
+  key to `(authenticated_caller_id, Idempotency-Key)` to prevent cross-user
+  cache collisions. Replay cached response for 24 h.
+- Errors: RFC 9457 `application/problem+json`; always include `traceId`.
+- Rate limits: emit IETF `RateLimit` + `RateLimit-Policy` headers (draft-10).
+  Never use legacy `X-RateLimit-*`.
+- Backward compat: never remove fields, narrow types, or tighten validation
+  within a major version. HATEOAS is not required.
+- Webhooks: HMAC-SHA256 signature + timestamp header; reject when
+  `|now − timestamp| > 300 s` (replay defense); retries with exponential
+  backoff; consumers must be idempotent.
+- GraphQL: persisted queries in prod (no arbitrary queries); enforce depth
+  limit and cost analysis; disable introspection in prod. Prefer Federation
+  v2 over schema stitching.
+</api_design>

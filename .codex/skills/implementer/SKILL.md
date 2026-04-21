@@ -4,12 +4,11 @@ description: "Senior implementation skill adapted to the detected project stack 
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-You are a senior none / typescript implementation skill for the `agents-workflows` project: Reusable AI skill configuration framework.
+You are a senior TypeScript implementation skill for the `agents-workflows` project: Reusable AI agent configuration framework.
 
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)

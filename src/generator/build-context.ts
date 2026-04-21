@@ -3,6 +3,7 @@ import type { GeneratorContext } from './types.js';
 import { buildReviewChecklist } from './review-checklist-rules.js';
 import { buildPermissions, buildDenyList, buildPostToolUseHooks } from './permissions.js';
 import {
+  isBackendFramework,
   isFrontendFramework,
   isMobileFramework,
   isReactFramework,
@@ -13,6 +14,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
   const isReact = isReactFramework(config.stack.framework);
   const isFrontend = isFrontendFramework(config.stack.framework);
   const isMobile = isMobileFramework(config.stack.framework);
+  const isBackend = isBackendFramework(config.stack.framework);
   const isTypescript = config.stack.language.trim().toLowerCase() === 'typescript';
   const hasReactTsSenior = config.agents.reactTsSenior
     && supportsReactTsStack(config.stack.framework, config.stack.language);
@@ -31,6 +33,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
     isReact,
     isMobile,
     isFrontend,
+    isBackend,
 
     componentsDir: config.paths.componentsDir,
     utilsDir: config.paths.utilsDir,
