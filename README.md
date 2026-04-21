@@ -58,10 +58,39 @@ The CLI will:
 | `code-optimizer` | Performance, DRY, and quality analysis | Sonnet |
 | `test-writer` | Unit test generation (Jest/Vitest/pytest/Go) | Sonnet |
 | `e2e-tester` | E2E test generation (Playwright/Cypress/Maestro) | Sonnet |
-| `reviewer` | 4-step review loop orchestrator (review, fix, type-check, test) | Sonnet |
+| `reviewer` | 5-step review loop orchestrator (review, fix, type-check, test, lint) | Sonnet |
 | `ui-designer` | UI/UX design system enforcement (frontend only) | Sonnet |
 
 ## Workflow patterns
+
+### End-to-end workflow
+
+```mermaid
+flowchart TD
+    A[1. Author PRD.md / README.md<br/>goals, roadmap, epics] --> B
+
+    B["2. /workflow-plan &quot;epic description&quot;"]
+    B --> B1[architect &rarr; PLAN.md<br/>max 8 tagged tasks]
+    B1 --> B2[Per-task loop:<br/>implementer / test-writer<br/>+ code-reviewer + security-reviewer]
+    B2 --> B3[code-optimizer pass]
+    B3 --> B4[Final review loop:<br/>check-types &bull; test &bull; lint]
+    B4 --> C
+
+    C[3. Manual review<br/>+ /external-review &#40;CodeRabbit&#41;]
+    C --> C1[QA.md<br/>critical / warning / suggestion]
+    C1 --> D
+
+    D[4. /workflow-fix]
+    D --> D1[Verify each QA finding<br/>against actual code]
+    D1 --> D2[implementer applies fixes<br/>marks QA.md items &#91;x&#93;]
+    D2 --> D3[Mandatory review loop:<br/>code-reviewer + security-reviewer<br/>check-types &bull; test &bull; lint]
+    D3 --> D4[Mark epic &#91;DONE YYYY-MM-DD&#93;<br/>in PRD.md]
+```
+
+1. **Author `PRD.md`** (or `README.md`) with project description, roadmap, goals, and epics — the canonical source of intent that every agent reads before planning.
+2. **Run `/workflow-plan "<epic description>"`** — `architect` produces `PLAN.md` (max 8 tagged tasks); each task runs through `implementer` or `test-writer`, then `code-reviewer` + `security-reviewer` in parallel; `code-optimizer` runs once across all modified files; a final loop enforces `pnpm check-types` / `pnpm test` / `pnpm lint` until clean.
+3. **Review the code manually, and run `/external-review`** — CodeRabbit writes findings to `QA.md`, grouped by file with `[critical]` / `[warning]` / `[suggestion]` tags.
+4. **Run `/workflow-fix`** — each `QA.md` item is verified against the actual code, applied by `implementer`, and marked `[x]`; the mandatory review loop (reviewers + `check-types` / `test` / `lint`) runs again; once everything is clean the matching epic in `PRD.md` is stamped `[DONE YYYY-MM-DD]`.
 
 ### `/workflow-plan`: End-to-end feature development
 
@@ -69,7 +98,7 @@ The CLI will:
 2. `architect` agent produces structured `PLAN.md`
 3. Execute all tasks with sub-agent routing (UI to `ui-designer` first, tests to `test-writer`, etc.)
 4. `code-reviewer` after each task, `code-optimizer` after all tasks
-5. `reviewer` orchestrates the final 4-step quality gate
+5. `reviewer` orchestrates the final 5-step quality gate
 
 ### `/workflow-fix`: Fix QA issues
 

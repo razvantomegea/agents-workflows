@@ -114,9 +114,9 @@ describe('Epic 1 safety partials', () => {
       expect.arrayContaining(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)']),
     );
     expect(parsed.permissions.allow).not.toContain('Read(./**)');
-    expect(parsed.permissions.allow.filter((rule) => rule.includes('|'))).toEqual([]);
+    expect(parsed.permissions.allow.filter((rule: string) => rule.includes('|'))).toEqual([]);
     expect(parsed.permissions.deny).toHaveLength(30);
-    expect(parsed.permissions.deny.filter((rule) => rule.includes('|'))).toEqual([]);
+    expect(parsed.permissions.deny.filter((rule: string) => rule.includes('|'))).toEqual([]);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');
     expect(parsed.permissions.deny).toContain('Bash(rm --recursive:*)');
     expect(parsed.permissions.deny).toContain('Bash(cargo publish:*)');

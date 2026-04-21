@@ -18,19 +18,25 @@ function Clear-GeneratedSkillsDirectory {
 
   $resolvedAgentsRoot = (Resolve-Path -LiteralPath $agentsRoot).Path
   $resolvedPath = (Resolve-Path -LiteralPath $Path).Path
+  $normalizedAgentsRoot = [System.IO.Path]::GetFullPath($resolvedAgentsRoot).TrimEnd('\', '/')
+  $normalizedPath = [System.IO.Path]::GetFullPath($resolvedPath).TrimEnd('\', '/')
+  $agentsRootBoundary = "$normalizedAgentsRoot$([System.IO.Path]::DirectorySeparatorChar)"
 
-  if (-not $resolvedPath.StartsWith($resolvedAgentsRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
-    throw "Refusing to remove path outside generated .agents directory: $resolvedPath"
+  if (
+    -not $normalizedPath.Equals($normalizedAgentsRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
+    -not $normalizedPath.StartsWith($agentsRootBoundary, [System.StringComparison]::OrdinalIgnoreCase)
+  ) {
+    throw "Refusing to remove path outside generated .agents directory: $normalizedPath"
   }
 
-  Remove-Item -LiteralPath $resolvedPath -Recurse -Force
+  Remove-Item -LiteralPath $normalizedPath -Recurse -Force
 }
 
-if (-not (Test-Path -LiteralPath $projectSkills)) {
+if (-not (Test-Path -LiteralPath $projectSkills -PathType Container)) {
   throw "Missing project skills directory: $projectSkills"
 }
 
-if (-not (Test-Path -LiteralPath $projectPrompts)) {
+if (-not (Test-Path -LiteralPath $projectPrompts -PathType Container)) {
   throw "Missing project prompts directory: $projectPrompts"
 }
 

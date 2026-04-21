@@ -5,7 +5,7 @@ description: "Run an external review tool and write findings to QA.md."
 
 Run an external code review on the current branch diff. **CodeRabbit CLI** (also called Code Rabbit CLI) is the mandatory default external reviewer. It runs cross-platform (Windows via WSL Ubuntu, Linux, macOS) and its findings land in `QA.md` for `/workflow-fix` to address.
 
-## Step 1 — Verify prerequisites
+## Step 1 - Verify prerequisites
 
 - Confirm the current branch is NOT `<%= mainBranch %>`. If it is, abort:
   `Cannot run CodeRabbit review on <%= mainBranch %>. Switch to a feature branch first.`
@@ -13,22 +13,31 @@ Run an external code review on the current branch diff. **CodeRabbit CLI** (also
 - Verify `cr --version` works (use the platform-appropriate invocation from Step 2). If it fails,
   abort and point the user to the install block in Step 2.
 
-## Step 2 — Run CodeRabbit
+## Step 2 - Run CodeRabbit
 
 <%- include('../partials/coderabbit-setup.md.ejs') %>
 
 Capture the full output. If the command fails, report the error and abort.
 
-## Step 3 — Format QA.md
+## Step 3 - Format QA.md
 
-If there are no findings, overwrite `QA.md` with the single literal line `All good!` and stop.
+If there are no findings, overwrite `QA.md` (do NOT append) with:
+
+```markdown
+> **Warning**: These findings come from an automated tool (CodeRabbit) and may be inaccurate or
+> based on incomplete context. Before applying any fix, verify the observation against the actual
+> code. Skip findings that are wrong or do not apply.
+All good!
+```
+
+Then stop.
 
 Otherwise, overwrite `QA.md` (do NOT append) with the following structure:
 
 ```markdown
 # QA Review
 
-## CodeRabbit Review — YYYY-MM-DD
+## CodeRabbit Review - YYYY-MM-DD
 
 > **Warning**: These findings come from an automated tool (CodeRabbit) and may be inaccurate or
 > based on incomplete context. Before applying any fix, verify the observation against the actual
@@ -44,7 +53,7 @@ Otherwise, overwrite `QA.md` (do NOT append) with the following structure:
 Group findings by file. Use severity tags when CodeRabbit provides them (`[critical]`, `[warning]`,
 `[suggestion]`). Default to `[suggestion]` when the severity is missing.
 
-## Step 4 — Summary
+## Step 4 - Summary
 
 Print total findings count, breakdown by file, and:
 `Run /workflow-fix QA.md to address these findings (recommended: use Codex CLI).`
@@ -67,27 +76,34 @@ Allowed pairs:
 - `curl --head` (HTTPS URL only)
 - `curl --silent` (HTTPS URL only)
 
-If the binary/subcommand pair is not allowlisted, reject the command outright — do not execute
+If the binary/subcommand pair is not allowlisted, reject the command outright - do not execute
 it and do NOT silently substitute a different tool. Instruct the user to provide a different
 command that uses an allowlisted binary/subcommand pair.
 
-For allowlisted commands, run the supplied command as written and parse its output into `QA.md`.
-For `curl`, reject any command containing upload or write flags (`--data`, `--data-binary`,
-`--upload-file`, `-T`, `--form`, `-F`, `-o`, `-O`, `--output`, `--config`, `--unix-socket`) or
-non-HTTPS URLs.
+For allowlisted commands, validate the **entire token list** before execution - not just the
+binary/subcommand pair. If any forbidden token appears, reject the command and ask for a
+sanitized override instead of executing the original input.
+
+Apply token-level restrictions:
+- `curl`: reject any command containing write/upload/request-body flags anywhere in the token list
+  (`--data`, `--data-binary`, `--upload-file`, `-T`, `--form`, `-F`, `-o`, `-O`, `--output`,
+  `--config`, `--unix-socket`) and reject any non-HTTPS URL token.
+- `git`, `gh`, `coderabbit` / `cr`: reject write/output/piping/exec flags or arguments anywhere
+  in the token list (for example `--output`, `-o`, `--output-file`, redirection-like output args,
+  or any token that implies command execution or file writes).
 
 Before executing any user-supplied command, verify it does not contain shell metacharacters
 that suggest command substitution, piping to a shell, or destructive operations
 (e.g. `$(...)`, backtick substitution, `| sh`, `| bash`, `rm -rf`, `>`,
 `&&` chained destructive ops, `;`, `||`, `<`, `${...}`, or encoded/newline payloads). If the
-command looks suspicious, reject it outright — do NOT silently substitute a different tool.
+command looks suspicious, reject it outright - do NOT silently substitute a different tool.
 Instruct the user to provide a sanitized command that does not contain metacharacters.
 
 ## Cross-model requirement
 
 The external review tool **must** run on a different model family than the implementer and
 code-reviewer used for the diff. Family parity between the writer and the final reviewer is
-forbidden. See §1.7 of the project PRD for the full model-routing rationale.
+forbidden. See Section 1.7 of the project PRD for the full model-routing rationale.
 
 <%- include('../partials/ai-complacency.md.ejs') %>
 

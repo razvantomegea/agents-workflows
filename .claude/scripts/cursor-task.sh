@@ -6,7 +6,38 @@ if ! [[ "$TASK_NUM" =~ ^[1-9][0-9]*$ ]]; then
   echo "Error: task number must be a positive integer, got: ${TASK_NUM}"
   exit 1
 fi
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT_RAW="$(git rev-parse --show-toplevel)"
+
+resolve_realpath() {
+  local input_path="$1"
+
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$input_path"
+    return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 - "$input_path" <<'PY'
+import os
+import sys
+
+sys.stdout.write(os.path.realpath(sys.argv[1]))
+PY
+    return 0
+  fi
+
+  if command -v node >/dev/null 2>&1; then
+    node -e "const fs = require('node:fs'); process.stdout.write(fs.realpathSync.native(process.argv[1]));" "$input_path"
+    return 0
+  fi
+
+  return 1
+}
+
+if ! REPO_ROOT="$(resolve_realpath "$REPO_ROOT_RAW")"; then
+  echo "Error: could not canonicalize repository root '${REPO_ROOT_RAW}'."
+  exit 1
+fi
 PLAN_FILE="${REPO_ROOT}/PLAN.md"
 SCRATCHPAD="${REPO_ROOT}/.claude/scratchpad"
 
@@ -44,7 +75,7 @@ echo "" >> "${SCRATCHPAD}/current-task.md"
 sed -n "/^### Task ${TASK_NUM} /p" "$PLAN_FILE" >> "${SCRATCHPAD}/current-task.md"
 echo "$TASK_CONTENT" >> "${SCRATCHPAD}/current-task.md"
 
-FILES_HEADER_COUNT=$(echo "$TASK_CONTENT" | grep -c '\*\*Files\*\*:?' || true)
+FILES_HEADER_COUNT=$(echo "$TASK_CONTENT" | grep -cE '\*\*Files\*\*:?' || true)
 
 FILES=$(echo "$TASK_CONTENT" | awk '
 BEGIN { in_files = 0 }
@@ -99,7 +130,7 @@ file_path = sys.argv[2]
 
 try:
     candidate_input = file_path if os.path.isabs(file_path) else os.path.join(repo_root, file_path)
-    normalized = os.path.normpath(os.path.abspath(candidate_input))
+    normalized = os.path.normpath(os.path.realpath(candidate_input))
 except Exception as exc:
     print(f"Error: failed to normalize path '{file_path}': {exc}", file=sys.stderr)
     raise SystemExit(1)
@@ -110,7 +141,7 @@ PY
   fi
 
   if command -v node >/dev/null 2>&1; then
-    node -e "const path = require('node:path').posix; process.stdout.write(path.resolve(process.argv[1], process.argv[2]));" "$REPO_ROOT" "$file_path"
+    node -e "const fs = require('node:fs'); const path = require('node:path'); const repoRoot = process.argv[1]; const filePath = process.argv[2]; const candidate = path.isAbsolute(filePath) ? filePath : path.join(repoRoot, filePath); const trailing = []; let current = candidate; while (!fs.existsSync(current)) { trailing.unshift(path.basename(current)); const parent = path.dirname(current); if (parent === current) break; current = parent; } const realBase = fs.realpathSync.native(current); process.stdout.write(path.join(realBase, ...trailing));" "$REPO_ROOT" "$file_path"
     return 0
   fi
 

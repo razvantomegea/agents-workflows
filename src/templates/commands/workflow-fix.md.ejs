@@ -22,8 +22,16 @@ Fix all QA issues listed in QA.md on the current feature branch.
 <% } -%>
    - Mark the issue as done in `QA.md` with `[x]`.
 6. Run the mandatory review loop on all modified files:
+<% if (hasSecurityReviewer) { -%>
    1. Run `code-reviewer` and `security-reviewer` in parallel on all modified files
+<% } else { -%>
+   1. Run `code-reviewer` on all modified files
+<% } -%>
+<% if (hasSecurityReviewer) { -%>
    2. `implementer` applies all critical/warning findings from both reviewers
+<% } else { -%>
+   2. `implementer` applies all critical/warning findings from `code-reviewer`
+<% } -%>
 <% if (commands.typeCheck) { -%>
    3. `<%= commands.typeCheck %>` — must pass
 <% } -%>
