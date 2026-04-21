@@ -22,7 +22,7 @@ fi
 mkdir -p "$SCRATCHPAD"
 TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
 
-echo "[$TIMESTAMP] Starting parallel tasks: $(echo $PARALLEL_TASKS | tr '\n' ', ')" | tee -a "$LOG_FILE"
+echo "[$TIMESTAMP] Starting parallel tasks: ${PARALLEL_TASKS//$'\n'/, }" | tee -a "$LOG_FILE"
 
 for TASK_NUM in $PARALLEL_TASKS; do
   echo "[$TIMESTAMP] Launching Task ${TASK_NUM}..." | tee -a "$LOG_FILE"
