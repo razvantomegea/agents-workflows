@@ -10,7 +10,7 @@ const partialLines = async (name: string): Promise<number> => {
   return content.split(/\r?\n/).length;
 };
 
-const makeFrameworkConfig = (framework: string | null) =>
+const makeFrameworkConfig = (framework: string | null): ReturnType<typeof makeStackConfig> =>
   makeStackConfig({
     stack: { language: 'typescript', runtime: 'node', framework, uiLibrary: null, stateManagement: null, database: null, auth: null },
   });

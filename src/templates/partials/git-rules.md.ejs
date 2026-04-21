@@ -11,7 +11,7 @@ Every plan starts on a dedicated branch from `<%= mainBranch %>`. Include the br
 - **Features**: `feature/<short-kebab-name>`
 - **Bug fixes**: `fix/<short-kebab-name>`
 - **Epics**: `feature/epic-<N>-<short-name>`
-- **Agents** commit to a branch, never to `<%= mainBranch %>`. PRs are labeled `agent-authored` and require human review before merge.
+- **Agents** may commit only when the user explicitly asks for a commit in the current session; commits must stay on a feature branch (never `<%= mainBranch %>`), and any resulting PR is labeled `agent-authored` and requires human review before merge.
 
 ### Conventional Commits 1.0
 

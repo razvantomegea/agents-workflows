@@ -4,11 +4,11 @@
       "Edit(./**)",
       "MultiEdit(./**)",
       "Write(./**)",
-      "Bash(pnpm:*)",
-      "WebSearch",
-      "Bash(git checkout *)",
-      "Bash(node --experimental-vm-modules node_modules/jest/bin/jest.js tests/generator/generate-all.test.ts --verbose)",
-      "Bash(node *)"
+      "Bash(pnpm check-types:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm lint --fix:*)",
+      "WebSearch"
     ],
     "deny": [
       "Bash(rm -rf:*)",

@@ -20,52 +20,72 @@ const writePyprojectToml = async (
 };
 
 describe('detectFramework', () => {
-  let projectRoot: string;
+  let projectRoot: string | null = null;
 
   beforeEach(async () => {
     projectRoot = await mkdtemp(join(tmpdir(), 'agents-fw-'));
   });
 
   afterEach(async () => {
-    await rm(projectRoot, { recursive: true, force: true });
+    if (projectRoot !== null) {
+      await rm(projectRoot, { recursive: true, force: true });
+      projectRoot = null;
+    }
   });
 
   it('detects express from package.json dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePackageJson(projectRoot, { express: '^4.18.0' });
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'express' });
   });
 
   it('detects fastify from package.json dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePackageJson(projectRoot, { fastify: '^4.0.0' });
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'fastify' });
   });
 
   it('detects hono from package.json dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePackageJson(projectRoot, { hono: '^3.0.0' });
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'hono' });
   });
 
   it('detects nestjs from @nestjs/core in package.json dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePackageJson(projectRoot, { '@nestjs/core': '^10.0.0' });
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'nestjs' });
   });
 
+  it('prefers nestjs over express when both dependencies are present', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
+    await writePackageJson(projectRoot, {
+      express: '^4.18.0',
+      '@nestjs/core': '^10.0.0',
+    });
+    await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'nestjs' });
+  });
+
   it('detects fastapi from pyproject.toml project.dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePyprojectToml(projectRoot, 'fastapi');
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'fastapi' });
   });
 
   it('detects django from pyproject.toml project.dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePyprojectToml(projectRoot, 'django');
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'django' });
   });
 
   it('detects flask from pyproject.toml project.dependencies', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await writePyprojectToml(projectRoot, 'flask');
     await expect(detectFramework(projectRoot)).resolves.toMatchObject({ value: 'flask' });
   });
 
   it('returns null value when no known framework is found', async () => {
+    if (projectRoot === null) throw new Error('projectRoot must be initialized in beforeEach');
     await expect(detectFramework(projectRoot)).resolves.toEqual({ value: null, confidence: 0 });
   });
 });

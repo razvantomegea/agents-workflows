@@ -1,5 +1,29 @@
 import { readPackageJson, getAllDeps, readPyprojectToml } from '../utils/index.js';
+import { BACKEND_FRAMEWORKS } from '../constants/frameworks.js';
 import type { Detection } from './types.js';
+
+const PACKAGE_JSON_BACKEND_CONFIDENCE: Record<(typeof BACKEND_FRAMEWORKS)[number], number> = {
+  express: 0.8,
+  fastify: 0.85,
+  hono: 0.85,
+  nestjs: 0.95,
+  fastapi: 0.9,
+  django: 0.9,
+  flask: 0.9,
+};
+
+const PACKAGE_JSON_BACKEND_DETECTION_ORDER: ReadonlyArray<(typeof BACKEND_FRAMEWORKS)[number]> = [
+  'nestjs',
+  ...BACKEND_FRAMEWORKS.filter(
+    (framework: (typeof BACKEND_FRAMEWORKS)[number]): boolean => framework !== 'nestjs',
+  ),
+];
+
+const PYPROJECT_BACKEND_PREFIXES: Partial<Record<(typeof BACKEND_FRAMEWORKS)[number], string>> = {
+  fastapi: 'fastapi',
+  django: 'django',
+  flask: 'flask',
+};
 
 export async function detectFramework(projectRoot: string): Promise<Detection> {
   const pkg = await readPackageJson(projectRoot);
@@ -13,10 +37,18 @@ export async function detectFramework(projectRoot: string): Promise<Detection> {
     if (deps['@remix-run/react']) return { value: 'remix', confidence: 0.95 };
     if (deps['@sveltejs/kit']) return { value: 'sveltekit', confidence: 0.95 };
     if (deps['@angular/core']) return { value: 'angular', confidence: 0.95 };
-    if (deps['@nestjs/core']) return { value: 'nestjs', confidence: 0.95 };
-    if (deps['express']) return { value: 'express', confidence: 0.8 };
-    if (deps['fastify']) return { value: 'fastify', confidence: 0.85 };
-    if (deps['hono']) return { value: 'hono', confidence: 0.85 };
+    const packageFrameworkDependencyMap: Partial<Record<(typeof BACKEND_FRAMEWORKS)[number], string>> = {
+      nestjs: '@nestjs/core',
+      express: 'express',
+      fastify: 'fastify',
+      hono: 'hono',
+    };
+    for (const framework of PACKAGE_JSON_BACKEND_DETECTION_ORDER) {
+      const dependencyName = packageFrameworkDependencyMap[framework];
+      if (dependencyName !== undefined && deps[dependencyName]) {
+        return { value: framework, confidence: PACKAGE_JSON_BACKEND_CONFIDENCE[framework] };
+      }
+    }
     if (deps['react'] && !deps['next'] && !deps['expo']) {
       return { value: 'react', confidence: 0.75 };
     }
@@ -26,9 +58,12 @@ export async function detectFramework(projectRoot: string): Promise<Detection> {
   const pyproject = await readPyprojectToml(projectRoot);
   if (pyproject?.project?.dependencies) {
     const pyDeps = pyproject.project.dependencies;
-    if (pyDeps.some((d) => d.startsWith('fastapi'))) return { value: 'fastapi', confidence: 0.9 };
-    if (pyDeps.some((d) => d.startsWith('django'))) return { value: 'django', confidence: 0.9 };
-    if (pyDeps.some((d) => d.startsWith('flask'))) return { value: 'flask', confidence: 0.9 };
+    for (const framework of BACKEND_FRAMEWORKS) {
+      const dependencyPrefix = PYPROJECT_BACKEND_PREFIXES[framework];
+      if (dependencyPrefix !== undefined && pyDeps.some((dependency: string) => dependency.startsWith(dependencyPrefix))) {
+        return { value: framework, confidence: PACKAGE_JSON_BACKEND_CONFIDENCE[framework] };
+      }
+    }
   }
 
   return { value: null, confidence: 0 };
