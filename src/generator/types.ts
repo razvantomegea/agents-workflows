@@ -30,6 +30,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   isReact: boolean;
   isMobile: boolean;
   isFrontend: boolean;
+  isBackend: boolean;
 
   componentsDir: string | null;
   utilsDir: string;

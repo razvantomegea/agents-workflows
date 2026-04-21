@@ -24,8 +24,15 @@ You are a senior <% if (stack.framework) { %><%= stack.framework %> / <% } %><%=
 
 <%- include('../partials/untrusted-content.md.ejs') %>
 
+<%- include('../partials/security-defaults.md.ejs') %>
+
+<% if (isBackend) { -%>
+<%- include('../partials/api-design.md.ejs') %>
+<% } -%>
+
 <%- include('../partials/definition-of-done.md.ejs') %>
 <%- include('../partials/error-handling-self.md.ejs') %>
+<%- include('../partials/error-handling-code.md.ejs') %>
 <%- include('../partials/tdd-discipline.md.ejs') %>
 
 ## When invoked

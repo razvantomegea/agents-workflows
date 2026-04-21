@@ -1,0 +1,20 @@
+## Error handling (produced code)
+
+<error_handling_code>
+- **Expected failures** (validation, not-found, timeout, domain errors) → return a typed error value. Use `Result` / `Either` / discriminated union where the language makes it ergonomic (Rust `Result<T,E>`, TS `neverthrow`/`Effect`, Swift `Result`). Reserve throwing/panicking for programmer errors (invariant violations, null-deref on unreachable paths).
+- **Programmer errors** → fail loudly. Throw, panic, or assert. Never swallow an unexpected fault silently.
+- **Error chaining** — always attach the original cause:
+  - JS/TS: `new Error("context", { cause: original })`
+  - Go: `fmt.Errorf("context: %w", err)`
+  - Rust: `thiserror` derived errors or `anyhow::Context::context()`
+  - Python: `raise RuntimeError("context") from original`
+  - Java/Kotlin: `throw new RuntimeException("context", cause)`
+- **Parse, don't validate** at ingress boundaries. Use Zod / pydantic / JSON Schema 2020-12 to return parsed, typed values — not booleans. Push validated types inward; inner layers MUST NOT accept raw (unparsed) input — doing so creates a second, weaker trust boundary that bypasses schema enforcement.
+- **No silent-catch.** The following patterns are forbidden unless accompanied by a `// reason:` comment that explains the intentional swallow:
+  - `catch (e) {}`
+  - `except: pass` / `except Exception: pass`
+  - `if err != nil { return nil }` (Go — return the error, not nil)
+  - `try { ... } catch { /* ignore */ }`
+  - The `// reason:` escape hatch does NOT cover security-relevant operations (authentication, authorization, audit/compliance writes, integrity checks) — those must propagate or alert.
+- **Never expose raw errors to untrusted callers.** At HTTP/API boundaries, map to a sanitized response (RFC 9457 `application/problem+json`); strip `stack`, `cause`, and internal paths. Log the full error server-side only.
+</error_handling_code>

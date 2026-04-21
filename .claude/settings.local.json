@@ -4,7 +4,10 @@
       "Edit(./**)",
       "MultiEdit(./**)",
       "Write(./**)",
-      "Bash(pnpm:*)",
+      "Bash(pnpm check-types:*)",
+      "Bash(pnpm test:*)",
+      "Bash(pnpm lint:*)",
+      "Bash(pnpm lint --fix:*)",
       "WebSearch"
     ],
     "deny": [
@@ -45,7 +48,10 @@
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "pnpm lint --fix || true" }
+          {
+            "type": "command",
+            "command": "pnpm lint --fix || true"
+          }
         ]
       }
     ]

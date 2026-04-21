@@ -1,0 +1,17 @@
+## Accessibility (WCAG 2.2 AA baseline)
+
+<accessibility>
+- **Baseline:** WCAG 2.2 AA (Oct 2023). Do not cite WCAG 3.0 for compliance — it is a Working Draft (Sept 2025).
+- **Semantic HTML first:** use native elements for their built-in semantics; apply ARIA 1.3 only as augmentation (accessible names, landmark roles, live regions) — never re-implement what native HTML already provides.
+- **Keyboard operability:** every interactive element must be reachable and operable by keyboard alone; maintain logical tab order; provide a visible focus indicator meeting WCAG SC 2.4.11 AA.
+- **Target size:** interactive touch/click targets must be at least 24×24 CSS pixels (WCAG SC 2.5.8 AA, new in 2.2).
+- **User preferences:** respect `prefers-reduced-motion` (suppress or replace animations), `prefers-color-scheme`, and `prefers-contrast`.
+- **Contrast ratios:** meet WCAG 2 — 4.5:1 for normal text; 3:1 for large text (≥24 px regular or ≥18.66 px bold); 3:1 for non-text UI (icons, focus rings, form borders). Optionally design to APCA (Lc60+ body, Lc75+ small) and verify against WCAG 2.
+- **Automated testing:** run axe-core, Lighthouse, or Pa11y in CI — acknowledge these tools catch only ~30–40% of issues.
+- **Manual testing (required on every release):**
+  - Keyboard-only traversal from top to bottom and back.
+  - Screen reader: NVDA on Windows, VoiceOver on macOS/iOS.
+  - 400% zoom reflow — no clipped content, no horizontal scrolling required.
+  - Reduced-motion toggle — verify animations are suppressed.
+- **European Accessibility Act (EAA):** enforceable since June 28 2025 for covered B2C services in the EU. Technical standard: EN 301 549 (WCAG 2.1 AA minimum; WCAG 2.2 recommended). An accessibility statement is required in each served member state.
+</accessibility>

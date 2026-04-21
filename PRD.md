@@ -1603,7 +1603,8 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 4 — Code Standards Enforcement [MUST]
+## Epic 4 — Code Standards Enforcement [MUST] [DONE 2026-04-21]
+**Landed on** `feature/epic-4-code-standards-enforcement`.
 
 **Goal.** Implementer ships code that meets OWASP-2025, Conventional Commits, integration-first testing, API-design, and WCAG-2.2-AA defaults.
 

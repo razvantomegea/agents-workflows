@@ -11,3 +11,31 @@ Every plan starts on a dedicated branch from `<%= mainBranch %>`. Include the br
 - **Features**: `feature/<short-kebab-name>`
 - **Bug fixes**: `fix/<short-kebab-name>`
 - **Epics**: `feature/epic-<N>-<short-name>`
+- **Agents** may commit only when the user explicitly asks for a commit in the current session; commits must stay on a feature branch (never `<%= mainBranch %>`), and any resulting PR is labeled `agent-authored` and requires human review before merge.
+
+### Conventional Commits 1.0
+
+Format: `type(scope): subject`. Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+
+- Breaking changes: append `!` after type/scope (`feat!: ...`) or add `BREAKING CHANGE:` footer.
+- Subject ≤ 72 chars, imperative mood, no trailing period. Body explains *why*.
+
+### Trunk-Based Development
+
+- `<%= mainBranch %>` is protected; feature branches are short-lived (<24h typical).
+- Rebase or squash-merge to maintain linear history. No long-lived branches — use feature flags for in-flight work instead.
+- Every commit on `<%= mainBranch %>` must build and pass tests (atomic, bisectable).
+
+### PR Size Cap
+
+- PRs ≤ 400 LOC changed. If larger, split using stacked PRs (Graphite / ghstack / git-town).
+
+### Commit Signing
+
+- All commits must be signed. Sigstore gitsign (keyless OIDC) is preferred for new setups; GPG or SSH keys are acceptable alternatives where key infrastructure already exists.
+
+### Pre-Commit Hooks
+
+- Secret scanning (gitleaks or trufflehog) is a mandatory blocking pre-commit hook on every commit. Lint and format hooks run alongside.
+- Use lefthook / husky / pre-commit.com as the runner.
+- Hook budget: < 10s total. Push slower checks (full test suite, type-check) to CI.
