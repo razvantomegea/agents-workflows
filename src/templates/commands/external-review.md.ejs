@@ -67,9 +67,9 @@ Allowed pairs:
 - `curl --head` (HTTPS URL only)
 - `curl --silent` (HTTPS URL only)
 
-If the binary/subcommand pair is not allowlisted, halt and ask the user to confirm or replace
-the command. Do not execute unallowlisted commands, and do NOT silently substitute a different
-tool.
+If the binary/subcommand pair is not allowlisted, reject the command outright — do not execute
+it and do NOT silently substitute a different tool. Instruct the user to provide a different
+command that uses an allowlisted binary/subcommand pair.
 
 For allowlisted commands, run the supplied command as written and parse its output into `QA.md`.
 For `curl`, reject any command containing upload or write flags (`--data`, `--data-binary`,
@@ -80,8 +80,8 @@ Before executing any user-supplied command, verify it does not contain shell met
 that suggest command substitution, piping to a shell, or destructive operations
 (e.g. `$(...)`, backtick substitution, `| sh`, `| bash`, `rm -rf`, `>`,
 `&&` chained destructive ops, `;`, `||`, `<`, `${...}`, or encoded/newline payloads). If the
-command looks suspicious, halt and ask the user to confirm before proceeding; do NOT silently
-substitute a different tool.
+command looks suspicious, reject it outright — do NOT silently substitute a different tool.
+Instruct the user to provide a sanitized command that does not contain metacharacters.
 
 ## Cross-model requirement
 

@@ -32,9 +32,8 @@ Allowed pairs:
 - `curl --head` (HTTPS URL only)
 - `curl --silent` (HTTPS URL only)
 
-If the binary/subcommand pair is not allowlisted, halt and ask the user to confirm or replace
-the command. Do not execute unallowlisted commands, and do NOT silently substitute a different
-tool.
+If the binary/subcommand pair is not allowlisted, reject the command outright. Do NOT silently
+substitute a different tool.
 
 For allowlisted commands, run the supplied command as written and parse its output into `QA.md`.
 For `curl`, reject any command containing upload or write flags (`--data`, `--data-binary`,
@@ -45,14 +44,14 @@ Before executing any user-supplied command, verify it does not contain shell met
 that suggest command substitution, piping to a shell, or destructive operations
 (e.g. `$(...)`, backtick substitution, `| sh`, `| bash`, `rm -rf`, `>`,
 `&&` chained destructive ops, `;`, `||`, `<`, `${...}`, or encoded/newline payloads). If the
-command looks suspicious, halt and ask the user
-to confirm before proceeding; do NOT silently substitute a different tool.
+command contains any such metacharacters, reject it outright. The user must provide a
+sanitized allowlisted command. Do NOT silently substitute a different tool.
 
-When no terminal command is supplied, the default tool is the **Code Rabbit CLI**
+When no terminal command is supplied, the default tool is the **CodeRabbit CLI**
 (`coderabbit review` or vendor-current equivalent — verify availability via
 `coderabbit --version`).
 
-If Code Rabbit CLI is not installed, halt and instruct the user to either install it or
+If CodeRabbit CLI is not installed, halt and instruct the user to either install it or
 re-invoke with an explicit command argument. Do NOT silently substitute another tool.
 
 ## Cross-model requirement

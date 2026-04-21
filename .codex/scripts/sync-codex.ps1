@@ -63,6 +63,11 @@ if (Test-Path -LiteralPath $agentsSkills) {
     if (-not $resolvedTarget.Equals($resolvedProjectSkills, [System.StringComparison]::OrdinalIgnoreCase)) {
       throw "Existing .agents\skills points to '$target', expected '$resolvedProjectSkills'."
     }
+    if ($CopySkills) {
+      Remove-Item -LiteralPath $agentsSkills -Force
+      New-Item -ItemType Directory -Force -Path $agentsSkills | Out-Null
+      Copy-Item -Path (Join-Path $projectSkills '*') -Destination $agentsSkills -Recurse -Force
+    }
   } elseif ($CopySkills) {
     Clear-GeneratedSkillsDirectory -Path $agentsSkills
     New-Item -ItemType Directory -Force -Path $agentsSkills | Out-Null

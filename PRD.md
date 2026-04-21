@@ -10,7 +10,7 @@
 
 Agents generated (shared across all targets): 8 agents (`architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `e2e-tester`, `reviewer`, `ui-designer`) plus the optional `security-reviewer` and `react-ts-senior`. Workflow commands (shared): `/workflow-plan`, `/workflow-fix`, `/external-review`. Repo-root universal surface: `AGENTS.md` (consumed natively by Copilot, Windsurf, Gemini CLI, Aider, Continue) and `CLAUDE.md` (consumed by Claude Code; other tools follow the `AGENTS.md` pointer).
 
-The orchestration is identical across all five targets: architect → `PLAN.md` (≤8 tasks) → implementer per task → code-reviewer after each task → code-optimizer after all tasks → reviewer runs a 4-step quality gate (review → fix → type-check → test).
+The orchestration is identical across all five targets: architect → `PLAN.md` (≤8 tasks) → implementer per task → code-reviewer after each task → code-optimizer after all tasks → reviewer runs a 5-step quality gate (review → fix → type-check → test → lint/format).
 
 **Caveat on the inventory.** The repository could not be fetched directly from this environment (URL-allowlist restriction), so what follows treats the README description above as the authoritative baseline. A small number of items below are flagged "verify presence" where the provided description is silent but the feature is plausible. The research-based "missing" rules are the substantive contribution; they are grounded in Anthropic, OpenAI, Cursor, OWASP, SLSA, W3C, Thoughtworks, DORA, and Martin Fowler sources from 2024–2026.
 
@@ -30,7 +30,7 @@ From the README description the following are **present** and should be preserve
 - **Plan-before-code loop.** Architect produces `PLAN.md` with a ≤8-task cap, then implementer executes task-by-task. This matches the 2025–2026 industry default (Claude Code Plan Mode, Cursor Plan Mode Oct 2025, Codex `/plan`, Anthropic's "Explore → Plan → Implement").
 - **Per-task review gate.** `code-reviewer` runs after each task; this matches Anthropic's writer/reviewer pattern and is the single highest-leverage habit per Claude Code's "Best Practices" page.
 - **Post-implementation optimization pass.** `code-optimizer` after all tasks is a strong discipline most frameworks skip.
-- **4-step orchestrated quality gate** (review → fix → type-check → test) run by `reviewer`. This matches Anthropic's Nov 2025 long-running-harness recommendation to enforce type-check + tests as deterministic gates.
+- **5-step orchestrated quality gate** (review → fix → type-check → test → lint/format) run by `reviewer`. This matches Anthropic's Nov 2025 long-running-harness recommendation to enforce type-check + tests as deterministic gates.
 - **Multi-IDE universal surface.** The CLI emits a common content set and fans it out into five tool-native surfaces:
   - `AGENTS.md` — LF-stewarded standard (Oct 2025, 60k+ repos) read natively by **GitHub Copilot** (nearest-wins in directory tree), **Windsurf**, **Gemini CLI**, **Aider**, **Continue.dev** — so emitting a good `AGENTS.md` already covers five of the eight detected tools with zero extra wiring.
   - `CLAUDE.md` — Claude Code's `@import`-aware variant, layered on top of `AGENTS.md`.
@@ -232,7 +232,7 @@ explicit human approval per egress action. No exceptions.
 
 **Rule.** Claude Code's Best Practices page lists "give Claude a way to verify its work" as the single highest-leverage habit. Anthropic's Nov 26 2025 harness paper identifies "marking a feature complete without proper testing" as the #1 long-running-agent failure mode. Codex ships `/review`; OpenAI reviews 100% of internal PRs with Codex.
 
-**Verdict.** **Partial.** The reviewer has a 4-step gate, which is good; but an explicit per-agent "definition of done" is likely missing, and the most common failure mode (suppressing errors to pass the gate) is not called out.
+**Verdict.** **Partial.** The reviewer has a 5-step gate, which is good; but an explicit per-agent "definition of done" is likely missing, and the most common failure mode (suppressing errors to pass the gate) is not called out.
 
 **Priority.** [MUST].
 
@@ -1412,7 +1412,7 @@ Recommended placement of every addition above:
 | `code-optimizer.md` | §1.6 Definition of Done · §1.17 Error-handling (self) · §2.10 Refactoring rules · §2.11 Performance rules |
 | `test-writer.md` | §1.14 TDD discipline · §2.5 Testing philosophy · §1.3 Fail-safe |
 | `e2e-tester.md` | §2.5 Testing philosophy (E2E tier) · §1.6 Definition of Done (end-to-end verification) · §2.12 Accessibility smoke (keyboard, zoom, screen reader) |
-| `reviewer.md` | §1.7 Cross-model review (prefer different family) · §2.18 AI-complacency guard · §1.3 Fail-safe · §1.12 Sub-agent delegation · explicit ordering of the 4-step gate |
+| `reviewer.md` | §1.7 Cross-model review (prefer different family) · §2.18 AI-complacency guard · §1.3 Fail-safe · §1.12 Sub-agent delegation · explicit ordering of the 5-step gate |
 | `ui-designer.md` | §2.12 Accessibility WCAG 2.2 AA · §2.13 i18n · §2.11 Performance (INP, LCP, CLS) |
 | `workflow-plan.md` | §1.13 Planning protocol · §1.1 Context budget · add a `--long-horizon` flag path (§1.8) · **UI/UX routing rule (§1.12)**: when `ui-designer` is enabled, any task whose change touches UI/UX (layout, visual design, component styling, interaction states, accessibility, responsive behavior) — whether explicitly tagged `[UI]` or not — MUST first go through `ui-designer` for design review and implementation guidance, then hand off to `implementer` to write the code. Never skip the `ui-designer` step on UI/UX work. |
 | `workflow-fix.md` | §1.3 Fail-safe · §1.17 Error-handling (self) · §2.5 "write failing test first" · **UI/UX routing rule (§1.12)**: when `ui-designer` is enabled, any QA fix that touches UI/UX (layout, visual design, component styling, interaction states, accessibility, responsive behavior) MUST first go through `ui-designer` to approve the visual approach, then hand off to `implementer` to apply the change. Non-UI/UX fixes go straight to `implementer`. |
@@ -1586,15 +1586,15 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Change**: Insert §1.7 routing table; add "different family mandatory for external-review" rule.
 - **Done when**: rendered `AGENTS.md` contains table with 9 roles; external-review command enforces family diff.
 
-### E3.T4 — Make `reviewer.md.ejs` 4-step gate explicit [§1.6] — S
+### E3.T4 — Make `reviewer.md.ejs` 5-step gate explicit [§1.6] — S
 - **Files**: `src/templates/agents/reviewer.md.ejs`
-- **Change**: Order the gate: code-reviewer → apply fixes → type-check → tests. State failure-handling at each step.
+- **Change**: Order the gate: code-reviewer → apply fixes → type-check → tests → lint/format. State failure-handling at each step.
 - **Done when**: rendered reviewer has numbered steps; test asserts order.
 
 ### E3.T5 — Add external-review terminal command config [§1.7] — S
 - **Files**: `src/templates/commands/external-review.md.ejs`
-- **Change**: Allow users to specify in terminal the command used for `/external-review`; set Code Rabbit CLI as the default setup when no explicit command is provided.
-- **Done when**: rendered external-review instructions document both terminal override usage and Code Rabbit CLI default behavior.
+- **Change**: Allow users to specify in terminal the command used for `/external-review`; set CodeRabbit CLI as the default setup when no explicit command is provided.
+- **Done when**: rendered external-review instructions document both terminal override usage and CodeRabbit CLI default behavior.
 
 ### E3.T6 — CodeRabbit mandatory default + cross-platform invocation + workflow-plan gate [§1.7] — M
 - **Files**: `src/templates/partials/coderabbit-setup.md.ejs` (new), `src/templates/commands/external-review.md.ejs`, `src/templates/commands/workflow-plan.md.ejs`, `tests/generator/epic-3-review-depth.test.ts`.
@@ -2034,7 +2034,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   3. Otherwise, print a short intro ("Non-interactive mode lets the agent run without asking for approval on each command. This is faster but carries risks — please read before choosing."), render the disclosure partial from E10.T14 to the terminal as plaintext, then prompt: `confirm({ message: 'Enable non-interactive mode for this project?', default: false })`.
   4. If the user declines, return `{ nonInteractiveMode: false, runsIn: null, disclosureAcknowledgedAt: null }`.
   5. If the user accepts, present the isolation selector:
-     ```
+     ```text
      Where are you running the agent? (this affects risk)
        > devcontainer   (.devcontainer / Dev Containers / Codespaces)
        > docker         (other container runtime)
@@ -2479,4 +2479,4 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 | 10 | Workspace refinement prompt | Epic 14 (depends on Epic 7 safe-writes + Epic 13 agent set) |
 | Backlog | Situational | Epic 8 |
 
-**Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 4-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.
+**Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 5-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.

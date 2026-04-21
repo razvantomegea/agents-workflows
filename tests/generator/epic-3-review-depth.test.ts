@@ -28,7 +28,13 @@ const MODEL_ROUTING_ROLES = [
   'ui-designer',
 ];
 
-const getFileContent = (files: GeneratedFile[], filePath: string, label: string): string => {
+interface GetFileContentParams {
+  files: GeneratedFile[];
+  filePath: string;
+  label: string;
+}
+
+const getFileContent = ({ files, filePath, label }: GetFileContentParams): string => {
   const file = files.find((f: GeneratedFile) => f.path === filePath);
   if (!file) {
     throw new Error(`${label} not found: ${filePath}`);
@@ -37,13 +43,13 @@ const getFileContent = (files: GeneratedFile[], filePath: string, label: string)
 };
 
 const getAgentContent = (files: GeneratedFile[], agentName: string): string =>
-  getFileContent(files, `.claude/agents/${agentName}.md`, 'Agent file');
+  getFileContent({ files, filePath: `.claude/agents/${agentName}.md`, label: 'Agent file' });
 
 const getCommandContent = (files: GeneratedFile[], commandName: string): string =>
-  getFileContent(files, `.claude/commands/${commandName}.md`, 'Command file');
+  getFileContent({ files, filePath: `.claude/commands/${commandName}.md`, label: 'Command file' });
 
 const getRootFileContent = (files: GeneratedFile[], fileName: string): string =>
-  getFileContent(files, fileName, 'Root file');
+  getFileContent({ files, filePath: fileName, label: 'Root file' });
 
 const assertStepOrder = (content: string, orderedSteps: string[]): void => {
   let previousIndex = -1;
@@ -133,18 +139,20 @@ describe('Epic 3 review depth', () => {
     expect(content).toContain('different model family');
   });
 
-  it('reviewer gate has four numbered steps in order', () => {
+  it('reviewer gate has five numbered steps in order (including lint/format)', () => {
     const content = getAgentContent(files, 'reviewer');
     assertStepOrder(content, [
       '1. Invoke `code-reviewer`',
       '2. Apply every critical and warning finding via `implementer`',
       '3. Run type-check: `pnpm check-types`',
       '4. Run tests: `pnpm test`',
+      '5. Run lint/format: `pnpm lint`',
     ]);
     expect(content).toContain('**If invocation fails:**');
     expect(content).toContain('**If fixes introduce new findings:**');
     expect(content).toContain('**If type-check fails:**');
     expect(content).toContain('**If any suite fails:**');
+    expect(content).toContain('**If lint/format fails:**');
   });
 
   it('external-review declares CodeRabbit CLI as mandatory default', () => {

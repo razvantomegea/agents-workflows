@@ -17,10 +17,10 @@ Fix all QA issues listed in QA.md on the current feature branch.
    - Use the `implementer` sub-agent to apply the fix.
    - Mark the issue as done in `QA.md` with `[x]`.
 6. Run the mandatory review loop on all modified files:
-   1. `code-reviewer` on all modified files
-   2. `implementer` applies all critical/warning findings
-   3. `pnpm check-types` — must pass
-   4. `pnpm test` — must pass
+   1. Run `code-reviewer` and `security-reviewer` **in parallel** on all modified files.
+   2. `implementer` applies all critical/warning findings from both reviewers.
+   3. `pnpm check-types` — must pass.
+   4. `pnpm test` — must pass.
    Repeat until all listed checks pass.
    Also run `pnpm lint` after the loop passes (intentional: final hygiene gate once type-check and tests are green).
 
@@ -28,7 +28,7 @@ Fix all QA issues listed in QA.md on the current feature branch.
 
    - NEVER run `git stash` or any git working-tree manipulation.
    - Only fix errors in files related to the current QA issue.
-   - If verification fails on unrelated files, report in summary but do not fix.
+   - If `pnpm check-types` or `pnpm test` fails on files **unrelated** to the current QA fixes, **stop the loop immediately** and report the failure as an **unresolved external failure**. Do not fix unrelated files.
 
 7. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
 

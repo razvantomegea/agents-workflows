@@ -2,6 +2,10 @@
 set -euo pipefail
 
 TASK_NUM="${1:?Usage: cursor-task.sh <task-number>}"
+if ! [[ "$TASK_NUM" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Error: task number must be a positive integer, got: ${TASK_NUM}"
+  exit 1
+fi
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 PLAN_FILE="${REPO_ROOT}/PLAN.md"
 SCRATCHPAD="${REPO_ROOT}/.claude/scratchpad"
@@ -40,7 +44,47 @@ echo "" >> "${SCRATCHPAD}/current-task.md"
 sed -n "/^### Task ${TASK_NUM} /p" "$PLAN_FILE" >> "${SCRATCHPAD}/current-task.md"
 echo "$TASK_CONTENT" >> "${SCRATCHPAD}/current-task.md"
 
-FILES=$(echo "$TASK_CONTENT" | awk 'match($0, /\*\*Files\*\*: /) { print substr($0, RSTART + RLENGTH) }' | tr ',' '\n' | sed 's/^ *//;s/ *$//' | sed 's/`//g')
+FILES_HEADER_COUNT=$(echo "$TASK_CONTENT" | grep -c '\*\*Files\*\*:' || true)
+
+FILES=$(echo "$TASK_CONTENT" | awk '
+BEGIN { in_files = 0 }
+/\*\*Files\*\*:/ {
+  rest = $0
+  sub(/.*\*\*Files\*\*:[[:space:]]*/, "", rest)
+  gsub(/`/, "", rest)
+  gsub(/[[:space:]]+$/, "", rest)
+  if (rest != "") {
+    n = split(rest, parts, /,/)
+    for (i = 1; i <= n; i++) {
+      gsub(/^[[:space:]*-]+/, "", parts[i])
+      gsub(/[[:space:]]+$/, "", parts[i])
+      if (parts[i] != "") print parts[i]
+    }
+  } else {
+    in_files = 1
+  }
+  next
+}
+in_files && /^\*\*[A-Za-z]/ { exit }
+in_files && /^[[:space:]]*$/ { exit }
+in_files {
+  line = $0
+  gsub(/`/, "", line)
+  gsub(/^[[:space:]*-]+/, "", line)
+  gsub(/[[:space:]]+$/, "", line)
+  n = split(line, parts, /,/)
+  for (i = 1; i <= n; i++) {
+    gsub(/^[[:space:]]+/, "", parts[i])
+    gsub(/[[:space:]]+$/, "", parts[i])
+    if (parts[i] != "") print parts[i]
+  }
+}
+')
+
+if [[ "$FILES_HEADER_COUNT" -gt 0 ]] && [[ -z "$FILES" ]]; then
+  echo "Error: Task ${TASK_NUM} has a Files section but no file paths could be extracted."
+  exit 1
+fi
 
 echo "=== Task ${TASK_NUM} ==="
 sed -n "/^### Task ${TASK_NUM} /p" "$PLAN_FILE"
@@ -54,8 +98,22 @@ if [[ -n "$FILES" ]]; then
   echo "$FILES"
   FILE_ARGS=()
   while IFS= read -r f; do
-    [[ -n "$f" ]] && FILE_ARGS+=("${REPO_ROOT}/${f}")
+    [[ -z "$f" ]] && continue
+    CANDIDATE="$(cd "$REPO_ROOT" && realpath -m "$f" 2>/dev/null || echo "")"
+    if [[ -z "$CANDIDATE" ]]; then
+      echo "Warning: could not resolve path '${f}' — skipping"
+      continue
+    fi
+    if [[ "$CANDIDATE" != "$REPO_ROOT" ]] && [[ "$CANDIDATE" != "$REPO_ROOT/"* ]]; then
+      echo "Warning: path '${f}' escapes repository root — skipping"
+      continue
+    fi
+    FILE_ARGS+=("$CANDIDATE")
   done <<< "$FILES"
+  if [[ "${#FILE_ARGS[@]}" -eq 0 ]]; then
+    echo "Error: Task ${TASK_NUM} has a Files section but all extracted paths were rejected."
+    exit 1
+  fi
   "$CURSOR_CMD" "${FILE_ARGS[@]}" &
 else
   echo "No files specified. Opening Cursor in project root."

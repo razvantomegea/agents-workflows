@@ -3,7 +3,7 @@ _Branch: `feature/epic-3-code-review-depth` | Date: 2026-04-20_
 
 ## Context
 
-Epic 3 upgrades review rigor across the framework: `code-reviewer` gets the full §2.1 nine-section checklist with Conventional Comments, a new §2.18 AI-complacency guard is wired into the three review surfaces, the §1.7 cross-model routing table is paste-ready in `AGENTS.md`, `reviewer` exposes an explicit numbered 4-step gate, and `/external-review` supports a user-specified terminal command with Code Rabbit CLI as the default. This delivers the `[MUST]` review-depth requirement from PRD.md:1492–1520 without touching agents outside the review surface.
+Epic 3 upgrades review rigor across the framework: `code-reviewer` gets the full §2.1 nine-section checklist with Conventional Comments, a new §2.18 AI-complacency guard is wired into the three review surfaces, the §1.7 cross-model routing table is paste-ready in `AGENTS.md`, `reviewer` exposes an explicit numbered 5-step gate (review → fix → type-check → tests → lint/format), and `/external-review` supports a user-specified terminal command with Code Rabbit CLI as the default. This delivers the `[MUST]` review-depth requirement from PRD.md:1492–1520 without touching agents outside the review surface.
 
 ## Pre-implementation checklist
 
@@ -12,7 +12,7 @@ Epic 3 upgrades review rigor across the framework: `code-reviewer` gets the full
   - `definition-of-done.md.ejs`, `fail-safe.md.ejs`, `untrusted-content.md.ejs` show the existing partial shape (H2 heading + wrapper-tag block). New `ai-complacency.md.ejs` follows the same pattern with an `<ai_complacency_guard>` block.
   - `AGENTS.md.ejs` already has a Sub-agent Routing table (task→agent, lines 17–38). The new "Model routing" table is a separate section inserted after it — do **not** duplicate or replace the existing routing table.
   - `external-review.md.ejs` is a short command (38 lines) — extend, do not rewrite.
-  - `reviewer.md.ejs` already has a 6-step "When invoked" list that roughly matches the gate; Task E3.T4 rewrites it into the explicit 4-step numbered gate with per-step failure handling.
+  - `reviewer.md.ejs` already has a 6-step "When invoked" list that roughly matches the gate; Task E3.T4 rewrites it into the explicit 5-step numbered gate (review → fix → type-check → tests → lint/format) with per-step failure handling.
 - [ ] Verified no type duplication — `GeneratorContext`, `ReviewChecklistItem` in `src/generator/types.ts` are untouched. No new context fields required: new partials contain static markdown only (except the optional dynamic appendix in `review-checklist.md.ejs` which reuses the existing `reviewChecklist` array).
 - [ ] Confirmed no magic numbers — PR size (`≤ 400 LOC`), complexity bounds (`≤15 / ≤20 / ≤4`), and Argon2id params (`m=19456, t=2, p=1`) are pasted verbatim from the PRD source of truth (§2.1 / §1.7); commit subject limit reuses the same `≤72-char` wording as PRD.
 
@@ -109,7 +109,7 @@ No generator/TS source files, no schema, no new context fields.
 - Shares `external-review.md.ejs` with Tasks 3 and 6 — coordinate edits.
 - Acceptance hooks (Task 7): `AGENTS.md contains model-routing table with 9 roles`, `external-review enforces different-family rule`.
 
-### Task 5 - E3.T4 Make reviewer gate explicit 4-step numbered list with failure handling [LOGIC] [PARALLEL]
+### Task 5 - E3.T4 Make reviewer gate explicit 5-step numbered list with failure handling [LOGIC] [PARALLEL]
 
 **Files**
 - `src/templates/agents/reviewer.md.ejs`
@@ -119,18 +119,19 @@ No generator/TS source files, no schema, no new context fields.
 - PRD §1.6 Definition of Done context (PRD.md:231–264).
 
 **Output**
-- Replace `## When invoked` body with an explicit numbered 4-step gate (in order: code-reviewer → apply fixes → type-check → tests). Each step carries a failure-handling clause:
+- Replace `## When invoked` body with an explicit numbered 5-step gate (in order: code-reviewer → apply fixes → type-check → tests → lint/format). Each step carries a failure-handling clause:
   1. Invoke `code-reviewer` (and `security-reviewer` in parallel when `hasSecurityReviewer`). **If invocation fails:** stop and surface the error — do not proceed to fixes.
   2. Route every critical/warning finding to `implementer` and re-check. **If a fix introduces new findings:** loop back to step 1 against the newly modified files.
   3. Run type-check (`<%= commands.typeCheck %>`) when configured. **If type-check fails:** route errors to `implementer`; do not silence with `any`/`@ts-ignore`/`eslint-disable`; re-run until clean.
   4. Run tests (`<%= commands.test %>`). **If any suite fails:** route failures to `implementer`; never delete or weaken tests to pass. Loop back to step 3 after fixes.
-- Keep the scratchpad bookkeeping item as a preamble bullet (not a numbered gate step), so the 4 numbered items are exactly the four gate steps.
+  5. Run lint/format (`<%= commands.lint %>`). **If lint/format fails:** route failures to `implementer`; never use `eslint-disable` to suppress; loop back to step 1 after fixes.
+- Keep the scratchpad bookkeeping item as a preamble bullet (not a numbered gate step), so the 5 numbered items are exactly the five gate steps.
 - Keep the existing `<%- include('../partials/definition-of-done.md.ejs') %>`; Task 3 adds the `ai-complacency` include adjacent to it.
 
 **Notes**
 - DRY: reuse `commands.typeCheck` and `commands.test` from `GeneratorContext` (already used in this file and in `AGENTS.md.ejs`).
 - Shares file with Task 3's reviewer edit — apply Task 5 first, then Task 3's one-line include addition.
-- Acceptance hooks (Task 7): `reviewer gate lists four numbered steps in order`, `reviewer gate states per-step failure handling`.
+- Acceptance hooks (Task 7): `reviewer gate lists five numbered steps in order`, `reviewer gate states per-step failure handling`.
 
 ### Task 6 - E3.T5 Document terminal command override and Code Rabbit CLI default in external-review [LOGIC] [PARALLEL]
 
@@ -169,7 +170,7 @@ No generator/TS source files, no schema, no new context fields.
   5. `ai-complacency enforces no-auto-merge clause` — asserts `Never auto-merge on AI approval alone` in all three consumers.
   6. `AGENTS.md contains model-routing table with nine roles` — asserts header row plus each of the 9 role names appears; asserts `never let the writer be its own final reviewer` is present.
   7. `external-review enforces different-family rule` — asserts the exact wording used in Task 4 (e.g. `different model family`) in rendered `.claude/commands/external-review.md`.
-  8. `reviewer gate has four numbered steps in order` — `assertStepOrder` on rendered reviewer content checking: `code-reviewer`, `apply` (fixes), `pnpm check-types` (type-check literal from fixture), `pnpm test`. Also asserts each step has a failure clause keyword chosen in Task 5.
+  8. `reviewer gate has five numbered steps in order` — `assertStepOrder` on rendered reviewer content checking: `code-reviewer`, `apply` (fixes), `pnpm check-types` (type-check literal from fixture), `pnpm test`, `pnpm lint` (lint/format). Also asserts each step has a failure clause keyword chosen in Task 5.
   9. `external-review documents terminal command override and Code Rabbit CLI default` — asserts both `Code Rabbit CLI` and `override` (or the exact wording from Task 6) appear.
 
 **Notes**
@@ -203,7 +204,7 @@ No generator/TS source files, no schema, no new context fields.
 - [ ] Run `security-reviewer` agent in parallel - all critical and warning findings fixed
 - [ ] DRY scan complete - §2.1 lives only in `review-checklist.md.ejs`; §2.18 only in `ai-complacency.md.ejs`; §1.7 table only in `AGENTS.md.ejs`
 - [ ] Rendered `.claude/agents/code-reviewer.md` verified ≤ 250 lines
-- [ ] PRD.md Epic 3 header (PRD.md:1492) ready for user to append `— [DONE]` marker
+- [ ] PRD.md Epic 3 header (PRD.md:1492) ready for user to append `[DONE YYYY-MM-DD]` marker
 - [ ] PLAN.md External errors section reviewed
 
 ## External errors
@@ -222,6 +223,6 @@ No generator/TS source files, no schema, no new context fields.
 | E3.T2a | Create ai-complacency partial | [LOGIC] | — | `src/templates/partials/ai-complacency.md.ejs` |
 | E3.T2b | Wire ai-complacency into code-reviewer, reviewer, external-review | [LOGIC] | — (after T2a) | 3 files |
 | E3.T3 | Insert §1.7 model-routing table + external-review family-diff rule | [LOGIC] | [PARALLEL] | `AGENTS.md.ejs`, `external-review.md.ejs` |
-| E3.T4 | Explicit 4-step numbered reviewer gate | [LOGIC] | [PARALLEL] (share-file with T2b reviewer edit) | `reviewer.md.ejs` |
+| E3.T4 | Explicit 5-step numbered reviewer gate | [LOGIC] | [PARALLEL] (share-file with T2b reviewer edit) | `reviewer.md.ejs` |
 | E3.T5 | Terminal command override + Code Rabbit CLI default | [LOGIC] | [PARALLEL] (share-file with T3, T2b) | `external-review.md.ejs` |
 | E3.TESTS | Epic 3 acceptance tests | [TEST] | — (after T1–T5) | `tests/generator/epic-3-review-depth.test.ts` |
