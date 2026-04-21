@@ -1,0 +1,47 @@
+prefix_rule(
+  pattern = ["git", ["push", "commit"]],
+  decision = "forbidden",
+  justification = "No remote pushes or commits from the agent",
+)
+
+prefix_rule(
+  pattern = ["git", "reset", ["--hard", "--merge"]],
+  decision = "forbidden",
+  justification = "No destructive history ops",
+)
+
+prefix_rule(
+  pattern = ["git", "clean", ["-f", "-fd"]],
+  decision = "forbidden",
+  justification = "No forced cleans",
+)
+
+prefix_rule(
+  pattern = ["git", "branch", "-D"],
+  decision = "forbidden",
+  justification = "No force branch deletes",
+)
+
+prefix_rule(
+  pattern = [["rm", "sudo"]],
+  decision = "forbidden",
+  justification = "Block rm and sudo entirely",
+)
+
+prefix_rule(
+  pattern = [["pnpm", "npm", "cargo"], "publish"],
+  decision = "forbidden",
+  justification = "No package publishing",
+)
+
+prefix_rule(
+  pattern = ["terraform", "apply"],
+  decision = "forbidden",
+  justification = "No infra changes",
+)
+
+prefix_rule(
+  pattern = ["kubectl", ["apply", "delete"]],
+  decision = "forbidden",
+  justification = "No cluster changes",
+)
