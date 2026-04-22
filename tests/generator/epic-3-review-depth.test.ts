@@ -1,6 +1,6 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
-import { makeStackConfig } from './fixtures.js';
+import { CODE_REVIEWER_MAX_LINES, makeStackConfig } from './fixtures.js';
 import {
   AI_COMPLACENCY_CONSUMERS,
   MODEL_ROUTING_ROLES,
@@ -25,11 +25,9 @@ describe('Epic 3 review depth', () => {
     }
   });
 
-  it('code-reviewer rendered output stays <= 320 lines', () => {
+  it(`code-reviewer rendered output stays <= ${CODE_REVIEWER_MAX_LINES} lines`, () => {
     const content = getAgentContent(files, 'code-reviewer');
-    // Raised from 250 (E3.T1) to 320 to accommodate Epic 6 partials:
-    // observability (E6.T2), design-principles (E6.T3), documentation (E6.T6).
-    expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(320);
+    expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(CODE_REVIEWER_MAX_LINES);
   });
 
   it('review-checklist includes Conventional Comments footer', () => {

@@ -2,7 +2,9 @@
 
 ### Supply-chain rules
 - Pin every dep exactly via lockfile (package-lock.json, pnpm-lock.yaml,
-  yarn.lock). Install with `npm ci` / `pnpm install --frozen-lockfile`.
+  yarn.lock). Install with `npm ci` / `pnpm install --frozen-lockfile` /
+  `yarn install --immutable` (Yarn Berry) or `yarn install --frozen-lockfile`
+  (Yarn v1).
 - Every new dep justified in PR description: alternatives, license,
   maintenance, bundle size, last-publish date. 2FA-gated maintainer.
 - Renovate or Dependabot enabled. Merge security patches within:

@@ -6,8 +6,10 @@
   easy change. Commit separately.
 - Strangler fig for legacy replacement; branch-by-abstraction for
   multi-week structural work.
-- Tag tech debt explicitly: `// TODO(TICKET-123): ...`. Bare TODOs
-  fail CI.
+- Tag tech debt explicitly using the language's native comment syntax,
+  keeping the ticket token exact: `// TODO(TICKET-123): ...` (JS/TS/Go/
+  Rust/Java), `# TODO(TICKET-123): ...` (Python/Ruby/Shell/YAML),
+  `-- TODO(TICKET-123): ...` (SQL/Haskell). Bare TODOs fail CI.
 - Classify debt (Fowler quadrant): reckless-deliberate is the alarm.
   Debt lives in the main backlog, not a side list.
 - Boy Scout Rule: leave code better than you found it.

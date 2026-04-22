@@ -1,5 +1,5 @@
 import { generateAll } from '../../src/generator/index.js';
-import { makeStackConfig } from './fixtures.js';
+import { CODE_REVIEWER_MAX_LINES, makeStackConfig } from './fixtures.js';
 
 const makeConfig = makeStackConfig;
 
@@ -177,7 +177,7 @@ describe('generateAll', () => {
       // documentation (E6.T6).
       // architect raised from ≤280 to ≤300 to accommodate E6.T6 documentation partial.
       const lineLimit = file.path.endsWith('code-reviewer.md')
-        ? 320
+        ? CODE_REVIEWER_MAX_LINES
         : file.path.endsWith('architect.md')
           ? 300
           : 280;

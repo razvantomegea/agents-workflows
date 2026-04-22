@@ -103,6 +103,11 @@ describe('project.name validation', () => {
     expect(() => stackConfigSchema.parse(cfg)).toThrow();
   });
 
+  it('rejects a whitespace-only name', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: '   ' } });
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
+
   it('rejects a name longer than 100 characters', () => {
     const cfg = makeStackConfig({ project: { ...baseProject, name: 'a'.repeat(101) } });
     expect(() => stackConfigSchema.parse(cfg)).toThrow();
