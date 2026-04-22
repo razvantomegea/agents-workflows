@@ -1,13 +1,18 @@
 import fs from 'fs';
 import path from 'path';
 import { generateAll } from '../../src/generator/index.js';
+import type { GeneratedFile } from '../../src/generator/types.js';
 import { makeStackConfig } from './fixtures.js';
 
 const TEMPLATES_DIR = path.resolve('src/templates/partials');
+let files: GeneratedFile[];
+
+beforeAll(async () => {
+  files = await generateAll(makeStackConfig());
+});
 
 describe('Epic 5 — AGENTS.md rendered content', () => {
-  it('contains all required MCP-policy and session-hygiene literals', async () => {
-    const files = await generateAll(makeStackConfig());
+  it('contains all required MCP-policy and session-hygiene literals', () => {
     const agentsMd = files.find((f) => f.path === 'AGENTS.md');
     expect(agentsMd).toBeDefined();
     const content = agentsMd!.content;
@@ -26,8 +31,7 @@ describe('Epic 5 — AGENTS.md rendered content', () => {
 });
 
 describe('Epic 5 — CLAUDE.md rendered content', () => {
-  it('contains session-hygiene and memory-discipline literals', async () => {
-    const files = await generateAll(makeStackConfig());
+  it('contains session-hygiene and memory-discipline literals', () => {
     const claudeMd = files.find((f) => f.path === 'CLAUDE.md');
     expect(claudeMd).toBeDefined();
     const content = claudeMd!.content;
@@ -41,8 +45,7 @@ describe('Epic 5 — CLAUDE.md rendered content', () => {
     expect(content.toLowerCase()).toContain('two-strike');
   });
 
-  it('does NOT contain MCP-policy literals (AGENTS-only policy)', async () => {
-    const files = await generateAll(makeStackConfig());
+  it('does NOT contain MCP-policy literals (AGENTS-only policy)', () => {
     const claudeMd = files.find((f) => f.path === 'CLAUDE.md');
     expect(claudeMd).toBeDefined();
     const content = claudeMd!.content;
@@ -53,8 +56,7 @@ describe('Epic 5 — CLAUDE.md rendered content', () => {
 });
 
 describe('Epic 5 — architect.md rendered content', () => {
-  it('contains subagent_delegation fence and required delegation literals', async () => {
-    const files = await generateAll(makeStackConfig());
+  it('contains subagent_delegation fence and required delegation literals', () => {
     const architectMd = files.find((f) => f.path === '.claude/agents/architect.md');
     expect(architectMd).toBeDefined();
     const content = architectMd!.content;
@@ -68,8 +70,7 @@ describe('Epic 5 — architect.md rendered content', () => {
 });
 
 describe('Epic 5 — reviewer.md rendered content', () => {
-  it('contains subagent_delegation fence', async () => {
-    const files = await generateAll(makeStackConfig());
+  it('contains subagent_delegation fence', () => {
     const reviewerMd = files.find((f) => f.path === '.claude/agents/reviewer.md');
     expect(reviewerMd).toBeDefined();
 

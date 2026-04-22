@@ -30,7 +30,7 @@ describe('Epic 5 T1 — workflow-longhorizon: enabled (claudeCode only)', () => 
   it('contains all 11 numbered steps in the bootstrap protocol', () => {
     const content = getContent(files, '.claude/commands/workflow-longhorizon.md');
     for (let step = 1; step <= 11; step++) {
-      expect(content).toContain(`${step}.`);
+      expect(content).toMatch(new RegExp(`^${step}\\.`, 'm'));
     }
   });
 
