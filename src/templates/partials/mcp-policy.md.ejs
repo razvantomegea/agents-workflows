@@ -1,0 +1,11 @@
+## MCP policy
+
+- Prefer CLIs (`gh`, `aws`, `gcloud`) over custom MCP servers when the
+  capability exists as a CLI. CLIs are auditable plain text.
+- Run MCP servers with the least privilege needed for the task.
+- Never run an untrusted MCP server in the same session that has
+  access to secrets or network egress (see Rule of Two, §1.5).
+- Scope tokens per task, not per session. Expire on completion.
+- GitHub MCP tokens: use fine-grained PATs with repo-specific scope.
+- Prefer STDIO-on-localhost or OAuth-authenticated Streamable HTTP.
+- Log every MCP tool call with (caller, destination, payload summary).

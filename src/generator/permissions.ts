@@ -1,23 +1,27 @@
 import type { StackConfig } from '../schema/stack-config.js';
-import type { PostToolUseHook } from './types.js';
+import type { PostToolUseHook, PreToolUseHook } from './types.js';
 
 export interface PermissionsInput {
   tooling: Pick<StackConfig['tooling'], 'packageManagerPrefix'>;
   commands: Pick<StackConfig['commands'], 'test' | 'typeCheck' | 'lint'>;
 }
 
+export const DESTRUCTIVE_BASH_PATTERNS: readonly string[] = [
+  'rm -rf',
+  'rm -r',
+  'rm --recursive',
+  'rm --force',
+  'git push --force',
+  'git push -f',
+  'git push --force-with-lease',
+  'git reset --hard',
+  'git clean -fd',
+  'git clean -f',
+  'git branch -D',
+];
+
 const DENY_PATTERNS: readonly string[] = [
-  'Bash(rm -rf:*)',
-  'Bash(rm -r:*)',
-  'Bash(rm --recursive:*)',
-  'Bash(rm --force:*)',
-  'Bash(git push --force:*)',
-  'Bash(git push -f:*)',
-  'Bash(git push --force-with-lease:*)',
-  'Bash(git reset --hard:*)',
-  'Bash(git clean -fd:*)',
-  'Bash(git clean -f:*)',
-  'Bash(git branch -D:*)',
+  ...DESTRUCTIVE_BASH_PATTERNS.map((p) => `Bash(${p}:*)`),
   'Bash(npm publish:*)',
   'Bash(pnpm publish:*)',
   'Bash(cargo publish:*)',
@@ -66,6 +70,37 @@ export function buildPermissions(input: PermissionsInput): string[] {
 
 export function buildDenyList(): string[] {
   return [...DENY_PATTERNS];
+}
+
+// The hook reads the PreToolUse JSON payload from stdin. Claude Code sends:
+// {"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"..."}}
+// Exit 2 = block with refusal message; exit 0 = allow.
+const PATTERNS_ALTERNATION = DESTRUCTIVE_BASH_PATTERNS.join('|');
+const PRE_TOOL_USE_GUARD = [
+  '#!/usr/bin/env sh',
+  'input=$(cat)',
+  'if command -v jq >/dev/null 2>&1; then',
+  '  cmd=$(printf \'%s\' "$input" | jq -r \'.tool_input.command // empty\')',
+  'else',
+  '  cmd=$(printf \'%s\' "$input" | sed -n \'s/.*"command"[[:space:]]*:[[:space:]]*"\\(.*\\)".*/\\1/p\')',
+  'fi',
+  'cmd=$(printf \'%s\' "$cmd" | tr -s \'[:space:]\' \' \')',
+  '[ -z "$cmd" ] && exit 0',
+  'patterns=' + JSON.stringify(PATTERNS_ALTERNATION),
+  'if printf \'%s\' "$cmd" | grep -qE "$patterns"; then',
+  '  printf \'%s\\n\' "Blocked: destructive command matched guard pattern." >&2',
+  '  exit 2',
+  'fi',
+  'exit 0',
+].join('\n');
+
+export function buildPreToolUseHooks(): readonly PreToolUseHook[] {
+  return [
+    {
+      matcher: 'Bash',
+      hooks: [{ type: 'command', command: PRE_TOOL_USE_GUARD }],
+    },
+  ];
 }
 
 export function buildPostToolUseHooks(input: { lintCommand: string | null }): PostToolUseHook[] {

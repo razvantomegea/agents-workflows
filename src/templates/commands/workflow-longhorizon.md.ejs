@@ -1,0 +1,104 @@
+---
+name: workflow-longhorizon
+description: "Multi-session long-horizon workflow harness with progress tracking and feature list."
+---
+
+Multi-session long-horizon workflow. Use this command when a project spans more than one agent session.
+
+## Session bootstrap
+
+<session_bootstrap>
+For any task spanning more than one session:
+1. `pwd`                                   — confirm workspace
+2. `cat claude-progress.txt`              — what was done last
+3. `git log --oneline -20`                — recent commits
+4. `jq '.[] | select(.passes==false)' feature_list.json`
+5. `./init.sh` + smoke test               — is baseline working?
+6. Pick ONE feature with passes==false
+7. Implement it
+8. Verify end-to-end (browser / curl / integration)
+9. `git add -A && git commit -m "feat: <feature>"`
+10. Update feature_list.json: passes=true (flip only after verification)
+11. Append to claude-progress.txt: what you did, known issues, next step
+Only then: end session.
+
+Do not try to finish multiple features in one session.
+Do not flip passes=true without end-to-end verification.
+Do not edit or remove feature entries — only flip the passes field.
+</session_bootstrap>
+
+## Phase 1 — Initialise (first session only)
+
+Run this phase once, before any coder session.
+
+1. Create a dedicated branch from up-to-date `<%= mainBranch %>`:
+
+```bash
+git checkout <%= mainBranch %> && git pull origin <%= mainBranch %> && git checkout -b feature/<short-kebab-name>
+```
+
+2. Write `feature_list.json` — one entry per independent deliverable. Use JSON, not Markdown, so the agent cannot silently rewrite it.
+
+```json
+[
+  { "id": "feat-1", "title": "<feature title>", "passes": false },
+  { "id": "feat-2", "title": "<feature title>", "passes": false }
+]
+```
+
+**Contract:** `passes: false` must stay `false` until full end-to-end verification succeeds. Only flip it to `true` after step 8 of the bootstrap protocol above.
+
+3. Write `claude-progress.txt` with a single line: `Initialised. No sessions completed yet.`
+
+4. Write `init.sh` — idempotent setup script (install deps, seed DB, start services):
+
+```bash
+<%- tooling.packageManagerPrefix %> install
+```
+
+5. Run `<%= commands.test %>` to confirm baseline is green before any coder session starts.
+
+## Phase 2 — Coder sessions (repeat per session)
+
+At the start of **every** session, execute the full `<session_bootstrap>` protocol above without skipping steps.
+
+Then for the ONE feature you picked:
+
+1. Use the `architect` sub-agent to draft a focused mini-plan (max 5 tasks) for this feature only.
+2. Use the `implementer` sub-agent to execute each task.
+3. After each task, run `code-reviewer` on modified files and apply all critical/warning findings.
+4. <% if (commands.typeCheck) { %>Run `<%= commands.typeCheck %>` — must pass.<% } else { %>Run type checks (skip: no type-check command configured).<% } %>
+5. Run `<%= commands.test %>` — must pass.
+6. Verify end-to-end (browser / curl / integration test).
+7. `git add -A && git commit -m "feat: <feature-id> <title>"` (conventional commit).
+8. Flip `passes` to `true` in `feature_list.json` for this feature.
+9. Append a progress entry to `claude-progress.txt`:
+
+```
+[YYYY-MM-DD] feat-N: <what was done>. Known issues: <none or describe>. Next: <next feature or "all done">.
+```
+
+## Phase 3 — Done
+
+All features done when:
+
+```bash
+jq '[.[] | select(.passes==false)] | length' feature_list.json
+# → 0
+```
+
+Run the final review loop:
+
+1. `reviewer` sub-agent on all modified files.
+2. `implementer` applies all critical/warning findings.
+3. <% if (commands.typeCheck) { %>`<%= commands.typeCheck %>` — must pass.<% } else { %>Run type checks (skip: no type-check command configured).<% } %>
+4. `<%= commands.test %>` — must pass.
+<% if (commands.lint) { %>5. `<%= commands.lint %>` — must pass.
+<% } %>
+Then invoke `/external-review` as the final cross-model gate.
+
+Print a final summary: features completed, files changed, any open issues.
+
+The user will review and merge when satisfied.
+
+<%- include('../partials/git-rules.md.ejs') %>

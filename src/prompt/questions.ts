@@ -185,6 +185,7 @@ export async function askCommandSelection(): Promise<string[]> {
     { name: '/workflow-plan — End-to-end feature workflow', value: 'workflowPlan', checked: true },
     { name: '/workflow-fix — Fix QA issues', value: 'workflowFix', checked: true },
     { name: '/external-review — External review tool integration', value: 'externalReview', checked: false },
+    { name: '/workflow-longhorizon - Multi-session long-horizon harness', value: 'workflowLonghorizon', checked: false },
   ];
 
   return checkbox({ message: 'Select commands to generate:', choices });
@@ -197,4 +198,12 @@ export async function askTargets(detected: DetectedStack['aiAgents']): Promise<{
   const codexCli = await confirm({ message: 'Generate Codex CLI config (.codex/)?', default: codexDefault });
 
   return { claudeCode, codexCli };
+}
+
+export async function askGovernance(): Promise<{ enabled: boolean }> {
+  const enabled = await confirm({
+    message: 'Ship governance scaffolding (.github/pull_request_template.md + docs/GOVERNANCE.md)?',
+    default: false,
+  });
+  return { enabled };
 }

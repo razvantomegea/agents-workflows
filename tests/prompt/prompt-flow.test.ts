@@ -217,6 +217,27 @@ describe('createDefaultConfig', () => {
       expect(config.agents.reactTsSenior).toBe(expectedReactTsSenior);
     },
   );
+
+  it('defaults selectedCommands.workflowLonghorizon to false', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.selectedCommands.workflowLonghorizon).toBe(false);
+  });
+});
+
+describe('selectedCommands.workflowLonghorizon opt-in', () => {
+  it('sets workflowLonghorizon to true when included in the checkbox answer', () => {
+    const base = createDefaultConfig(makeDetectedStack());
+    const config = stackConfigSchema.parse({
+      ...base,
+      selectedCommands: {
+        ...base.selectedCommands,
+        workflowLonghorizon: true,
+      },
+    });
+
+    expect(config.selectedCommands.workflowLonghorizon).toBe(true);
+  });
 });
 
 describe('resolveDefaultProjectName', () => {
@@ -259,6 +280,23 @@ describe('resolveDefaultDescription', () => {
       .toBe('A react application');
     expect(resolveDefaultDescription({ description: '   ' }, null, 'python'))
       .toBe('A python project');
+  });
+});
+
+describe('createDefaultConfig governance defaults', () => {
+  it('sets governance.enabled to false in the non-interactive config', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.governance.enabled).toBe(false);
+  });
+});
+
+describe('stackConfigSchema governance opt-in', () => {
+  it('accepts governance.enabled true and preserves it through schema parse', () => {
+    const base = createDefaultConfig(makeDetectedStack());
+    const parsed = stackConfigSchema.parse({ ...base, governance: { enabled: true } });
+
+    expect(parsed.governance.enabled).toBe(true);
   });
 });
 

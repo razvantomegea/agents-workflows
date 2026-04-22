@@ -16,6 +16,7 @@ import {
   askAgentSelection,
   askCommandSelection,
   askTargets,
+  askGovernance,
 } from './questions.js';
 
 export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
@@ -102,6 +103,7 @@ export async function runPromptFlow(
   const selectedAgents = await askAgentSelection({ isFrontend, isReactTs });
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
+  const governance = await askGovernance();
 
   const commands = resolveCommands(
     tooling.packageManager,
@@ -173,8 +175,10 @@ export async function runPromptFlow(
       workflowPlan: selectedCommands.includes('workflowPlan'),
       workflowFix: selectedCommands.includes('workflowFix'),
       externalReview: selectedCommands.includes('externalReview'),
+      workflowLonghorizon: selectedCommands.includes('workflowLonghorizon'),
     },
     targets,
+    governance,
     detectedAiAgents: toDetectedAiAgentFlags(detected),
     monorepo: null,
   };
@@ -261,8 +265,10 @@ export function createDefaultConfig(
       workflowPlan: true,
       workflowFix: true,
       externalReview: false,
+      workflowLonghorizon: false,
     },
     targets,
+    governance: { enabled: false },
     detectedAiAgents: toDetectedAiAgentFlags(detected),
     monorepo: null,
   };

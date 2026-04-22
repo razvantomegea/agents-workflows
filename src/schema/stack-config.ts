@@ -85,6 +85,7 @@ export const stackConfigSchema = z.object({
     workflowPlan: z.boolean().default(true),
     workflowFix: z.boolean().default(true),
     externalReview: z.boolean().default(false),
+    workflowLonghorizon: z.boolean().default(false),
   }),
 
   targets: z.object({
@@ -102,6 +103,10 @@ export const stackConfigSchema = z.object({
     windsurf: z.boolean().default(false),
     gemini: z.boolean().default(false),
   }).default({}),
+
+  governance: z.object({
+    enabled: z.boolean().default(false),
+  }).default({ enabled: false }),
 
   monorepo: z.object({
     isRoot: z.boolean(),
