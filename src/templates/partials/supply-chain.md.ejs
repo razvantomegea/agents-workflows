@@ -1,0 +1,26 @@
+## Supply chain
+
+### Supply-chain rules
+- Pin every dep exactly via lockfile (package-lock.json, pnpm-lock.yaml,
+  yarn.lock). Install with `npm ci` / `pnpm install --frozen-lockfile` /
+  `yarn install --immutable` (Yarn Berry) or `yarn install --frozen-lockfile`
+  (Yarn v1).
+- Every new dep justified in PR description: alternatives, license,
+  maintenance, bundle size, last-publish date. 2FA-gated maintainer.
+- Renovate or Dependabot enabled. Merge security patches within:
+  critical ≤7d, high ≤30d.
+- Scope private registries to prevent dependency confusion:
+  `.npmrc` with explicit `@scope:registry=...`; never
+  `extra-index-url` where the same name can resolve from two places.
+- Stability days on risky deps (Renovate `stabilityDays: 3`).
+- Never install a package an LLM suggested without verifying it exists
+  on the registry and checking publish history (slopsquatting defense).
+
+### For published artifacts
+- Generate SBOM on every build (CycloneDX via Syft).
+  `syft dir:. -o cyclonedx-json=sbom.cdx.json`
+- Sign container images and release artifacts with cosign keyless
+  (OIDC via GitHub Actions). Attach SBOM and SLSA provenance.
+- Target SLSA Build L2 minimum; L3 for externally-consumed packages.
+- Verify provenance on deploy (`cosign verify` / `slsa-verifier`).
+- EU CRA readiness: SBOM + 24h vuln notification workflow by Sept 2026.

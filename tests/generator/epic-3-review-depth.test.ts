@@ -1,6 +1,7 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 import { makeStackConfig } from './fixtures.js';
+import { CODE_REVIEWER_MAX_LINES } from './code-reviewer-config.js';
 import {
   AI_COMPLACENCY_CONSUMERS,
   MODEL_ROUTING_ROLES,
@@ -25,9 +26,9 @@ describe('Epic 3 review depth', () => {
     }
   });
 
-  it('code-reviewer rendered output stays <= 250 lines', () => {
+  it(`code-reviewer rendered output stays <= ${CODE_REVIEWER_MAX_LINES} lines`, () => {
     const content = getAgentContent(files, 'code-reviewer');
-    expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(250);
+    expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(CODE_REVIEWER_MAX_LINES);
   });
 
   it('review-checklist includes Conventional Comments footer', () => {

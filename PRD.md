@@ -1674,7 +1674,8 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 6 — Extended Code Standards [SHOULD]
+## Epic 6 — Extended Code Standards [SHOULD] [DONE 2026-04-22]
+**Landed on** `feature/epic-6-extended-standards`.
 
 **Goal.** Supply-chain, observability, design principles, refactoring, performance, documentation, tooling, deployment, concurrency.
 

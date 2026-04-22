@@ -1,0 +1,15 @@
+## Documentation rules
+
+- **ADR (MADR 4)** for every architecturally significant decision
+  (auth model, storage engine, framework choice, external integration,
+  sync vs async boundary). File: `docs/decisions/NNNN-title.md`.
+  Required fields: Context, Decision Drivers, Considered Options,
+  Decision Outcome, Consequences.
+- **README** organized via Diátaxis (tutorials / how-to / reference /
+  explanation). Must answer: what is it, why does it exist, how do I
+  run it, how do I contribute — plus a 5-minute quickstart block.
+- **Inline comments** explain *why*, invariants, non-obvious domain
+  facts. Never paraphrase the next line. Public/exported symbols get
+  docstrings with contract (args, returns, errors, side effects).
+- **Architecture diagrams**: C4 Levels 1–2 in `docs/architecture/`
+  (Structurizr / Mermaid C4 / Likec4). Avoid UML class walls.

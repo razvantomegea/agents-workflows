@@ -1,0 +1,14 @@
+## Formatting / linting
+
+- One formatter per language, CI-enforced. Fail on diff.
+- `.editorconfig` committed (charset, line endings, indent, final newline).
+- Type-check in CI as a lint step: `tsc --noEmit`, `mypy --strict`,
+  `pyright`, `cargo check`, `go vet`.
+- JS/TS new projects: prefer Biome (single tool). Large legacy repos
+  with deep ESLint investment: stay on ESLint+Prettier until Biome
+  plugin coverage closes the gap for your stack.
+- Treewide formatting: one "apply formatter" commit, added to
+  `.git-blame-ignore-revs`.
+- Security-focused static analysis beyond linting: CodeQL, Semgrep,
+  SonarQube (cognitive complexity), `cargo-audit`, `npm audit`,
+  `pip-audit`.

@@ -36,15 +36,10 @@
 - No test was deleted or weakened to make the build pass.
 
 ### 4. Design
-- Composition over inheritance.
+- Design-principles followed (see Design principles section).
 - Errors-as-values where the language allows; exceptions for bugs
   only; no silent catches; errors carry context (`Error.cause`, `%w`,
   exception chaining).
-- No premature abstraction (Rule of Three; see Metz "wrong
-  abstraction"). Duplication > wrong abstraction.
-- Deep modules, not shallow ones (Ousterhout). Flag `IFooService`
-  interfaces with one implementation.
-- Locality of behavior: colocate tests/types/styles/small helpers.
 
 ### 5. Readability / naming
 - Variables: noun phrases; booleans prefixed `is/has/can/should`.
@@ -57,14 +52,12 @@
 ### 6. Observability
 - Structured logs (JSON/logfmt); include `trace_id`, `span_id`.
 - OpenTelemetry spans on HTTP/RPC/DB boundaries.
-- Log levels used correctly; PII redacted at the logger, not ad hoc.
+- Log levels used correctly; PII redacted at logger (see Observability section).
 
 ### 7. Documentation
-- Public/exported symbols have docstrings (args, returns, errors,
-  side effects).
 - Comments explain *why* and invariants, never what the next line does.
-- ADR (MADR 4) for any architecturally significant decision
-  (auth, storage, framework, external integration).
+- ADR filed for architecturally significant decisions (see Documentation rules).
+- Public symbols have docstrings (see Documentation rules).
 
 ### 8. Git hygiene
 - Conventional Commits 1.0 (`type(scope): subject`; ≤72-char subject,
