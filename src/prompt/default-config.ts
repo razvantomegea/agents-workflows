@@ -1,0 +1,97 @@
+import type { DetectedStack } from '../detector/types.js';
+import type { StackConfig } from '../schema/stack-config.js';
+import type { PackageJson } from '../utils/index.js';
+import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
+import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
+import { resolveCommands, resolvePackageManagerPrefix, type PackageScripts } from './commands.js';
+import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
+
+export function createDefaultConfig(
+  detected: DetectedStack,
+  scripts: PackageScripts = {},
+  pkg: PackageJson | null = null,
+): StackConfig {
+  const language = detected.language.value ?? 'typescript';
+  const runtime = detected.runtime.value ?? 'node';
+  const framework = detected.framework.value;
+  const isFrontend = isFrontendFramework(framework);
+  const isReactTs = supportsReactTsStack(framework, language);
+  const packageManager = detected.packageManager.value ?? 'npm';
+  const testFramework = detected.testFramework.value ?? 'jest';
+  const linter = detected.linter.value;
+
+  const targets = {
+    claudeCode: detected.aiAgents.hasClaudeCode || !detected.aiAgents.hasCodexCli,
+    codexCli: detected.aiAgents.hasCodexCli,
+  };
+
+  return {
+    project: {
+      name: resolveDefaultProjectName(pkg),
+      description: resolveDefaultDescription(pkg, framework, language),
+      locale: 'en',
+      localeRules: [],
+      docsFile: detected.docsFile.value,
+      mainBranch: 'main',
+    },
+    stack: {
+      language,
+      runtime,
+      framework,
+      uiLibrary: detected.uiLibrary.value,
+      stateManagement: detected.stateManagement.value,
+      database: detected.database.value,
+      auth: detected.auth.value,
+    },
+    tooling: {
+      packageManager,
+      packageManagerPrefix: resolvePackageManagerPrefix(packageManager),
+      testFramework,
+      testLibrary: detected.testLibrary.value,
+      e2eFramework: detected.e2eFramework.value,
+      linter,
+      formatter: detected.formatter.value,
+    },
+    paths: {
+      sourceRoot: 'src/',
+      componentsDir: isFrontend ? 'src/components/' : null,
+      hooksDir: isFrontend ? 'src/hooks/' : null,
+      utilsDir: 'src/utils/',
+      testsDir: null,
+      designTokensFile: null,
+      i18nDir: null,
+      testConfigFile: null,
+    },
+    commands: resolveCommands(packageManager, testFramework, linter, language, scripts),
+    conventions: {
+      componentStyle: 'arrow',
+      propsStyle: 'readonly',
+      maxFileLength: 200,
+      testColocation: true,
+      barrelExports: true,
+      strictTypes: true,
+    },
+    agents: {
+      architect: true,
+      implementer: true,
+      reactTsSenior: isReactTs,
+      codeReviewer: true,
+      securityReviewer: true,
+      codeOptimizer: true,
+      testWriter: true,
+      e2eTester: false,
+      reviewer: true,
+      uiDesigner: isFrontend,
+    },
+    selectedCommands: {
+      workflowPlan: true,
+      workflowFix: true,
+      externalReview: false,
+      workflowLonghorizon: false,
+    },
+    targets,
+    governance: { enabled: false },
+    detectedAiAgents: toDetectedAiAgentFlags(detected),
+    monorepo: null,
+  };
+}

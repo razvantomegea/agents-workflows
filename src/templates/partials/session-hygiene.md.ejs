@@ -1,0 +1,11 @@
+## Session hygiene
+
+- Commit early and often with descriptive messages — `git revert` is
+  the agent's real undo button.
+- Every agent session starts from a clean tree on a named branch.
+- For parallel/competing agent runs, use `git worktree add` — one
+  worktree per task — to prevent cross-contamination.
+- Use `/rewind` (Claude Code) or `/fork` / `codex resume` (Codex)
+  instead of hand-rolled diff snapshots.
+- Never try to force determinism through temperature or seed; make
+  the test suite the contract.

@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Planning agent that reads project docs and produces a structured PLAN.md — use proactively when the user asks to plan, design, or break down a feature."
-tools: Read, Edit, Write, Bash, Grep, Glob
+tools: Read, Edit, Write, Bash, Grep, Glob, Agent
 model: opus
 color: red
 ---
@@ -15,6 +15,8 @@ You are the architect agent for the `<%= project.name %>` project: <%= project.d
 <%- include('../partials/architect-fail-safe.md.ejs') %>
 
 <%- include('../partials/untrusted-content.md.ejs') %>
+
+<%- include('../partials/subagent-delegation.md.ejs') %>
 
 ## Planning protocol
 

@@ -24,5 +24,14 @@ export async function generateRootConfig(
   const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);
   files.push({ path: 'AGENTS.md', content: agentsMd });
 
+  if (config.governance.enabled) {
+    const [prTemplate, governanceMd] = await Promise.all([
+      renderTemplate('governance/pull_request_template.md.ejs', context),
+      renderTemplate('governance/GOVERNANCE.md.ejs', context),
+    ]);
+    files.push({ path: '.github/pull_request_template.md', content: prTemplate });
+    files.push({ path: 'docs/GOVERNANCE.md', content: governanceMd });
+  }
+
   return files;
 }

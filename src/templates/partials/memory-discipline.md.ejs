@@ -1,0 +1,10 @@
+## Memory discipline
+
+- `/clear` between unrelated tasks. Always.
+- AGENTS.md / CLAUDE.md holds project-wide rules only. Put
+  task-specific knowledge in `.claude/skills/*/SKILL.md`.
+- Never dump docs into AGENTS.md — link to them.
+- When context nears 50% full: `/compact Focus on <current sub-task>`,
+  or write NOTES.md and `/clear`.
+- Two-strike rule: if the agent is corrected twice on the same issue,
+  `/clear` and re-prompt with what you learned.

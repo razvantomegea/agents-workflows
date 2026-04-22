@@ -1,0 +1,18 @@
+## Sub-agent delegation
+
+<subagent_delegation>
+Delegate to a sub-agent only when:
+- The task requires reading >10 files to answer
+- The task is independent and can run in parallel with others
+- Isolating detailed context benefits the main thread
+
+Do not delegate:
+- Anything achievable in <5 tool calls
+- Tasks where the main agent already has the needed context
+- Strictly sequential dependencies
+
+Spawn sub-agents in parallel (same turn). Each must receive:
+  objective | output_format | max_tokens | allowed_tools | stop_conditions
+Each returns a 1-2k-token distilled summary. The orchestrator never
+sees their raw tool output.
+</subagent_delegation>

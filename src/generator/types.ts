@@ -1,13 +1,18 @@
 import type { StackConfig } from '../schema/stack-config.js';
 
-export interface PostToolUseHook {
-  matcher: string;
-  hooks: readonly PostToolUseCommandHook[];
-}
-
-export interface PostToolUseCommandHook {
+export interface CommandHook {
   type: 'command';
   command: string;
+}
+
+export interface PostToolUseHook {
+  matcher: string;
+  hooks: readonly CommandHook[];
+}
+
+export interface PreToolUseHook {
+  matcher: string;
+  hooks: readonly CommandHook[];
 }
 
 export interface ReviewChecklistItem {
@@ -42,6 +47,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   permissions: string[];
   denyList: readonly string[];
   postToolUseHooks: readonly PostToolUseHook[];
+  preToolUseHooks: readonly PreToolUseHook[];
   monorepo: StackConfig['monorepo'];
 
   hasUiDesigner: boolean;

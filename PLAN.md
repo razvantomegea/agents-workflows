@@ -1,132 +1,215 @@
-# PLAN — Epic 4: Code Standards Enforcement
-
-Branch: feature/epic-4-code-standards-enforcement
+# Plan - Epic 5 Advanced Agent Orchestration
+_Branch: `feature/epic-5-advanced-orchestration` | Date: 2026-04-22_
 
 ## Context
 
-Epic 4 delivers all six partial templates (security-defaults, error-handling-code, api-design, accessibility, git-rules, testing-patterns), so that generated implementer / code-reviewer / security-reviewer / test-writer / e2e-tester / ui-designer agents ship OWASP 2025, Conventional Commits 1.0, tiered-testing, API-design, and WCAG 2.2 AA defaults. All six partials slot into existing agent templates via the standard `<%- include('../partials/foo.md.ejs') %>` syntax already used throughout `src/templates/agents/`. The framework detector already distinguishes all seven required backends (express, fastify, hono, nestjs, fastapi, django, flask), so no detector extension is needed; conditional API-design rendering will key off a new `isBackend` flag derived in `build-context.ts` alongside existing `isFrontend` / `isReact` flags using the same pattern as `src/constants/frameworks.ts`.
+Epic 5 delivers the long-horizon workflow harness, MCP / session / memory governance in
+`AGENTS.md` + `CLAUDE.md`, a reusable sub-agent delegation partial for architect & reviewer,
+a destructive-Bash `PreToolUse` hook in `settings-local.json`, and governance scaffolding
+(PR template + `docs/GOVERNANCE.md`) wired behind a new opt-in prompt. PRD §1.8 / §1.9 /
+§1.10 / §1.11 / §1.12 / §1.15 / §1.16 are the canonical sources; copy required phrases
+verbatim so snapshot tests can assert them.
 
 ## Pre-implementation checklist
 
-- [ ] PRD §2.2, §2.4, §2.5, §2.6, §2.8, §2.12 read (lines 843, 920, 953, 984, 1044, 1153)
-- [ ] Existing partial include syntax confirmed: `<%- include('../partials/<name>.md.ejs'[, { locals }]) %>` (per `code-reviewer.md.ejs` lines 11–21)
-- [ ] Framework detector surface understood: `detectFramework` in `src/detector/detect-framework.ts` already returns all 7 backend values; E4.T5 conditional flag hooks in via a new `BACKEND_FRAMEWORKS` list in `src/constants/frameworks.ts` + `isBackend` flag in `src/generator/build-context.ts` (same pattern as `isFrontend`)
-- [ ] Test harness for rendered templates located: `tests/generator/epic-*.test.ts` use `generateAll(makeStackConfig(overrides))` from `tests/generator/fixtures.ts` and assert against the returned `GeneratedFile[]`
-- [ ] Grepped codebase for existing equivalents — the 4 new partial filenames (`security-defaults.md.ejs`, `error-handling-code.md.ejs`, `api-design.md.ejs`, `accessibility.md.ejs`) are confirmed not present under `src/templates/partials/`; `git-rules.md.ejs` and `testing-patterns.md.ejs` exist and will be edited in place
-- [ ] Verified no type duplication — the one new type surface (`isBackend` in `GeneratorContext`) is added once in `src/generator/types.ts` and imported where needed
-- [ ] Confirmed no magic numbers — line caps (<120, ≤80, <50) are enforced in tests only; no hardcoded numeric constants leak into runtime code
+- [ ] Read PRD.md §1.8 (L301-332), §1.9 (L334-356), §1.10 (L405-427), §1.11 (L429-450), §1.12 (L452-480), §1.15 (L542-552), §1.16 (L554-582), Epic 5 block (L1643-1672)
+- [ ] Grepped `src/templates/partials/` for existing equivalents - confirmed no `session-hygiene`, `memory-discipline`, `mcp-policy`, `subagent-delegation`, `governance`, or `long-horizon` partial exists
+- [ ] Confirmed `generate-commands.ts` and `generate-root-config.ts` already own the extension points (command list + AGENTS/CLAUDE/settings render path)
+- [ ] Confirmed governance opt-in requires new `StackConfig` key and prompt - noted in schema + prompt-flow updates
+- [ ] Verified no type duplication - reusing `GeneratorContext`, `GeneratedFile`, and `StackConfig` shapes already in `src/generator/types.ts` and `src/schema/stack-config.ts`
+- [ ] Confirmed no magic numbers - destructive-Bash patterns must be exported once from `src/generator/permissions.ts` and consumed by both deny list and PreToolUse hook
 
 ## Tasks
 
-### T1 — [LOGIC] Create security-defaults partial and wire into implementer + security-reviewer
+### Task T1 - Long-horizon workflow command [LOGIC] [SCHEMA]
+**Files**
+- `src/templates/commands/workflow-longhorizon.md.ejs` (new)
+- `src/generator/generate-commands.ts`
+- `src/schema/stack-config.ts` (add `workflowLonghorizon: z.boolean().default(false)` to `selectedCommands`)
+- `src/prompt/questions.ts` (extend `askCommandSelection` choice list)
+- `src/prompt/prompt-flow.ts` (map new key in both `runPromptFlow` and `createDefaultConfig`)
 
-- **Files**:
-  - `src/templates/partials/security-defaults.md.ejs` (NEW)
-  - `src/templates/agents/implementer.md.ejs` (EDIT — add include)
-  - `src/templates/agents/security-reviewer.md.ejs` (EDIT — add include)
-- **Input**: PRD §2.2 paste-ready snippet at lines 855–882 (input validation allowlist schema, OAuth 2.1 / PKCE / JWT `alg` allowlist, Argon2id m=19456/t=2/p=1, WebAuthn, secrets/workload identity, CSP Level 3 with nonces, `__Host-` cookies, IETF `RateLimit` headers, RFC 9457 Problem Details, log PII redaction, OWASP LLM Top 10 2025 — LLM07/LLM08/LLM10).
-- **Output**: A partial with a `## Security defaults (OWASP 2025 baseline)` heading and a `<security_defaults>` tagged block wrapping the bullet list; rendered length **<120 lines**. Included in `implementer.md.ejs` (between `<%- include('../partials/untrusted-content.md.ejs') %>` and `<%- include('../partials/definition-of-done.md.ejs') %>`, near line 25/27) and in `security-reviewer.md.ejs` (after `<%- include('../partials/fail-safe.md.ejs') %>` at line 17, before `## When invoked`).
-- **Notes**: Touches `implementer.md.ejs` — **serializes with T3 and T5** on that file. Do not duplicate bullets already present in `security-reviewer.md.ejs` "Security checklist" section (injection/authn/secrets/input/crypto are already listed there) — the new partial adds the OWASP-2025-specific details (Argon2id params, OAuth 2.1 RFC 9700, CSP L3 with nonces, `__Host-` prefix, RFC 9457, IETF `RateLimit` draft-10, LLM Top 10 2025). DRY risk: the overlap is intentional (partial is the canonical source; trimming the existing inline checklist is out of scope here). Keep the partial stack-agnostic (no `<%= stack.database %>` interpolation) to match `git-rules.md.ejs` style.
-- **Depends on**: none
+**Input**
+- PRD §1.8 `<session_bootstrap>` block (L311-332), the `feature_list.json` JSON-over-Markdown rule, and §1.8 "do not try to finish multiple features in one session" directive.
+- `GeneratorContext` fields (`mainBranch`, `commands.test`, `commands.typeCheck`, `tooling.packageManagerPrefix`).
 
-### T2 — [LOGIC] [PARALLEL] Expand git-rules partial
+**Output**
+- New command file rendered to `.claude/commands/workflow-longhorizon.md` (and `.codex/prompts/...`) when the user opts in.
+- New `selectedCommands.workflowLonghorizon` flag in `StackConfig`.
+- New entry `{ key: 'workflowLonghorizon', templateFile: 'commands/workflow-longhorizon.md.ejs', outputName: 'workflow-longhorizon.md' }` in `COMMAND_DEFINITIONS`.
+- Command template must contain: `<session_bootstrap>`, verbatim 11-step protocol, `feature_list.json` JSON contract block with `passes: false -> passes: true only after end-to-end verification`, `claude-progress.txt` update rule, and the three "Do not" clauses.
 
-- **Files**:
-  - `src/templates/partials/git-rules.md.ejs` (EDIT)
-- **Input**: PRD §2.6 paste-ready snippet at lines 996–1013: Conventional Commits 1.0 types `feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert`, `!` and `BREAKING CHANGE:` footer, subject ≤72 chars imperative, trunk-based with short-lived branches (<24h), PR ≤400 LOC cap with stacked-PR escape hatch (Graphite/ghstack/git-town), Sigstore/gitsign, agents commit to branches never `main`, pre-commit hooks for secret scanning (gitleaks/trufflehog) with <10s budget.
-- **Output**: `git-rules.md.ejs` keeps its existing "Git Rules" and "Branch Convention" sections and adds new subsections: "Conventional Commits 1.0" (listing all 11 types inline), "Trunk-based development" (short-lived branches, no GitFlow, feature flags), "PR size cap" (≤400 LOC, stack otherwise), "Commit signing" (GPG/SSH/Sigstore gitsign), "Agent branch rule" (reinforces existing "NEVER commit or push"). **Rendered length ≤80 lines.**
-- **Notes**: Only consumer today is `architect.md.ejs:86`, so the Epic-4 tests assert against `architect.md`. Merge the paste-ready bullets into the existing structure instead of appending a second "Git Rules" heading. Keep `<%= mainBranch %>` interpolation intact. DRY risk: the "agents commit to a branch, never to `main`" rule already exists in the first bullet of the partial — reinforce with a cross-reference, do not duplicate. Parallel-safe because it touches only `git-rules.md.ejs`; no shared agent file with T1/T3/T5.
-- **Depends on**: none
+**Notes**
+- DRY: reuse `<%- include('../partials/git-rules.md.ejs') %>` if a branch block is needed; do NOT redefine branch conventions.
+- DRY: reference `mainBranch` and `commands.test` variables already exposed on the render context - never hard-code.
+- File must stay <=200 lines.
+- Checkbox choice label: `'/workflow-longhorizon - Multi-session long-horizon harness'`, default unchecked.
 
-### T3 — [LOGIC] Create error-handling-code partial and wire into implementer + code-reviewer
+---
 
-- **Files**:
-  - `src/templates/partials/error-handling-code.md.ejs` (NEW)
-  - `src/templates/agents/implementer.md.ejs` (EDIT — add include)
-  - `src/templates/agents/code-reviewer.md.ejs` (EDIT — add include)
-- **Input**: PRD §2.8 paste-ready snippet at lines 1056–1069: expected-failure → typed return; programmer-error → fail loudly; `Error.cause` (JS) / `%w` (Go) / `thiserror`/`anyhow` (Rust) / chaining (Python/Java); "parse, don't validate" with Zod/pydantic/JSON Schema 2020-12 at ingress; no silent-catch (`catch (e) {}`, `except: pass`) — intentional catches require `// reason:` comment; Result/Either/discriminated-union preferred for business logic.
-- **Output**: A partial with `## Error handling (produced code)` heading and an `<error_handling_code>` tagged block (distinct from existing `<error_handling_self>` in `error-handling-self.md.ejs`). Rendered length **<50 lines**. Included in `implementer.md.ejs` adjacent to the existing `error-handling-self` include at line 28 (place **after** it to group the two error-handling concerns) and in `code-reviewer.md.ejs` after `<%- include('../partials/docs-reference.md.ejs', { docsFile }) %>` at line 17, before fail-safe at line 19.
-- **Notes**: Touches `implementer.md.ejs` — **serializes with T1 and T5** on that file. Keep the tag name `<error_handling_code>` distinct from `<error_handling_self>` (the self-partial covers what the agent does when its own commands fail; this new partial covers how produced code should handle runtime errors). DRY risk: the "never silent-catch" rule overlaps with `error-handling-self.md.ejs:7` — reinforce with different framing (self = suppressions in agent's own work; code = runtime catches in generated code). Do not repeat the `// reason:` comment convention verbatim; link it conceptually.
-- **Depends on**: T1, T5 (all three touch `implementer.md.ejs`)
+### Task T2 - MCP policy + session-hygiene + memory-discipline partials [LOGIC]
+**Files**
+- `src/templates/partials/mcp-policy.md.ejs` (new)
+- `src/templates/partials/session-hygiene.md.ejs` (new)
+- `src/templates/partials/memory-discipline.md.ejs` (new)
+- `src/templates/config/AGENTS.md.ejs` (include all three partials after `context-budget` block)
+- `src/templates/config/CLAUDE.md.ejs` (include `session-hygiene` + `memory-discipline` partials after `context-budget` block)
 
-### T4 — [LOGIC] [PARALLEL] Enrich testing-patterns + e2e-tester with tiered testing and a11y smoke
+**Input**
+- PRD §1.9 (L344-356): MCP least-privilege, per-task-scoped tokens, CLI-over-MCP, OAuth/STDIO rule, logging contract.
+- PRD §1.10 (L415-427): worktrees, `/rewind`, `/fork`, "make the test suite the contract".
+- PRD §1.11 (L439-450): `/clear` between tasks, `.claude/skills/*/SKILL.md` routing, `/compact`, two-strike rule.
 
-- **Files**:
-  - `src/templates/partials/testing-patterns.md.ejs` (EDIT)
-  - `src/templates/agents/e2e-tester.md.ejs` (EDIT — a11y smoke section only; the a11y partial include is T6)
-- **Input**:
-  - PRD §2.5 snippet at lines 965–981: tiered testing (static/unit/integration/E2E-smoke), Dodds trophy for UI vs. pyramid for services vs. honeycomb for microservices, branch-coverage target 70–85% on business logic, mutation testing (Stryker/PIT) quarterly 60–80% score, property-based testing (fast-check / Hypothesis / proptest) for parsers/serializers/pure algebra, Pact for ≥3-service architecture, one logical assertion per test, no flakiness in main.
-  - PRD §2.12 a11y smoke elements for `e2e-tester.md.ejs` (lines 1175–1177): keyboard-only traversal, 400% zoom, screen reader (NVDA + VoiceOver), reduced motion.
-- **Output**:
-  - `testing-patterns.md.ejs` gains a stack-agnostic "Testing tiers and targets" section that **always renders** (above or outside the existing `testFramework`-conditional branches) and contains: trophy/pyramid/honeycomb, 70–85% branch-coverage target, mutation-testing cadence, property-based testing use-cases, Pact note. Rendered `test-writer.md` must contain the literal strings `70`, `85`, `mutation`, `property-based`, `Pact`, `trophy`, and `pyramid`.
-  - `e2e-tester.md.ejs` gains a new `## Accessibility smoke` section (before the `<output_format>` block near line 53) listing: keyboard-only traversal, visible-focus check, 400% zoom, screen-reader smoke (NVDA + VoiceOver), `prefers-reduced-motion` respect.
-- **Notes**: Parallel-safe with T1/T3/T5 (different files). **Serializes with T6** on `e2e-tester.md.ejs`. DRY risk: T6 will also touch `e2e-tester.md.ejs` with a WCAG include — this T4 section must reference the T6 partial ("see Accessibility section above") rather than duplicating contrast/target-size bullets. Coordinate ordering: T6's include lands above T4's smoke section.
-- **Depends on**: none (parallel with T1, T2, T3, T5; serializes with T6 on e2e-tester only)
+**Output**
+- Three new partial files, each <=60 lines, each starting with a level-2 heading (`## MCP policy`, `## Session hygiene`, `## Memory discipline`).
+- Rendered `AGENTS.md` must contain `MCP policy`, `Session hygiene`, `Memory discipline` sections with required literals (`fine-grained PATs`, `STDIO-on-localhost`, `git worktree add`, `/rewind`, `/clear`, two-strike).
+- Rendered `CLAUDE.md` must contain the `Session hygiene` + `Memory discipline` sections only (MCP is an AGENTS concern per §1.9 "Where to add").
 
-### T5 — [LOGIC] Create api-design partial with conditional include + add isBackend flag
+**Notes**
+- E5.T2 and E5.T3 both touch `AGENTS.md.ejs` - combined into one task so edits do not conflict; NOT `[PARALLEL]`.
+- DRY: do NOT repeat the "keep this file under 200 lines" rule - it already lives in `context-budget.md.ejs`. Link by reference only.
+- Snapshot-test literals to preserve: `fine-grained PATs`, `Rule of Two`, `worktree`, `/rewind`, `/fork`, `/clear`, `/compact`, `two-strike`, `NOTES.md`.
 
-- **Files**:
-  - `src/templates/partials/api-design.md.ejs` (NEW)
-  - `src/constants/frameworks.ts` (EDIT — add `BACKEND_FRAMEWORKS` constant + `isBackendFramework` helper, mirroring `FRONTEND_FRAMEWORKS`/`isFrontendFramework`)
-  - `src/generator/build-context.ts` (EDIT — derive and expose `isBackend`)
-  - `src/generator/types.ts` (EDIT — add `isBackend: boolean` to `GeneratorContext`)
-  - `src/templates/agents/implementer.md.ejs` (EDIT — conditional include wrapped in `<% if (isBackend) { %> ... <% } %>`)
-- **Input**: PRD §2.4 paste-ready snippet at lines 932–951: OpenAPI 3.1 / AsyncAPI 3.0 schema-first, URL-major versioning with `Sunset`/`Deprecation` headers ≥6 months, cursor/keyset pagination with opaque base64 cursor, `Idempotency-Key` header with 24h replay cache, RFC 9457 `application/problem+json` with `traceId`, IETF `RateLimit` + `RateLimit-Policy` headers, HMAC-SHA256 webhook signatures with timestamp replay defense, GraphQL persisted queries / depth limit / cost analysis / disabled introspection in prod / federation v2.
-- **Output**:
-  - `BACKEND_FRAMEWORKS` constant in `src/constants/frameworks.ts` containing exactly `['express', 'fastify', 'hono', 'nestjs', 'fastapi', 'django', 'flask']`.
-  - `isBackendFramework(framework: string | null): boolean` helper mirroring `isFrontendFramework`.
-  - `isBackend: boolean` field on `GeneratorContext` wired from `build-context.ts`.
-  - `api-design.md.ejs` partial with `## API design` heading + `<api_design>` tagged block. No line cap specified in PRD — aim for ≤80 lines.
-  - Conditional include in `implementer.md.ejs`: `<% if (isBackend) { %>\n<%- include('../partials/api-design.md.ejs') %>\n<% } %>`, placed after the T1 security-defaults include (security before API design — matches §2.2 → §2.4 PRD order).
-- **Notes**: Touches `implementer.md.ejs` — **serializes with T1 and T3** on that file. Detector confirmed in `src/detector/detect-framework.ts:9–31` to already distinguish all 7 backends with confidence ≥0.8 — **no detector extension needed, no separate LOGIC sub-task**. Fixture caveat: `makeStackConfig` currently sets `framework: 'nextjs'` so default tests get `isBackend: false`; T7 parameterizes via `overrides.stack.framework` for backend variants. DRY risk: follow the existing `FRONTEND_FRAMEWORKS` / `isFrontendFramework` shape exactly — do not invent a new list/helper pattern.
-- **Depends on**: T1 (implementer.md.ejs serialization — T1 adds the security-defaults include; T5 adds the api-design include immediately after it)
+---
 
-### T6 — [LOGIC] Create accessibility partial and wire into ui-designer + e2e-tester
+### Task T3 - Sub-agent delegation partial [LOGIC] [PARALLEL]
+**Files**
+- `src/templates/partials/subagent-delegation.md.ejs` (new)
+- `src/templates/agents/architect.md.ejs` (add `<%- include('../partials/subagent-delegation.md.ejs') %>` after the `untrusted-content` include)
+- `src/templates/agents/reviewer.md.ejs` (add same include after the `ai-complacency` include)
 
-- **Files**:
-  - `src/templates/partials/accessibility.md.ejs` (NEW)
-  - `src/templates/agents/ui-designer.md.ejs` (EDIT — add include)
-  - `src/templates/agents/e2e-tester.md.ejs` (EDIT — add include)
-- **Input**: PRD §2.12 paste-ready snippet at lines 1165–1181: semantic HTML first; ARIA 1.3 augmentation; keyboard operability with visible focus (SC 2.4.11); target size ≥24×24 CSS px (SC 2.5.8 AA); respect `prefers-reduced-motion` / `prefers-color-scheme` / `prefers-contrast`; contrast WCAG 2 (4.5:1 normal / 3:1 large / 3:1 non-text UI); automated tools (axe-core / Lighthouse / Pa11y catch ~30–40%) + mandatory manual split (keyboard traversal, NVDA + VoiceOver, 400% zoom, reduced motion); WCAG 3.0 Working Draft note (do not cite for compliance); European Accessibility Act enforcement since June 28 2025 (EN 301 549 + accessibility statement).
-- **Output**: A partial with `## Accessibility (WCAG 2.2 AA baseline)` heading and an `<accessibility>` tagged block. Included in `ui-designer.md.ejs` after `<%- include('../partials/fail-safe.md.ejs') %>` at line 17, before `## When invoked`. Included in `e2e-tester.md.ejs` after `<%- include('../partials/fail-safe.md.ejs') %>` at line 15, before `## When invoked` (and before T4's new smoke section). The rendered `ui-designer.md` ships the full WCAG 2.2 AA checklist (target-size 24×24, focus, reduced-motion, contrast, automated+manual split, EAA note).
-- **Notes**: **Serializes with T4** on `e2e-tester.md.ejs`. T4 adds a narrow a11y *smoke checklist*; T6 wires the broader WCAG 2.2 AA partial. Coordinate order: T6's include lands **above** T4's `## Accessibility smoke` section, and T4's section references the partial rather than duplicating bullets. DRY risk: `ui-designer.md.ejs` already has a bare "Check accessible labels, contrast, focus management" bullet at line 39 — keep that bullet but let the T6 partial supersede detail; do not copy-paste bullets between the partial and the inline checklist.
-- **Depends on**: T4 (e2e-tester.md.ejs serialization)
+**Input**
+- PRD §1.12 `<subagent_delegation>` block (L462-480): delegate criteria (>10 files, independent/parallel, isolated context), anti-criteria (<5 tool calls, sequential deps, main already has context), handoff summary 1-2k tokens, parallel-spawn requirement, five-field contract (`objective | output_format | max_tokens | allowed_tools | stop_conditions`).
 
-### T7 — [TEST] [PARALLEL] Tests for all new/changed partials + framework detector + cap bump
+**Output**
+- Partial file <=50 lines wrapped in `<subagent_delegation>` XML fence with the five-field contract verbatim.
+- Both `architect` and `reviewer` rendered outputs contain the `<subagent_delegation>` fence.
 
-- **Files**:
-  - `tests/generator/epic-4-standards.test.ts` (NEW — consolidated coverage for T1–T6)
-  - `tests/detector/detect-framework.test.ts` (NEW — per PRD E4.T5 done-when clause)
-  - `tests/generator/generate-all.test.ts` (EDIT — raise the rendered-agent line cap to accommodate Epic 4 content expansion; follow E3.T1 precedent that raised code-reviewer to 250)
-- **Input**: Rendered output from `generateAll(makeStackConfig({ stack: { ... framework: <backend|frontend> } }))` plus direct `detectFramework(projectRoot)` runs against fixture project directories.
-- **Output**:
-  - `epic-4-standards.test.ts` asserts:
-    - **T1**: `implementer.md` and `security-reviewer.md` both contain `<security_defaults>` tag, `Argon2id`, `OAuth 2.1`, `CSP`, `__Host-`, `RFC 9457`, `LLM07`; partial source file on disk is ≤120 lines (read with fs).
-    - **T2**: `architect.md` contains all 11 Conventional Commits types (`feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`) and contains `400`, `Sigstore`, `gitsign`, `trunk`, `BREAKING CHANGE`; partial source file on disk ≤80 lines.
-    - **T3**: `implementer.md` and `code-reviewer.md` both contain `<error_handling_code>` tag, `Error.cause`, `parse, don't validate`, `reason:`; partial source file on disk <50 lines.
-    - **T4**: `test-writer.md` contains `70`, `85`, `mutation`, `property-based`, `Pact`, `trophy`, `pyramid`; `e2e-tester.md` contains `keyboard`, `400%`, `zoom`, `NVDA`, `VoiceOver`, `prefers-reduced-motion`.
-    - **T5**: when `framework` is one of `['express', 'fastify', 'hono', 'nestjs', 'fastapi', 'django', 'flask']`, `implementer.md` contains `<api_design>`, `OpenAPI 3.1`, `RFC 9457`, `Idempotency-Key`, `RateLimit`, `persisted queries`. When `framework` is `nextjs` / `react` / `vue` / null, `implementer.md` does **not** contain `<api_design>`.
-    - **T6**: `ui-designer.md` and `e2e-tester.md` both contain `<accessibility>` tag, `WCAG 2.2`, `24×24` (or `24x24`), `SC 2.5.8`, `prefers-reduced-motion`, `axe-core`, `EAA` (or `European Accessibility Act`).
-  - `detect-framework.test.ts` asserts `detectFramework` returns the correct `value` for mock project roots with each of: `express`, `fastify`, `hono`, `@nestjs/core` (nestjs), `fastapi` (pyproject), `django` (pyproject), `flask` (pyproject). Use the fixture pattern from `tests/detector/detect-language.test.ts`.
-- **Notes**: Use `tests/generator/fixtures.ts::makeStackConfig` for rendered-template tests. For T5 backend variants pass `overrides.stack = { ..., framework: 'express' }` etc. Keep each test file ≤200 LOC per CLAUDE.md rule; split `epic-4-standards.test.ts` into focused `describe` blocks per sub-task. DRY risk: do not duplicate the `getAgentContent` / `assertInclusion` / `extractTaggedBlock` helpers already local to `tests/generator/epic-2-quality.test.ts` — if reused verbatim here, extract to `tests/generator/agent-content.helpers.ts` (one-file helper module); otherwise re-declare locally and flag as tech-debt. `[PARALLEL]` marker is relative to other test files only — this task still depends on T1–T6 being complete.
-- **Depends on**: T1, T2, T3, T4, T5, T6
+**Notes**
+- `[PARALLEL]` w.r.t. T1, T2, T4, T5 - T3 does not share any file with them.
+- DRY: do not duplicate delegation criteria in any agent body; require partial include.
+- Snapshot-test literals: `>10 files`, `<5 tool calls`, `objective | output_format | max_tokens | allowed_tools | stop_conditions`, `1-2k-token distilled summary`.
+
+---
+
+### Task T4 - Destructive-Bash PreToolUse hook [LOGIC] [SCHEMA]
+**Files**
+- `src/generator/permissions.ts` (export `DESTRUCTIVE_BASH_PATTERNS` + new `buildPreToolUseHooks()` returning `readonly PreToolUseHook[]`)
+- `src/generator/types.ts` (add `PreToolUseHook` interface + `preToolUseHooks: readonly PreToolUseHook[]` key on `GeneratorContext`)
+- `src/generator/build-context.ts` (wire `preToolUseHooks: buildPreToolUseHooks()`)
+- `src/templates/config/settings-local.json.ejs` (render `"PreToolUse"` array alongside existing `"PostToolUse"` array; only when hooks exist)
+- `src/templates/config/AGENTS.md.ejs` (append a short `## Tooling / hooks` section linking to `.claude/settings.local.json`)
+
+**Input**
+- PRD §1.15 L542-552: hooks are the only way to **guarantee** a rule; `PreToolUse` on `Bash` matching destructive patterns = second layer over deny list.
+- Existing deny list in `permissions.ts` (`Bash(rm -rf:*)`, `Bash(git push --force:*)`, etc.) - reuse the SAME patterns as the hook matcher source-of-truth.
+
+**Output**
+- New exported `buildPreToolUseHooks(): readonly PreToolUseHook[]` returning a single entry:
+  `{ matcher: 'Bash', hooks: [{ type: 'command', command: '<guard script that exits 2 and prints a refusal when argv matches the destructive patterns>' }] }`.
+- JSON render still parses under `JSON.parse`.
+- Rendered `AGENTS.md` gains a short bullet list pointing to `.claude/settings.local.json` hook entries.
+
+**Notes**
+- No `any` - extend `GeneratorContext.preToolUseHooks: readonly PreToolUseHook[]`.
+- DRY: destructive-pattern list MUST be derived from a single exported `DESTRUCTIVE_BASH_PATTERNS` const in `permissions.ts` and consumed by both `buildDenyList()` and `buildPreToolUseHooks()`. Do not hand-maintain two lists.
+- `settings-local.json.ejs` currently only emits `PostToolUse` - extend it to also emit `PreToolUse` only when `preToolUseHooks.length > 0`, mirroring the existing conditional block exactly.
+- Template length cap: <=60 lines total; split into EJS partials if it creeps past 80.
+
+---
+
+### Task T5 - Governance scaffolding (PR template + GOVERNANCE.md + opt-in prompt) [LOGIC] [SCHEMA] [PARALLEL]
+**Files**
+- `src/templates/governance/pull_request_template.md.ejs` (new)
+- `src/templates/governance/GOVERNANCE.md.ejs` (new)
+- `src/generator/generate-root-config.ts` (emit `.github/pull_request_template.md` + `docs/GOVERNANCE.md` when `config.governance.enabled` is true)
+- `src/schema/stack-config.ts` (add `governance: z.object({ enabled: z.boolean().default(false) }).default({ enabled: false })`)
+- `src/prompt/questions.ts` (new `askGovernance()` confirm prompt, default `false`)
+- `src/prompt/prompt-flow.ts` (invoke `askGovernance()` in `runPromptFlow`; set `governance: { enabled: false }` in `createDefaultConfig`)
+
+**Input**
+- PRD §1.16 L554-582: PR template block (`## What / Why / How tested / Agent involvement`), label rule (`agent-authored`, `needs-human-review`), governance docs destination (`docs/GOVERNANCE.md`, `.github/pull_request_template.md`).
+- Existing `generate-root-config.ts` render pattern (see `claudeMd`, `settings`, `codexConfig`, `agentsMd` calls).
+
+**Output**
+- New template files rendering the §1.16 PR template verbatim (including `Agent involvement` checklist) and a `GOVERNANCE.md` that documents: audit-log expectations, `agent-authored` / `needs-human-review` labels, `--output-format stream-json` for Codex/Claude CI, human-review-before-merge rule.
+- `generateRootConfig` returns two additional `GeneratedFile` entries when `config.governance.enabled`.
+- Prompt text: `'Ship governance scaffolding (.github/pull_request_template.md + docs/GOVERNANCE.md)?'` default `false`.
+
+**Notes**
+- `[PARALLEL]` w.r.t. T1, T2, T3, T4 - T5 touches schema, prompt, generator-root-config, and two new template files; no overlap with other tasks except `stack-config.ts` and `questions.ts`/`prompt-flow.ts` which T1 also edits. If T1 + T5 land in parallel, coordinate the schema edit (each adds a distinct key; conflicts are trivially mergeable but must be merged in one commit).
+- DRY: do NOT restate git rules inside `GOVERNANCE.md`; link to `git-rules.md.ejs` / the rendered `AGENTS.md` Git Rules section.
+- New templates live under `src/templates/governance/` to mirror §1.16 scope and keep Epic 6 SUPPLY_CHAIN colocation easy later.
+- File-length cap: both EJS templates <=80 lines.
+- Extend `tests/generator/fixtures.ts` `makeStackConfig` - default `governance: { enabled: false }` so existing tests keep passing (done in T8).
+
+---
+
+### Task T6 - Tests for T1 [TEST] [PARALLEL]
+**Files**
+- `tests/generator/epic-5-longhorizon.test.ts` (new)
+- `tests/prompt/prompt-flow.test.ts` (extend - add coverage for `selectedCommands.workflowLonghorizon` default and opt-in branch)
+
+**Input**
+- T1 output files and EJS content.
+- `makeStackConfig` fixture + `generateAll` harness (see existing `epic-4-standards.test.ts` for style).
+
+**Output**
+- New describe blocks assert: (a) file emitted at `.claude/commands/workflow-longhorizon.md` and `.codex/prompts/workflow-longhorizon.md` when targets enabled, (b) content contains `<session_bootstrap>`, `feature_list.json`, `passes: false`, `passes: true`, `claude-progress.txt`, all 11 bootstrap steps, (c) file absent when `workflowLonghorizon` flag is false, (d) prompt-flow default is `false` and opt-in flow flips it true.
+
+**Notes**
+- Route to `test-writer` subagent. Mirror existing `workflow-fix-command.test.ts` style; no new test helpers.
+- File <=200 lines; one focused `describe` per invariant.
+
+---
+
+### Task T7 - Tests for T2, T3, T4 [TEST] [PARALLEL]
+**Files**
+- `tests/generator/epic-5-agents-md.test.ts` (new - covers T2 + T3 renders across AGENTS.md, CLAUDE.md, architect, reviewer)
+- `tests/generator/epic-5-hooks.test.ts` (new - covers T4 `PreToolUse` JSON shape + AGENTS.md hooks mention)
+
+**Input**
+- T2/T3/T4 artefacts; `generateAll` + `makeStackConfig`.
+
+**Output**
+- `epic-5-agents-md.test.ts`: asserts literals `fine-grained PATs`, `STDIO-on-localhost`, `git worktree add`, `/rewind`, `/fork`, `/clear`, `/compact`, two-strike, and `<subagent_delegation>` fence in both architect and reviewer renders. Asserts partial length caps (`mcp-policy.md.ejs` <= 60, `session-hygiene.md.ejs` <= 50, `memory-discipline.md.ejs` <= 50, `subagent-delegation.md.ejs` <= 50).
+- `epic-5-hooks.test.ts`: parses emitted `.claude/settings.local.json`, asserts `PreToolUse` array exists with a `Bash` matcher, destructive patterns (`rm -rf`, `git push --force`, `git reset --hard`) appear in the guard command, `PostToolUse` output from Epic 1 still renders intact, and `DESTRUCTIVE_BASH_PATTERNS` is single-source (import and compare against the deny list).
+
+**Notes**
+- Route to `test-writer` subagent; emulate `permissions.test.ts` for JSON-parse assertions.
+- `[PARALLEL]` w.r.t. T6 and T8 - different files.
+
+---
+
+### Task T8 - Tests for T5 governance + fixtures wiring [TEST] [PARALLEL]
+**Files**
+- `tests/generator/epic-5-governance.test.ts` (new)
+- `tests/prompt/prompt-flow.test.ts` (extend - assert `askGovernance()` default `false`, opt-in path sets `governance.enabled = true`)
+- `tests/generator/fixtures.ts` (extend - default `governance: { enabled: false }`)
+
+**Input**
+- T5 artefacts; default and opt-in `StackConfig` variants via `makeStackConfig({ governance: { enabled: true } })`.
+
+**Output**
+- Asserts: governance opt-out -> `.github/pull_request_template.md` and `docs/GOVERNANCE.md` absent from `generateAll()` output. Opt-in -> both present with verbatim §1.16 PR template (`## What`, `## Why`, `## How tested`, `## Agent involvement`, `Agent-authored (writer model:`), and `GOVERNANCE.md` mentions `agent-authored`, `needs-human-review`, `stream-json`.
+
+**Notes**
+- Route to `test-writer` subagent. File <=200 lines.
+- `[PARALLEL]` w.r.t. T6 and T7.
+- DRY: do not duplicate PR-template strings in the test - read the emitted file and assert on substrings only.
 
 ## Post-implementation checklist
 
-- [ ] All new partials ≤ their line caps: `security-defaults.md.ejs` <120, `error-handling-code.md.ejs` <50, `git-rules.md.ejs` ≤80
-- [ ] No `any` types introduced in TS sources (detector, generator, tests)
-- [ ] `pnpm check-types` — zero errors
-- [ ] `pnpm test` — all suites pass (including the two new test files)
-- [ ] `pnpm lint` — zero warnings
-- [ ] Run `code-reviewer` agent on all modified files — all critical and warning findings fixed
-- [ ] Run `security-reviewer` agent in parallel with `code-reviewer` — findings triaged
-- [ ] DRY scan complete — grep for duplicated OWASP content (`OAuth 2.1`, `Argon2id`, `RFC 9457`) across partials; grep for duplicated Conventional Commits type lists; grep for duplicated WCAG bullets between `accessibility.md.ejs` and inline a11y sections
-- [ ] No duplicated code across modified files (e.g., `e2e-tester.md.ejs` a11y smoke does not repeat `accessibility.md.ejs` bullets; `implementer.md.ejs` error-handling sections remain conceptually distinct — self vs. code)
-- [ ] Manual render sanity check: run the generator against a backend fixture (e.g. Express) and a frontend fixture (e.g. Next.js); confirm API-design partial conditionally appears / disappears
+- [ ] `pnpm check-types` - zero errors
+- [ ] `pnpm test` - all suites pass (including new `epic-5-*.test.ts` files and extended `prompt-flow.test.ts`)
+- [ ] `pnpm lint` - zero warnings
+- [ ] Regenerate a sample project (`pnpm dev` / `node dist/cli.js init --yes` in a scratch dir) and verify `.claude/commands/workflow-longhorizon.md`, `.claude/settings.local.json` (`PreToolUse` present), `AGENTS.md` (MCP + Session + Memory + Hooks sections), `CLAUDE.md` (Session + Memory sections), architect & reviewer agent bodies (delegation fence), `.github/pull_request_template.md` + `docs/GOVERNANCE.md` (when opted in)
+- [ ] Run `code-reviewer` and `security-reviewer` agents in parallel on every modified file - all critical and warning findings fixed
+- [ ] DRY scan - no duplicated destructive-pattern lists, no duplicated MCP/session/memory text across partials and config templates
+- [ ] Every new EJS file <=200 lines (per CLAUDE.md)
 
 ## External errors
 
-- [security-reviewer, T2/T4 review] Pre-existing prompt-injection surface in `src/utils/template-renderer.ts` (`identityEscape` makes `<%= %>` equivalent to `<%- %>`) and unvalidated string fields in `src/schema/` (`project.name`, `project.description`, `testsDir`, `tooling.e2eFramework`). Out of Epic 4 scope — file not modified by any Epic 4 task. Recommend filing a new epic for schema hardening.
-- [security-reviewer, T1 review] Reviewer suggested extending PRD §2.2 paste-ready snippet with: HS256 shared-secret warning, OAuth 2.1 ROPC deprecation, CSRF stack-agnostic rule, LLM06 (system-prompt leakage), LLM09 (vector/embedding weaknesses). These go beyond the PRD §2.2 paste-ready snippet (lines 853–882). Epic 4 honors the PRD verbatim; file as a PRD amendment proposal for a future epic if desired.
-- [security-reviewer, T5 review] Framework value is not case-normalized before the `BACKEND_FRAMEWORKS`/`FRONTEND_FRAMEWORKS` allow-list checks in `src/constants/frameworks.ts`. Fix requires normalizing at the schema boundary in `src/schema/stack-config.ts` (`z.string().trim().toLowerCase()`). Out of Epic 4 scope — T5 does not touch the schema file. Recommend a dedicated schema-hardening epic.
-- [code-reviewer, T5 review] PRD §2.4 says API-design rules also belong in the `code-reviewer.md` checklist (PRD line 928). PLAN.md T5 does not extend `src/generator/review-checklist-rules.ts` with a backend-gated tag/rule. Out of T5 file scope; file as a follow-up Epic 4 extension or a new epic.
+- Pre-existing (not introduced by Epic 5): `src/utils/template-renderer.ts` ships an `identityEscape` that makes `<%= %>` equivalent to `<%- %>` (no HTML encoding). Combined with free-text prompt fields (`localeRulesRaw`, `project.name`, `project.description`, `docsFile`, `stack.framework`, `stack.language`) that lack length caps or character allow-lists, this creates a prompt-injection path into generated agent-instruction files. Out of scope for Epic 5; flag for a future hardening epic (fits naturally under Epic 9 hardening).
+- External review (CodeRabbit CLI 0.4.2, devbox/WSL): `cr review --agent --base main` and `cr review --plain --type uncommitted` both ran for ~2 min and exited 0 without emitting any finding events (only `review_context` + `connecting_to_review_service`). Per the agent contract this is "no findings", but the silent behaviour is inconclusive (service may not have responded). `QA.md` follows the no-findings template. Recommend re-running once the CodeRabbit service is known-healthy (auth verified, `curl -sSI https://api.coderabbit.ai/` returns 200) before merge.
+- Pre-existing: `tests/prompt/prompt-flow.test.ts` is 330 lines (pre-existing growth pre- and post-Epic 5), exceeding the CLAUDE.md ≤200-line cap. Full refactor deferred; no Epic-5-specific duplication inside.

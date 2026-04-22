@@ -139,7 +139,7 @@ describe('Epic 2 quality partials', () => {
 
   it('architect has the tools required to inspect state and write PLAN.md', () => {
     const architect = getAgentContent(files, 'architect');
-    expect(architect).toMatch(/^tools: Read, Edit, Write, Bash, Grep, Glob$/m);
+    expect(architect).toMatch(/^tools: Read, Edit, Write, Bash, Grep, Glob, Agent$/m);
     expect(architect).toContain('write the complete plan to `./PLAN.md`');
   });
 

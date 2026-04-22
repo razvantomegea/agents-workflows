@@ -1640,7 +1640,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 5 — Advanced Agent Orchestration [SHOULD]
+## Epic 5 — Advanced Agent Orchestration [SHOULD] [DONE 2026-04-22]
+
+**Landed on** `feature/epic-5-advanced-orchestration`.
 
 **Goal.** Ship long-horizon workflow, MCP policy, memory/session hygiene, sub-agent delegation rules, hooks as guarantees, governance scaffolding.
 

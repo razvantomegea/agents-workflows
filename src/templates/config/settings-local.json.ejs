@@ -10,8 +10,23 @@
       <%- jsonString(pattern) %><%= i < denyList.length - 1 ? ',' : '' %>
 <% }); -%>
     ]
-  }<% if (postToolUseHooks.length > 0) { %>,
+  }<% if (postToolUseHooks.length > 0 || preToolUseHooks.length > 0) { %>,
   "hooks": {
+<% if (preToolUseHooks.length > 0) { -%>
+    "PreToolUse": [
+<% preToolUseHooks.forEach(function(hookEntry, i) { -%>
+      {
+        "matcher": <%- jsonString(hookEntry.matcher) %>,
+        "hooks": [
+<% hookEntry.hooks.forEach(function(commandHook, hookIndex) { -%>
+          { "type": <%- jsonString(commandHook.type) %>, "command": <%- jsonString(commandHook.command) %> }<%= hookIndex < hookEntry.hooks.length - 1 ? ',' : '' %>
+<% }); -%>
+        ]
+      }<%= i < preToolUseHooks.length - 1 ? ',' : '' %>
+<% }); -%>
+    ]<%= postToolUseHooks.length > 0 ? ',' : '' %>
+<% } -%>
+<% if (postToolUseHooks.length > 0) { -%>
     "PostToolUse": [
 <% postToolUseHooks.forEach(function(hookEntry, i) { -%>
       {
@@ -24,5 +39,6 @@
       }<%= i < postToolUseHooks.length - 1 ? ',' : '' %>
 <% }); -%>
     ]
+<% } -%>
   }<% } %>
 }

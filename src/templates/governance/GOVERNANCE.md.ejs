@@ -1,0 +1,30 @@
+# Governance
+
+## Audit Logs
+
+Codex Enterprise and Claude Code Security ship audit logs.
+For structured output guidance in CI, see the CI Integration section below.
+
+## PR Labels
+
+Every agent-authored pull request must carry the following GitHub labels:
+
+| Label | Meaning |
+|---|---|
+| `agent-authored` | PR content was produced in whole or in part by an AI agent |
+| `needs-human-review` | A human reviewer must approve before merge |
+
+Apply both labels together on every agent-generated PR.
+
+## Human Review Before Merge
+
+No agent-authored PR may be merged without at least one human-approved review.
+Agents commit to a branch; only humans merge to `<%= project.mainBranch %>`.
+
+See the Git Rules section of [AGENTS.md](../AGENTS.md) for the full branch,
+commit-signing, and hook policy.
+
+## CI Integration
+
+Run Claude Code or Codex in CI with `--output-format stream-json` so that
+every tool call and output is captured in the build log for post-hoc audit.
