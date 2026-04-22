@@ -1,5 +1,6 @@
 import { generateAll } from '../../src/generator/index.js';
-import { CODE_REVIEWER_MAX_LINES, makeStackConfig } from './fixtures.js';
+import { makeStackConfig } from './fixtures.js';
+import { CODE_REVIEWER_MAX_LINES } from './code-reviewer-config.js';
 
 const makeConfig = makeStackConfig;
 

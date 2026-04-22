@@ -1,6 +1,7 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
-import { CODE_REVIEWER_MAX_LINES, makeStackConfig } from './fixtures.js';
+import { makeStackConfig } from './fixtures.js';
+import { CODE_REVIEWER_MAX_LINES } from './code-reviewer-config.js';
 import {
   AI_COMPLACENCY_CONSUMERS,
   MODEL_ROUTING_ROLES,
