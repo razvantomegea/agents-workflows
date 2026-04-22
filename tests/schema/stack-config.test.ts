@@ -69,3 +69,50 @@ describe('stackConfigSchema command validation', () => {
     expect(() => stackConfigSchema.parse(cfg)).toThrow();
   });
 });
+
+describe('project.name validation', () => {
+  const baseProject = makeStackConfig().project;
+
+  it('accepts a hyphenated name', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: 'my-app' } });
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it('accepts a name with spaces', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: 'My App' } });
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it('accepts a name with dots', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: 'app.v2' } });
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it('accepts a name with underscores', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: 'app_name' } });
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it('accepts a name with digits', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: 'app-2-prod' } });
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it('rejects an empty name', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: '' } });
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
+
+  it('rejects a name longer than 100 characters', () => {
+    const cfg = makeStackConfig({ project: { ...baseProject, name: 'a'.repeat(101) } });
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
+
+  it.each(['\n', '$', '/', '\\', '<', '>', '"', "'", '{', '}', ';', '(', ')', '&', '|', '`'])(
+    'rejects a name containing illegal character %j',
+    (illegalChar: string) => {
+      const cfg = makeStackConfig({ project: { ...baseProject, name: `app${illegalChar}name` } });
+      expect(() => stackConfigSchema.parse(cfg)).toThrow();
+    },
+  );
+});

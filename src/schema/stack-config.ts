@@ -4,6 +4,8 @@ const SAFE_COMMAND_RE = /^[a-zA-Z0-9 ._/:=@-]+$/;
 const SAFE_COMMAND_MESSAGE = 'command contains disallowed shell metacharacters';
 const SAFE_BRANCH_RE = /^[a-zA-Z0-9._/-]+$/;
 const SAFE_BRANCH_MESSAGE = 'branch name contains disallowed shell metacharacters';
+const SAFE_PROJECT_NAME_RE = /^[a-zA-Z0-9 ._-]+$/;
+const SAFE_PROJECT_NAME_MESSAGE = 'project.name must contain only letters, digits, space, dot, underscore, hyphen';
 
 const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
 const safeCommandNullable = safeCommand.nullable().default(null);
@@ -11,7 +13,7 @@ const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_ME
 
 export const stackConfigSchema = z.object({
   project: z.object({
-    name: z.string(),
+    name: z.string().min(1).max(100).regex(SAFE_PROJECT_NAME_RE, SAFE_PROJECT_NAME_MESSAGE),
     description: z.string(),
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),

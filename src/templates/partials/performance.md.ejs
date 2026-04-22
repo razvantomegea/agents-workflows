@@ -1,0 +1,11 @@
+## Performance rules
+
+- Profile before optimizing. Never guess. Tools: pprof, perf,
+  flamegraph, Chrome DevTools, PyInstrument, Clinic.js.
+- Know the Big-O of any data-structure operation you write. Flag
+  O(n²) over growing collections in review.
+<% if (isFrontend || isMobile) { %>
+- Performance budget per route (web): JS ≤170KB gzipped, LCP ≤2.5s, INP ≤200ms, CLS ≤0.1 (p75). Fail CI on budget regression (Lighthouse CI / size-limit).
+<% } %>
+- Cold paths optimize for clarity. Hot paths allow
+  data-oriented / allocation-aware code — document the perf reason.

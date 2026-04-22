@@ -1,0 +1,17 @@
+## Observability
+
+- Structured logs (JSON or logfmt). Every log entry: `timestamp`, `level`,
+  `service`, `trace_id`, `span_id`, `message`, `attrs`. No string concatenation.
+- Levels: `ERROR` (operator must investigate), `WARN` (tolerated anomaly),
+  `INFO` (state transitions / user actions), `DEBUG` (developer-only),
+  `TRACE` (verbose).
+- PII redaction at the logger, not ad hoc at call sites. Allowlist-based
+  attribute emission. Pseudonymize IPs (truncate /24 IPv4, /48 IPv6) unless
+  needed for forensics.
+- OpenTelemetry SDK + OTLP (gRPC:4317 / HTTP:4318). Instrument HTTP, RPC, and
+  DB boundaries; propagate W3C `traceparent` on every outbound call.
+- SLIs/SLOs per service: availability, latency p95/p99, error rate. Error
+  budget drives release cadence.
+- Low-cardinality labels on metrics. No user IDs, request IDs, or session
+  tokens in label values.
+- NICE: continuous profiling (Pyroscope / Parca / OTel eBPF receiver).

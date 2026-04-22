@@ -1,0 +1,16 @@
+## Concurrency
+
+- Default shared-nothing. Communicate by message. Prefer actor/CSP
+  patterns (Go channels, Trio nurseries, Akka).
+- Structured concurrency: child task lifetimes ≤ parent's. Never
+  fire-and-forget — use `TaskGroup` (Python 3.11+), nursery (Trio/AnyIO),
+  `coroutineScope` (Kotlin), `withTaskGroup` (Swift), `StructuredTaskScope`
+  (Java 21 preview).
+- Cancellation is cooperative and propagated; release resources via
+  `finally`/`defer`/RAII.
+- Timeouts via scoped deadlines, not global sleep+cancel.
+- Never block the event loop with sync I/O or CPU work; offload.
+- Bounded concurrency: semaphores / bounded channels between
+  producers and consumers.
+- Acquire locks in a consistent order; never hold a lock across
+  `await` or I/O. Use language atomics for shared mutable memory.

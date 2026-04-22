@@ -24,13 +24,27 @@ export async function generateRootConfig(
   const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);
   files.push({ path: 'AGENTS.md', content: agentsMd });
 
+  const adrTemplate = await renderTemplate('docs/decisions/0001-adr-template.md.ejs', context);
+  files.push({ path: 'docs/decisions/0001-adr-template.md', content: adrTemplate });
+
   if (config.governance.enabled) {
-    const [prTemplate, governanceMd] = await Promise.all([
-      renderTemplate('governance/pull_request_template.md.ejs', context),
-      renderTemplate('governance/GOVERNANCE.md.ejs', context),
-    ]);
+    const [prTemplate, governanceMd, supplyChainMd, releaseWorkflow] =
+      await Promise.all([
+        renderTemplate('governance/pull_request_template.md.ejs', context),
+        renderTemplate('governance/GOVERNANCE.md.ejs', context),
+        renderTemplate('governance/SUPPLY_CHAIN.md.ejs', context),
+        renderTemplate('ci/release.yml.ejs', {
+          ...context,
+          projectName: config.project.name,
+        }),
+      ]);
     files.push({ path: '.github/pull_request_template.md', content: prTemplate });
     files.push({ path: 'docs/GOVERNANCE.md', content: governanceMd });
+    files.push({ path: 'docs/SUPPLY_CHAIN.md', content: supplyChainMd });
+    files.push({
+      path: '.github/workflows/release.yml',
+      content: releaseWorkflow,
+    });
   }
 
   return files;

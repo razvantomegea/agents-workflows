@@ -1,0 +1,115 @@
+name: <%= projectName || 'release' %>-release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build and generate SBOM
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11  # v4.1.1
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8  # v4.0.2
+        with:
+          node-version: '20'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@f325610c9f50a54015d37c8d16cb3b0e2c8f4de0  # v0.17.2
+        with:
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            sbom.cdx.json
+
+  sign:
+    name: Sign artifacts and attest provenance
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@4959ce089c2fe0eec49a30ed5b4ec26166569ffa  # v3.6.0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.3
+        with:
+          name: build-artifacts
+
+      - name: Sign SBOM with cosign keyless
+        run: |
+          cosign sign-blob \
+            --yes \
+            --output-signature sbom.cdx.json.sig \
+            --output-certificate sbom.cdx.json.pem \
+            sbom.cdx.json
+
+      - name: Upload signatures
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3  # v4.3.1
+        with:
+          name: signatures
+          path: |
+            sbom.cdx.json.sig
+            sbom.cdx.json.pem
+
+  release:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    needs: sign
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.3
+        with:
+          name: build-artifacts
+
+      - name: Download signatures
+        uses: actions/download-artifact@c850b930e6ba138125429b7e5c93fc707a7f8427  # v4.1.3
+        with:
+          name: signatures
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@4959ce089c2fe0eec49a30ed5b4ec26166569ffa  # v3.6.0
+
+      - name: Verify signature
+        run: |
+          cosign verify-blob \
+            --signature sbom.cdx.json.sig \
+            --certificate sbom.cdx.json.pem \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/release.yml@refs/tags/${{ github.ref_name }}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            sbom.cdx.json
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            sbom.cdx.json sbom.cdx.json.sig sbom.cdx.json.pem

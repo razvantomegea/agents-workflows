@@ -171,9 +171,16 @@ describe('generateAll', () => {
       expect(file.content).toMatch(/^tools: .+$/m);
       expect(file.content).toContain('<constraints>');
       expect(file.content).toContain('<uncertainty>');
-      // implementer/architect/ui-designer/e2e-tester carry Epic 4 content (§2.2 security, §2.4 API design, §2.6 git, §2.8 errors, §2.12 a11y); ≤280 per PLAN.md Epic 4 T7
-      // code-reviewer carries the full §2.1 nine-section review checklist; ≤250 per PLAN.md E3.T1
-      const lineLimit = file.path.endsWith('code-reviewer.md') ? 250 : 280;
+      // implementer/ui-designer/e2e-tester carry Epic 4 content (§2.2 security, §2.4 API design, §2.6 git, §2.8 errors, §2.12 a11y); ≤280 per PLAN.md Epic 4 T7
+      // code-reviewer carries the full §2.1 nine-section review checklist; raised from ≤250 (E3.T1)
+      // to ≤320 to accommodate Epic 6 partials: observability (E6.T2), design-principles (E6.T3),
+      // documentation (E6.T6).
+      // architect raised from ≤280 to ≤300 to accommodate E6.T6 documentation partial.
+      const lineLimit = file.path.endsWith('code-reviewer.md')
+        ? 320
+        : file.path.endsWith('architect.md')
+          ? 300
+          : 280;
       expect(file.content.split(/\r?\n/).length).toBeLessThanOrEqual(lineLimit);
     }
 

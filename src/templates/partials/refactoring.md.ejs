@@ -1,0 +1,13 @@
+## Refactoring rules
+
+- Behavior-preserving transformations only. Never mix a refactor with
+  a feature in one commit.
+- Preparatory refactoring (Beck): make the change easy, then make the
+  easy change. Commit separately.
+- Strangler fig for legacy replacement; branch-by-abstraction for
+  multi-week structural work.
+- Tag tech debt explicitly: `// TODO(TICKET-123): ...`. Bare TODOs
+  fail CI.
+- Classify debt (Fowler quadrant): reckless-deliberate is the alarm.
+  Debt lives in the main backlog, not a side list.
+- Boy Scout Rule: leave code better than you found it.

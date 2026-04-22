@@ -1,0 +1,29 @@
+<%# design-principles.md.ejs
+   Authoritative rationale for 2025-2026 design vocabulary shared across
+   architect and code-reviewer agents.
+   NOTE: review-checklist.md.ejs (L43-L45) retains one-liner rows for
+   "Rule of Three" and "Ousterhout" to drive checklist gating. This partial
+   provides the full rationale — the two are complementary, not duplicates.
+   Static content — no EJS variables.
+%>
+## Design principles (2025–2026)
+
+- Composition over inheritance.
+- Deep modules over shallow ones (Ousterhout): simple interface,
+  significant implementation. Do not extract helpers whose only
+  purpose is "shorten this function."
+- Duplication > wrong abstraction (Metz). Rule of Three before
+  extracting. If an abstraction is being parameterized with flags to
+  fit a new caller, inline it back first, then re-extract.
+- Locality of Behavior (Gross): colocate tests, styles, types, and
+  small helpers with the code that uses them.
+- Functional core, imperative shell (Bernhardt): pure business logic;
+  side-effects at the edges as explicit parameters. No ambient
+  singletons.
+- SOLID is vocabulary, not scripture. Flag `IFooService` interfaces
+  with exactly one implementation (YAGNI).
+- Consider Dan North's CUPID properties (Composable, Unix-philosophy,
+  Predictable, Idiomatic, Domain-based) as an alternative vocabulary.
+- AHA (Avoid Hasty Abstractions) — optimize for change, not DRY.
+- On hot paths: data-oriented design is allowed and should be
+  documented with a performance reason.

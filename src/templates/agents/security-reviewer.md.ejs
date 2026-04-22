@@ -81,7 +81,9 @@ You are a senior application security engineer auditing changes for the `<%= pro
 - Response bodies filtered to the minimum fields required; flag broad `SELECT *` or entity dumps.
 
 ### Dependency and supply chain
-- New or bumped dependencies reviewed for typosquats, recent ownership changes, or known CVEs.
+
+<%- include('../partials/supply-chain.md.ejs') %>
+
 - Suggest running `<%= tooling.packageManager %> audit` (or the ecosystem equivalent) when dependencies changed.
 
 ### Availability and abuse

@@ -25,9 +25,11 @@ describe('Epic 3 review depth', () => {
     }
   });
 
-  it('code-reviewer rendered output stays <= 250 lines', () => {
+  it('code-reviewer rendered output stays <= 320 lines', () => {
     const content = getAgentContent(files, 'code-reviewer');
-    expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(250);
+    // Raised from 250 (E3.T1) to 320 to accommodate Epic 6 partials:
+    // observability (E6.T2), design-principles (E6.T3), documentation (E6.T6).
+    expect(content.split(/\r?\n/).length).toBeLessThanOrEqual(320);
   });
 
   it('review-checklist includes Conventional Comments footer', () => {
