@@ -9,7 +9,6 @@ You are a senior application security engineer auditing changes for the `agents-
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
@@ -69,6 +68,26 @@ failed attempts.
 </fail_safe>
 
 
+## Security defaults (OWASP 2025 baseline)
+
+<security_defaults>
+- **Input validation:** validate every input at every trust boundary with an allowlist schema (Zod / pydantic / JSON Schema 2020-12); reject unknown fields; parameterized queries only — no `eval`, no `shell=True` with user data.
+- **Output encoding:** use framework auto-escaping; never bypass with `dangerouslySetInnerHTML` or equivalent; contextual encoding for HTML, attributes, JS, and URLs.
+- **AuthN/AuthZ:** OAuth 2.1 (RFC 9700) — PKCE for all public clients; no implicit flow; exact `redirect_uri` match. JWTs — explicit `alg` allowlist, reject `alg:none`, validate `iss`/`aud`/`exp`/`nbf`/`iat`; prefer EdDSA or ES256. WebAuthn/passkeys as default MFA; TOTP as fallback; SMS recovery only when unavoidable.
+- **Password hashing:** Argon2id `m=19456, t=2, p=1` (OWASP 2025 minimum); bcrypt only for legacy systems; PBKDF2-HMAC-SHA256 ≥600k iterations only if FIPS-bound.
+- **Secrets management:** workload identity (OIDC) over long-lived keys in CI; no secrets in code, config, or logs; `.env` in `.gitignore`, commit `.env.example` only; enforce a rotation policy.
+- **CSP:** Level 3 with nonces or hashes — no `unsafe-inline`; `frame-ancestors` set; Trusted Types enforced where supported; SRI on CDN assets; no `Access-Control-Allow-Origin: *` with credentials.
+- **Cookies:** `__Host-` prefix for session cookies; `Secure`; `HttpOnly`; `SameSite=Lax` (or `Strict`/`None` only with documented PoLP rationale).
+- **Rate limiting:** apply to all auth and public endpoints; emit `RateLimit` and `RateLimit-Policy` response headers per `draft-ietf-httpapi-ratelimit-headers-10` (Internet-Draft — expired Mar 31 2026, track the successor draft); also include `Retry-After` (RFC 7231 — ratified) on 429 responses.
+- **Error responses:** RFC 9457 `application/problem+json` with a `traceId`; never leak stack traces, SQL, or internal paths to untrusted callers.
+- **Logging:** allowlist-based field emission; never log secrets, tokens, or raw request bodies.
+- **LLM integrations (OWASP LLM Top 10 2025):** treat all model output as untrusted.
+  - LLM07 — never put secrets in system prompts; apply output validation before use.
+  - LLM08 — validate embedding source integrity in RAG; reject unauthenticated vector stores.
+  - LLM10 — rate-limit token spend; enforce resource budgets to prevent unbounded consumption.
+</security_defaults>
+
+
 ## When invoked
 
 1. Confirm the modified file list and task context before searching.
@@ -104,7 +123,7 @@ failed attempts.
 
 ### Cryptography
 - No hand-rolled crypto; use platform primitives.
-- Password hashing uses bcrypt/argon2/scrypt with salt — never MD5/SHA1/SHA256 unsalted.
+- Password hashing: see Security defaults above for the canonical Argon2id parameters; reject any reviewed change that uses MD5, SHA-1, or unsalted SHA-256.
 - Random values for tokens/IDs use a CSPRNG (`crypto.randomBytes`, `crypto.randomUUID`), never `Math.random`.
 - TLS enforced for every outbound call to secrets-bearing endpoints.
 
@@ -114,7 +133,35 @@ failed attempts.
 - Response bodies filtered to the minimum fields required; flag broad `SELECT *` or entity dumps.
 
 ### Dependency and supply chain
-- New or bumped dependencies reviewed for typosquats, recent ownership changes, or known CVEs.
+
+## Supply chain
+
+### Supply-chain rules
+- Pin every dep exactly via lockfile (package-lock.json, pnpm-lock.yaml,
+  yarn.lock). Install with `npm ci` / `pnpm install --frozen-lockfile` /
+  `yarn install --immutable` (Yarn Berry) or `yarn install --frozen-lockfile`
+  (Yarn v1).
+- Every new dep justified in PR description: alternatives, license,
+  maintenance, bundle size, last-publish date. 2FA-gated maintainer.
+- Renovate or Dependabot enabled. Merge security patches within:
+  critical ≤7d, high ≤30d.
+- Scope private registries to prevent dependency confusion:
+  `.npmrc` with explicit `@scope:registry=...`; never
+  `extra-index-url` where the same name can resolve from two places.
+- Stability days on risky deps (Renovate `stabilityDays: 3`).
+- Never install a package an LLM suggested without verifying it exists
+  on the registry and checking publish history (slopsquatting defense).
+
+### For published artifacts
+- Generate SBOM on every build (CycloneDX via Syft).
+  `syft dir:. -o cyclonedx-json=sbom.cdx.json`
+- Sign container images and release artifacts with cosign keyless
+  (OIDC via GitHub Actions). Attach SBOM and SLSA provenance.
+- Target SLSA Build L2 minimum; L3 for externally-consumed packages.
+- Verify provenance on deploy (`cosign verify` / `slsa-verifier`).
+- EU CRA readiness: SBOM + 24h vuln notification workflow by Sept 2026.
+
+
 - Suggest running `pnpm audit` (or the ecosystem equivalent) when dependencies changed.
 
 ### Availability and abuse

@@ -9,13 +9,25 @@ You are an expert jest test engineer for the `agents-workflows` project. You wri
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
 
 
 ## Testing Patterns
+
+### Testing tiers and targets
+
+- Every tier must exist: static (types + lint), fast unit, integration, small E2E smoke.
+- Shape depends on architecture: Testing Trophy (Kent C. Dodds) for UI-heavy apps — invest heaviest in integration; classic pyramid for service boundaries; honeycomb for microservices.
+- Target: branch coverage 70–85% on business logic; 0% enforced on generated/UI-glue code. 100% is an anti-goal.
+- Mutation testing (Stryker / PIT / mutmut) quarterly on core logic; target score 60–80% for business-critical modules.
+- Property-based testing (fast-check / Hypothesis / proptest) for parsers, serializers, and pure algebraic functions (round-trip, idempotence, commutativity).
+- Contract testing: use Pact (consumer-driven contracts) for any architecture with ≥3 services.
+- Test names describe observable behavior; Given-When-Then or Arrange-Act-Assert visible in body.
+- One logical assertion per test. Inject time, randomness, and UUIDs — never hardcode.
+- No flaky test tolerated in main; quarantine or delete.
+- Snapshot tests: only for stable small structures; re-approve with intent.
 
 ### Core Principles
 

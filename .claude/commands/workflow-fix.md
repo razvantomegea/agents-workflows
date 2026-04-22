@@ -9,7 +9,7 @@ Fix all QA issues listed in QA.md on the current feature branch.
 
 1. Read `QA.md` from the repository root. Each issue may include a description, steps to reproduce, expected vs actual behavior, and affected files.
 2. **Critical evaluation**: QA.md observations may not all be correct — some come from automated tools. Before applying any fix, verify the observation against the actual code. Skip incorrect observations and note why.
-3. If `QA.md` says "All good" or contains no unchecked issues, skip to step 7.
+3. If `QA.md` says "All good" or contains no unchecked issues, skip to step 6.
 4. Read `PLAN.md` to understand what was recently implemented and which files were modified.
 5. Fix every **verified** issue in `QA.md`, one at a time:
    - Read the relevant files to understand current state.
@@ -17,10 +17,10 @@ Fix all QA issues listed in QA.md on the current feature branch.
    - Use the `implementer` sub-agent to apply the fix.
    - Mark the issue as done in `QA.md` with `[x]`.
 6. Run the mandatory review loop on all modified files:
-   1. Run `code-reviewer` and `security-reviewer` **in parallel** on all modified files.
-   2. `implementer` applies all critical/warning findings from both reviewers.
-   3. `pnpm check-types` — must pass.
-   4. `pnpm test` — must pass.
+   1. Run `code-reviewer` and `security-reviewer` in parallel on all modified files
+   2. `implementer` applies all critical/warning findings from both reviewers
+   3. `pnpm check-types` — must pass
+   4. `pnpm test` — must pass
    Repeat until all listed checks pass.
    Also run `pnpm lint` after the loop passes (intentional: final hygiene gate once type-check and tests are green).
 

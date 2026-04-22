@@ -23,7 +23,7 @@ git checkout main && git pull origin main && git checkout -b <branch-name>
 
 Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md`. The architect agent will:
 
-1. Read `PRD.md` (**mandatory — must be read before planning**), `CLAUDE.md`, and any other project docs.
+1. Read `CLAUDE.md` and any project docs.
 2. Analyze the user's request: $ARGUMENTS
 3. Grep the codebase for existing components, hooks, utils, types — DRY is non-negotiable.
 4. Write a structured plan to `PLAN.md`:
@@ -45,16 +45,15 @@ After writing the plan, **immediately execute every task** in order:
      - `[TEST]` tasks (unit tests): use the `test-writer` sub-agent.
      - All other tasks: use the `implementer` sub-agent (default).
    - Pass the full task block (Files, Input, Output, Notes) as context.
-   - Tasks tagged `[PARALLEL]` with no dependencies: pre-check that each task has a disjoint file set (no overlapping file ownership). If any overlap is detected, reject parallel execution and run those tasks serially.
-   - After each task completes, run `code-reviewer` and `security-reviewer` **in parallel** on all modified files.
-   - Apply every critical and warning finding from both reviewers immediately via `implementer`.
-   - After applying findings, run repo-level `pnpm check-types` and `pnpm test`.
+   - Tasks tagged `[PARALLEL]` with no dependencies: launch their sub-agents in parallel.
+   - After each task completes, run the `code-reviewer` sub-agent on all modified files.
+   - Apply every critical and warning finding immediately via `implementer`.
 
    **Per-task verification rules**
 
    - NEVER run `git stash` or any git working-tree manipulation during verification.
    - Only fix errors in files that the **current task** explicitly modified.
-   - If `pnpm check-types` or `pnpm test` fails on files **outside** the current task's scope, classify and record the failure under **External errors** and do not fix unrelated files.
+   - If errors appear in files **outside** the current task's scope, record them under **External errors**.
 
 2. **Post-implementation optimization**: After all tasks and reviews, run the `code-optimizer` sub-agent on all modified files. Apply any critical findings via `implementer`.
 

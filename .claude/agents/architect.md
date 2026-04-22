@@ -1,7 +1,7 @@
 ---
 name: architect
 description: "Planning agent that reads project docs and produces a structured PLAN.md — use proactively when the user asks to plan, design, or break down a feature."
-tools: Read, Edit, Write, Bash, Grep, Glob
+tools: Read, Edit, Write, Bash, Grep, Glob, Agent
 model: opus
 color: red
 ---
@@ -78,6 +78,67 @@ explicit human approval per egress action. No exceptions.
 </untrusted_content_protocol>
 
 
+## Sub-agent delegation
+
+<subagent_delegation>
+Delegate to a sub-agent only when:
+- The task requires reading >10 files to answer
+- The task is independent and can run in parallel with others
+- Isolating detailed context benefits the main thread
+
+Do not delegate:
+- Anything achievable in <5 tool calls
+- Tasks where the main agent already has the needed context
+- Strictly sequential dependencies
+
+Spawn sub-agents in parallel (same turn). Each must receive:
+  objective | output_format | max_tokens | allowed_tools | stop_conditions
+Each returns a 1-2k-token distilled summary. The orchestrator never
+sees their raw tool output.
+</subagent_delegation>
+
+
+
+## Design principles (2025–2026)
+
+- Composition over inheritance.
+- Deep modules over shallow ones (Ousterhout): simple interface,
+  significant implementation. Do not extract helpers whose only
+  purpose is "shorten this function."
+- Duplication > wrong abstraction (Metz). Rule of Three before
+  extracting. If an abstraction is being parameterized with flags to
+  fit a new caller, inline it back first, then re-extract.
+- Locality of Behavior (Gross): colocate tests, styles, types, and
+  small helpers with the code that uses them.
+- Functional core, imperative shell (Bernhardt): pure business logic;
+  side-effects at the edges as explicit parameters. No ambient
+  singletons.
+- SOLID is vocabulary, not scripture. Flag `IFooService` interfaces
+  with exactly one implementation (YAGNI).
+- Consider Dan North's CUPID properties (Composable, Unix-philosophy,
+  Predictable, Idiomatic, Domain-based) as an alternative vocabulary.
+- AHA (Avoid Hasty Abstractions) — optimize for change, not DRY.
+- On hot paths: data-oriented design is allowed and should be
+  documented with a performance reason.
+
+
+## Documentation rules
+
+- **ADR (MADR 4)** for every architecturally significant decision
+  (auth model, storage engine, framework choice, external integration,
+  sync vs async boundary). File: `docs/decisions/NNNN-title.md`.
+  Required fields: Context, Decision Drivers, Considered Options,
+  Decision Outcome, Consequences.
+- **README** organized via Diátaxis (tutorials / how-to / reference /
+  explanation). Must answer: what is it, why does it exist, how do I
+  run it, how do I contribute — plus a 5-minute quickstart block.
+- **Inline comments** explain *why*, invariants, non-obvious domain
+  facts. Never paraphrase the next line. Public/exported symbols get
+  docstrings with contract (args, returns, errors, side effects).
+- **Architecture diagrams**: C4 Levels 1–2 in `docs/architecture/`
+  (Structurizr / Mermaid C4 / Likec4). Avoid UML class walls.
+
+
 ## Planning protocol
 
 <planning_protocol>
@@ -146,7 +207,6 @@ Before proposing any new component, hook, util, constant, or type:
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
@@ -165,6 +225,34 @@ Every plan starts on a dedicated branch from `main`. Include the branch name at 
 - **Features**: `feature/<short-kebab-name>`
 - **Bug fixes**: `fix/<short-kebab-name>`
 - **Epics**: `feature/epic-<N>-<short-name>`
+- **Agents** may commit only when the user explicitly asks for a commit in the current session; commits must stay on a feature branch (never `main`), and any resulting PR is labeled `agent-authored` and requires human review before merge.
+
+### Conventional Commits 1.0
+
+Format: `type(scope): subject`. Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+
+- Breaking changes: append `!` after type/scope (`feat!: ...`) or add `BREAKING CHANGE:` footer.
+- Subject ≤ 72 chars, imperative mood, no trailing period. Body explains *why*.
+
+### Trunk-Based Development
+
+- `main` is protected; feature branches are short-lived (<24h typical).
+- Rebase or squash-merge to maintain linear history. No long-lived branches — use feature flags for in-flight work instead.
+- Every commit on `main` must build and pass tests (atomic, bisectable).
+
+### PR Size Cap
+
+- PRs ≤ 400 LOC changed. If larger, split using stacked PRs (Graphite / ghstack / git-town).
+
+### Commit Signing
+
+- All commits must be signed. Sigstore gitsign (keyless OIDC) is preferred for new setups; GPG or SSH keys are acceptable alternatives where key infrastructure already exists.
+
+### Pre-Commit Hooks
+
+- Secret scanning (gitleaks or trufflehog) is a mandatory blocking pre-commit hook on every commit. Lint and format hooks run alongside.
+- Use lefthook / husky / pre-commit.com as the runner.
+- Hook budget: < 10s total. Push slower checks (full test suite, type-check) to CI.
 
 
 <output_format>

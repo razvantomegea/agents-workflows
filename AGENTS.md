@@ -9,7 +9,6 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
@@ -35,6 +34,44 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 - For nested packages, a closer AGENTS.md wins over an outer one.
 
 
+## MCP policy
+
+- Prefer CLIs (`gh`, `aws`, `gcloud`) over custom MCP servers when the
+  capability exists as a CLI. CLIs are auditable plain text.
+- Run MCP servers with the least privilege needed for the task.
+- Never run an untrusted MCP server in the same session that has
+  access to secrets or network egress (see Rule of Two, §1.5).
+- Scope tokens per task, not per session. Expire on completion.
+- GitHub MCP tokens: use fine-grained PATs with repo-specific scope.
+- Prefer STDIO-on-localhost or OAuth-authenticated Streamable HTTP.
+- Log every MCP tool call with (caller, destination, payload summary).
+
+
+## Session hygiene
+
+- Commit early and often with descriptive messages — `git revert` is
+  the agent's real undo button.
+- Every agent session starts from a clean tree on a named branch.
+- For parallel/competing agent runs, use `git worktree add` — one
+  worktree per task — to prevent cross-contamination.
+- Use `/rewind` (Claude Code) or `/fork` / `codex resume` (Codex)
+  instead of hand-rolled diff snapshots.
+- Never try to force determinism through temperature or seed; make
+  the test suite the contract.
+
+
+## Memory discipline
+
+- `/clear` between unrelated tasks. Always.
+- AGENTS.md / CLAUDE.md holds project-wide rules only. Put
+  task-specific knowledge in `.claude/skills/*/SKILL.md`.
+- Never dump docs into AGENTS.md — link to them.
+- When context nears 50% full: `/compact Focus on <current sub-task>`,
+  or write NOTES.md and `/clear`.
+- Two-strike rule: if the agent is corrected twice on the same issue,
+  `/clear` and re-prompt with what you learned.
+
+
 ## Sub-agent Routing
 
 | Task | Agent |
@@ -46,6 +83,27 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Review loop orchestration | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
+
+## Model routing (verify current model IDs in vendor docs)
+
+| Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
+|----------------|-------------------------------|------------------|--------------------------|
+| architect      | Opus-class (thinking on)      | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
+| implementer    | Sonnet-class / Codex-class    | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
+| code-reviewer  | Same family as implementer    | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
+| reviewer       | DIFFERENT family from implementer | high         | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
+| external-review| DIFFERENT family, fresh context   | high         | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent |
+| code-optimizer | Sonnet-class                  | medium           | same as implementer |
+| test-writer    | Sonnet-class                  | medium           | same as implementer |
+| e2e-tester     | Sonnet-class                  | medium           | same as implementer |
+| ui-designer    | Sonnet-class                  | medium           | same as implementer |
+
+Rule: never let the writer be its own final reviewer. A fresh-context
+session with a different model family is the cheapest diversity gain
+available. This rule applies identically across Claude Code, Codex CLI,
+Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
+picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
+Copilot Agent on GPT-5, or vice versa).
 
 ## Planning Workflow
 
@@ -104,12 +162,6 @@ This loop is mandatory.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
 
-## Semi-autonomous (non-interactive) session rules
-
-- **Non-interactive ≠ unsandboxed.** `approval_policy = "never"` skips prompts only. Deny/forbid rules and the workspace-write sandbox remain fully enforced.
-- **Developer-assisted feature branches only.** Run headless sessions on a dedicated feature branch. Never run against `main`/`master` or shared integration branches.
-- **Human review before commit/push.** After any headless session, run `git diff` and review every change before deciding to commit or push. This is not a claim of unattended CI suitability.
-
 ## Dangerous operations — require explicit confirmation
 
 NEVER execute without the user typing "yes" in the current session:
@@ -128,5 +180,48 @@ unavoidable, and ask first.
 
 Before any destructive operation, state: (1) what changes, (2) where
 (env), (3) reversibility, (4) blast radius (count of rows/files/users).
+
+## Tooling / hooks
+
+The generated `.claude/settings.local.json` enforces safety at the tool-call layer via Claude Code hooks:
+
+- **PreToolUse `Bash`** — a shell guard runs before every Bash invocation and blocks commands matching the destructive-pattern list (`rm -rf`, `git push --force`, `git reset --hard`, etc.). Exit 2 = blocked with refusal message; exit 0 = allowed.
+- **PostToolUse `Edit|MultiEdit|Write`** — runs the configured lint/format command automatically after every file edit.
+
+Review or adjust hook entries in `.claude/settings.local.json` under the `"hooks"` key.
+
+## Formatting / linting
+
+- One formatter per language, CI-enforced. Fail on diff.
+- `.editorconfig` committed (charset, line endings, indent, final newline).
+- Type-check in CI as a lint step: `tsc --noEmit`, `mypy --strict`,
+  `pyright`, `cargo check`, `go vet`.
+- JS/TS new projects: prefer Biome (single tool). Large legacy repos
+  with deep ESLint investment: stay on ESLint+Prettier until Biome
+  plugin coverage closes the gap for your stack.
+- Treewide formatting: one "apply formatter" commit, added to
+  `.git-blame-ignore-revs`.
+- Security-focused static analysis beyond linting: CodeQL, Semgrep,
+  SonarQube (cognitive complexity), `cargo-audit`, `npm audit`,
+  `pip-audit`.
+
+
+## Deployment rules
+
+- Config via environment. No hardcoded secrets or hostnames. Validate
+  required env at boot via a typed schema (zod/pydantic/viper).
+- Stateless processes; session state in external store.
+- Strict dev/staging/prod parity: same DB engine version, same queue,
+  same container base image. No SQLite-in-dev/Postgres-in-prod.
+- Feature flags via OpenFeature SDK + a provider (LaunchDarkly, Unleash,
+  Flagsmith, ConfigCat, Flipt, GrowthBook). Avoid direct vendor SDKs.
+  Flags have owner + removal date in code; clean up quarterly.
+- Progressive delivery: canary with metrics-gated promotion (Argo
+  Rollouts / Flagger). Blue/green for stateful. Rollback ≤5 min.
+- DB migrations: expand-contract (add-new → dual-write → switch-reads →
+  drop-old), each phase a separate deploy. `CREATE INDEX CONCURRENTLY`
+  on Postgres. `pt-online-schema-change` / `gh-ost` on MySQL.
+  `strong_migrations` / `django-safemigrate` / `pgroll` in CI.
+
 
 <!-- agents-workflows:managed-end -->

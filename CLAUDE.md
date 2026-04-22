@@ -9,7 +9,6 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
@@ -26,15 +25,38 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Context budget
 
-Treat context as a finite attention budget, not a storage tank. Every token
-you load competes with reasoning quality (context rot is real; see Chroma
-2025). Rules:
+- Load only files, symbols, and recent decisions needed for the current task.
 - Keep this file under 200 lines. If a line's removal would not cause
   mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
 - Do not paste docs here — link them. Skills hold task-specific knowledge.
 - When context reaches ~50% full, write a NOTES.md summary and /clear.
 - For nested packages, a closer AGENTS.md wins over an outer one.
+
+
+## Session hygiene
+
+- Commit early and often with descriptive messages — `git revert` is
+  the agent's real undo button.
+- Every agent session starts from a clean tree on a named branch.
+- For parallel/competing agent runs, use `git worktree add` — one
+  worktree per task — to prevent cross-contamination.
+- Use `/rewind` (Claude Code) or `/fork` / `codex resume` (Codex)
+  instead of hand-rolled diff snapshots.
+- Never try to force determinism through temperature or seed; make
+  the test suite the contract.
+
+
+## Memory discipline
+
+- `/clear` between unrelated tasks. Always.
+- AGENTS.md / CLAUDE.md holds project-wide rules only. Put
+  task-specific knowledge in `.claude/skills/*/SKILL.md`.
+- Never dump docs into AGENTS.md — link to them.
+- When context nears 50% full: `/compact Focus on <current sub-task>`,
+  or write NOTES.md and `/clear`.
+- Two-strike rule: if the agent is corrected twice on the same issue,
+  `/clear` and re-prompt with what you learned.
 
 
 ## Sub-agent Routing
@@ -107,11 +129,5 @@ DRY and reusability are critical principles — enforced without exception:
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
-
-## Semi-autonomous (non-interactive) session rules
-
-- **Non-interactive ≠ unsandboxed.** `"defaultMode": "bypassPermissions"` skips approval prompts only. Deny rules and sandbox boundaries remain fully enforced.
-- **Developer-assisted feature branches only.** Run headless sessions on a dedicated feature branch. Never run against `main`/`master` or shared integration branches.
-- **Human review before commit/push.** After any headless session, run `git diff` and review every change before deciding to commit or push. This is not a claim of unattended CI suitability.
 
 <!-- agents-workflows:managed-end -->

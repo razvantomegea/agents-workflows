@@ -18,25 +18,19 @@ function Clear-GeneratedSkillsDirectory {
 
   $resolvedAgentsRoot = (Resolve-Path -LiteralPath $agentsRoot).Path
   $resolvedPath = (Resolve-Path -LiteralPath $Path).Path
-  $normalizedAgentsRoot = [System.IO.Path]::GetFullPath($resolvedAgentsRoot).TrimEnd('\', '/')
-  $normalizedPath = [System.IO.Path]::GetFullPath($resolvedPath).TrimEnd('\', '/')
-  $agentsRootBoundary = "$normalizedAgentsRoot$([System.IO.Path]::DirectorySeparatorChar)"
 
-  if (
-    -not $normalizedPath.Equals($normalizedAgentsRoot, [System.StringComparison]::OrdinalIgnoreCase) -and
-    -not $normalizedPath.StartsWith($agentsRootBoundary, [System.StringComparison]::OrdinalIgnoreCase)
-  ) {
-    throw "Refusing to remove path outside generated .agents directory: $normalizedPath"
+  if (-not $resolvedPath.StartsWith($resolvedAgentsRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Refusing to remove path outside generated .agents directory: $resolvedPath"
   }
 
-  Remove-Item -LiteralPath $normalizedPath -Recurse -Force
+  Remove-Item -LiteralPath $resolvedPath -Recurse -Force
 }
 
-if (-not (Test-Path -LiteralPath $projectSkills -PathType Container)) {
+if (-not (Test-Path -LiteralPath $projectSkills)) {
   throw "Missing project skills directory: $projectSkills"
 }
 
-if (-not (Test-Path -LiteralPath $projectPrompts -PathType Container)) {
+if (-not (Test-Path -LiteralPath $projectPrompts)) {
   throw "Missing project prompts directory: $projectPrompts"
 }
 
@@ -68,11 +62,6 @@ if (Test-Path -LiteralPath $agentsSkills) {
     $resolvedProjectSkills = (Resolve-Path -LiteralPath $projectSkills).Path
     if (-not $resolvedTarget.Equals($resolvedProjectSkills, [System.StringComparison]::OrdinalIgnoreCase)) {
       throw "Existing .agents\skills points to '$target', expected '$resolvedProjectSkills'."
-    }
-    if ($CopySkills) {
-      Remove-Item -LiteralPath $agentsSkills -Force
-      New-Item -ItemType Directory -Force -Path $agentsSkills | Out-Null
-      Copy-Item -Path (Join-Path $projectSkills '*') -Destination $agentsSkills -Recurse -Force
     }
   } elseif ($CopySkills) {
     Clear-GeneratedSkillsDirectory -Path $agentsSkills

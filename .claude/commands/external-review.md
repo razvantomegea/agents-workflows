@@ -60,10 +60,24 @@ Substitute the correct `/mnt/c/...` path for your repo. Pass `/mnt/c/...` **dire
 
 **Install (one-time):**
 
+Download:
+
 ```bash
 curl -fsSLo /tmp/coderabbit-install.sh https://cli.coderabbit.ai/install.sh
+```
+
+Verify the checksum against the vendor-published value — do not skip this step:
+
+```bash
+# Linux
 sha256sum /tmp/coderabbit-install.sh
-# Compare the checksum to the vendor-published value before continuing.
+# macOS
+shasum -a 256 /tmp/coderabbit-install.sh
+```
+
+Only after the checksum matches, run the installer:
+
+```bash
 sh /tmp/coderabbit-install.sh
 ```
 
@@ -97,6 +111,7 @@ cr review --agent --base main --config CLAUDE.md
 - https://docs.coderabbit.ai/cli
 - https://cli.coderabbit.ai/install.sh
 - https://formulae.brew.sh/cask/coderabbit
+
 
 Capture the full output. If the command fails, report the error and abort.
 
@@ -197,6 +212,7 @@ When reviewing AI-generated code, verify explicitly:
 - A human read and understood every line before approval.
 - Never auto-merge on AI approval alone.
 </ai_complacency_guard>
+
 
 ## Rules
 

@@ -1,16 +1,14 @@
-# Codex CLI configuration — safe-by-default posture for developer-assisted sessions.
-#
-# Non-interactive mode (approval_policy = "never") is an opt-in via
-# `agents-workflows init` after the security disclosure (see PRD §1.9.1 risk
-# register). Until Epic 9 hardening (E9.T10–E9.T15) lands and the smoke suite
-# is green on this host, this file stays on the safe posture.
+# Codex CLI configuration — safe defaults for agentic workflows
+# Uses workspace-write with on-request approvals so current-project edits run
+# without repeated confirmation while sandbox escapes still require approval.
 #
 # - approval_policy = "on-request" runs sandboxed commands without prompting
 #   and asks only when a command requests more access.
 # - sandbox_mode = "workspace-write" confines writes to the project root
-#   (blocks edits to .env outside the workspace, shell rc files, system packages).
-# - sandbox_workspace_write.network_access = false blocks outbound network
-#   egress until the Epic 9 exfil denies (E9.T11) and allowlist (E9.T13) land.
+#   (blocks edits to .env outside the workspace, migrations/** outside,
+#   shell rc files, system packages).
+# - sandbox_workspace_write.network_access = false blocks outbound
+#   network egress unless explicitly approved per command.
 
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"

@@ -19,7 +19,7 @@ Run an external code review on the current branch diff. **CodeRabbit CLI** (also
 
 CodeRabbit CLI binary is `coderabbit` with `cr` as the short alias. The sections below cover install, authentication, version check, and invocation per platform. Emit all three platforms; users pick the one that matches their host.
 
-> **Supply-chain note:** the `curl ... | sh` installer is pulled from `cli.coderabbit.ai` (the CodeRabbit vendor domain) over HTTPS with `-fsSL` (fail-on-error, follow-redirects, silent, show-errors). On macOS prefer `brew install coderabbit` so Homebrew handles pinning and verification. `main` is pre-validated by the `safeBranch` schema (`[a-zA-Z0-9._/-]+` only), so embedding it inside a double-quoted `bash -lc` string is shell-safe.
+> **Supply-chain note:** do not execute a network response directly with `curl ... | sh`. Download the installer first, verify its checksum against the vendor-published value, then run it. On macOS prefer `brew install coderabbit` so Homebrew handles pinning and verification. `main` is pre-validated by the `safeBranch` schema (`[a-zA-Z0-9._/-]+` only), so embedding it inside a double-quoted `bash -lc` string is shell-safe.
 
 ### Windows (WSL Ubuntu)
 
@@ -28,7 +28,10 @@ CodeRabbit CLI binary is `coderabbit` with `cr` as the short alias. The sections
 **Install (one-time):**
 
 ```bash
-wsl -d Ubuntu -- bash -lc 'curl -fsSL https://cli.coderabbit.ai/install.sh | sh'
+wsl -d Ubuntu -- bash -lc 'curl -fsSLo /tmp/coderabbit-install.sh https://cli.coderabbit.ai/install.sh'
+wsl -d Ubuntu -- bash -lc 'sha256sum /tmp/coderabbit-install.sh'
+# Compare the checksum to the vendor-published value before continuing.
+wsl -d Ubuntu -- bash -lc 'sh /tmp/coderabbit-install.sh'
 ```
 
 The installer drops the binary at the WSL user's `~/.local/bin/cr` (for example `/home/<user>/.local/bin/cr`) — **not** `/root/.local/bin/cr`. Always use `bash -lc` so the login shell sources the user's PATH.
@@ -57,8 +60,25 @@ Substitute the correct `/mnt/c/...` path for your repo. Pass `/mnt/c/...` **dire
 
 **Install (one-time):**
 
+Download:
+
 ```bash
-curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+curl -fsSLo /tmp/coderabbit-install.sh https://cli.coderabbit.ai/install.sh
+```
+
+Verify the checksum against the vendor-published value — do not skip this step:
+
+```bash
+# Linux
+sha256sum /tmp/coderabbit-install.sh
+# macOS
+shasum -a 256 /tmp/coderabbit-install.sh
+```
+
+Only after the checksum matches, run the installer:
+
+```bash
+sh /tmp/coderabbit-install.sh
 ```
 
 macOS alternative via Homebrew:
@@ -91,6 +111,7 @@ cr review --agent --base main --config CLAUDE.md
 - https://docs.coderabbit.ai/cli
 - https://cli.coderabbit.ai/install.sh
 - https://formulae.brew.sh/cask/coderabbit
+
 
 Capture the full output. If the command fails, report the error and abort.
 
@@ -191,6 +212,7 @@ When reviewing AI-generated code, verify explicitly:
 - A human read and understood every line before approval.
 - Never auto-merge on AI approval alone.
 </ai_complacency_guard>
+
 
 ## Rules
 

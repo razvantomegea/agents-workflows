@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-20T08:53:44.084Z",
-  "stackConfigHash": "cdd576ab66c44ebc",
+  "generatedAt": "2026-04-22T17:57:05.020Z",
+  "stackConfigHash": "ddb09b21fce8de41",
   "config": {
     "project": {
       "name": "agents-workflows",
@@ -70,7 +70,8 @@
     "selectedCommands": {
       "workflowPlan": true,
       "workflowFix": true,
-      "externalReview": true
+      "externalReview": true,
+      "workflowLonghorizon": false
     },
     "targets": {
       "claudeCode": true,
@@ -85,6 +86,9 @@
       "copilot": false,
       "windsurf": false,
       "gemini": true
+    },
+    "governance": {
+      "enabled": false
     },
     "monorepo": null
   },
@@ -113,6 +117,7 @@
     ".claude/settings.local.json",
     ".codex/config.toml",
     "AGENTS.md",
+    "docs/decisions/0001-adr-template.md",
     ".claude/scripts/cursor-task.sh",
     ".claude/scripts/run-parallel.sh",
     ".codex/scripts/sync-codex.sh",

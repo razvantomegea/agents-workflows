@@ -11,7 +11,6 @@ You are a senior none / typescript implementation agent for the `agents-workflow
 ## Stack Context
 
 - Typescript (node)
-- None
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
@@ -119,6 +118,27 @@ explicit human approval per egress action. No exceptions.
 </untrusted_content_protocol>
 
 
+## Security defaults (OWASP 2025 baseline)
+
+<security_defaults>
+- **Input validation:** validate every input at every trust boundary with an allowlist schema (Zod / pydantic / JSON Schema 2020-12); reject unknown fields; parameterized queries only — no `eval`, no `shell=True` with user data.
+- **Output encoding:** use framework auto-escaping; never bypass with `dangerouslySetInnerHTML` or equivalent; contextual encoding for HTML, attributes, JS, and URLs.
+- **AuthN/AuthZ:** OAuth 2.1 (RFC 9700) — PKCE for all public clients; no implicit flow; exact `redirect_uri` match. JWTs — explicit `alg` allowlist, reject `alg:none`, validate `iss`/`aud`/`exp`/`nbf`/`iat`; prefer EdDSA or ES256. WebAuthn/passkeys as default MFA; TOTP as fallback; SMS recovery only when unavoidable.
+- **Password hashing:** Argon2id `m=19456, t=2, p=1` (OWASP 2025 minimum); bcrypt only for legacy systems; PBKDF2-HMAC-SHA256 ≥600k iterations only if FIPS-bound.
+- **Secrets management:** workload identity (OIDC) over long-lived keys in CI; no secrets in code, config, or logs; `.env` in `.gitignore`, commit `.env.example` only; enforce a rotation policy.
+- **CSP:** Level 3 with nonces or hashes — no `unsafe-inline`; `frame-ancestors` set; Trusted Types enforced where supported; SRI on CDN assets; no `Access-Control-Allow-Origin: *` with credentials.
+- **Cookies:** `__Host-` prefix for session cookies; `Secure`; `HttpOnly`; `SameSite=Lax` (or `Strict`/`None` only with documented PoLP rationale).
+- **Rate limiting:** apply to all auth and public endpoints; emit `RateLimit` and `RateLimit-Policy` response headers per `draft-ietf-httpapi-ratelimit-headers-10` (Internet-Draft — expired Mar 31 2026, track the successor draft); also include `Retry-After` (RFC 7231 — ratified) on 429 responses.
+- **Error responses:** RFC 9457 `application/problem+json` with a `traceId`; never leak stack traces, SQL, or internal paths to untrusted callers.
+- **Logging:** allowlist-based field emission; never log secrets, tokens, or raw request bodies.
+- **LLM integrations (OWASP LLM Top 10 2025):** treat all model output as untrusted.
+  - LLM07 — never put secrets in system prompts; apply output validation before use.
+  - LLM08 — validate embedding source integrity in RAG; reject unauthenticated vector stores.
+  - LLM10 — rate-limit token spend; enforce resource budgets to prevent unbounded consumption.
+</security_defaults>
+
+
+
 ## Definition of done
 
 <definition_of_done>
@@ -146,6 +166,62 @@ If a command, test, or type-check fails:
 4. Re-run. Repeat until clean.
 5. If after two honest attempts you cannot fix it, STOP. Report what you learned. Do not claim success.
 </error_handling_self>
+
+## Error handling (produced code)
+
+<error_handling_code>
+- **Expected failures** (validation, not-found, timeout, domain errors) → return a typed error value. Use `Result` / `Either` / discriminated union where the language makes it ergonomic (Rust `Result<T,E>`, TS `neverthrow`/`Effect`, Swift `Result`). Reserve throwing/panicking for programmer errors (invariant violations, null-deref on unreachable paths).
+- **Programmer errors** → fail loudly. Throw, panic, or assert. Never swallow an unexpected fault silently.
+- **Error chaining** — always attach the original cause:
+  - JS/TS: `new Error("context", { cause: original })`
+  - Go: `fmt.Errorf("context: %w", err)`
+  - Rust: `thiserror` derived errors or `anyhow::Context::context()`
+  - Python: `raise RuntimeError("context") from original`
+  - Java/Kotlin: `throw new RuntimeException("context", cause)`
+- **Parse, don't validate** at ingress boundaries. Use Zod / pydantic / JSON Schema 2020-12 to return parsed, typed values — not booleans. Push validated types inward; inner layers MUST NOT accept raw (unparsed) input — doing so creates a second, weaker trust boundary that bypasses schema enforcement.
+- **No silent-catch.** The following patterns are forbidden unless accompanied by a `// reason:` comment that explains the intentional swallow:
+  - `catch (e) {}`
+  - `except: pass` / `except Exception: pass`
+  - `if err != nil { return nil }` (Go — return the error, not nil)
+  - `try { ... } catch { /* ignore */ }`
+  - The `// reason:` escape hatch does NOT cover security-relevant operations (authentication, authorization, audit/compliance writes, integrity checks) — those must propagate or alert.
+- **Never expose raw errors to untrusted callers.** At HTTP/API boundaries, map to a sanitized response (RFC 9457 `application/problem+json`); strip `stack`, `cause`, and internal paths. Log the full error server-side only.
+</error_handling_code>
+
+## Observability
+
+- Structured logs (JSON or logfmt). Every log entry: `timestamp`, `level`,
+  `service`, `trace_id`, `span_id`, `message`, `attrs`. No string concatenation.
+- Levels: `ERROR` (operator must investigate), `WARN` (tolerated anomaly),
+  `INFO` (state transitions / user actions), `DEBUG` (developer-only),
+  `TRACE` (verbose).
+- PII redaction at the logger, not ad hoc at call sites. Allowlist-based
+  attribute emission. Pseudonymize IPs (truncate /24 IPv4, /48 IPv6) unless
+  needed for forensics.
+- OpenTelemetry SDK + OTLP (gRPC:4317 / HTTP:4318). Instrument HTTP, RPC, and
+  DB boundaries; propagate W3C `traceparent` on every outbound call.
+- SLIs/SLOs per service: availability, latency p95/p99, error rate. Error
+  budget drives release cadence.
+- Low-cardinality labels on metrics. No user IDs, request IDs, or session
+  tokens in label values.
+- NICE: continuous profiling (Pyroscope / Parca / OTel eBPF receiver).
+
+## Concurrency
+
+- Default shared-nothing. Communicate by message. Prefer actor/CSP
+  patterns (Go channels, Trio nurseries, Akka).
+- Structured concurrency: child task lifetimes ≤ parent's. Never
+  fire-and-forget — use `TaskGroup` (Python 3.11+), nursery (Trio/AnyIO),
+  `coroutineScope` (Kotlin), `withTaskGroup` (Swift), `StructuredTaskScope`
+  (Java 21 preview).
+- Cancellation is cooperative and propagated; release resources via
+  `finally`/`defer`/RAII.
+- Timeouts via scoped deadlines, not global sleep+cancel.
+- Never block the event loop with sync I/O or CPU work; offload.
+- Bounded concurrency: semaphores / bounded channels between
+  producers and consumers.
+- Acquire locks in a consistent order; never hold a lock across
+  `await` or I/O. Use language atomics for shared mutable memory.
 
 ## TDD discipline
 
