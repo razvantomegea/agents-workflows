@@ -103,7 +103,7 @@ describe('Epic 4 T4 — testing-patterns and e2e smoke', () => {
 describe('Implementation agent description omits "none" framework placeholder', () => {
   it.each([[null], ['none'], ['None'], ['NONE']])(
     'implementer description does not leak framework=%s into the header line',
-    async (fw) => {
+    async (fw: string | null) => {
       const files = await generateAll(makeFrameworkConfig(fw));
       const c = getAgentContent(files, 'implementer');
       expect(c).not.toMatch(/senior (none|None|NONE)\b/);

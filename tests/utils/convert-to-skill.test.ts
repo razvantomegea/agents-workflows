@@ -13,8 +13,13 @@ describe('convertToSkill', () => {
   it('rewrites standalone agent/agents tokens to skill/skills, preserving case', () => {
     const input = 'An Agent reads files. Two agents collaborate. AGENT and AGENTS names.';
     expect(convertToSkill(input)).toBe(
-      'An Skill reads files. Two skills collaborate. SKILL and SKILLS names.',
+      'A Skill reads files. Two skills collaborate. SKILL and SKILLS names.',
     );
+  });
+
+  it('fixes article grammar before singular skill tokens across casing', () => {
+    const input = 'an agent, An Agent, and AN AGENT.';
+    expect(convertToSkill(input)).toBe('a skill, A Skill, and A SKILL.');
   });
 
   it('rewrites hyphenated sub-agent forms including plurals', () => {

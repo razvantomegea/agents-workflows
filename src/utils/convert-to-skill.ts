@@ -40,6 +40,14 @@ export function convertToSkill(agentContent: string): string {
     renamed = renamed.replace(pattern, replacement);
   }
 
+  renamed = renamed.replace(
+    /\b(an)(\s+)(skills?)\b/gi,
+    (_fullMatch: string, article: string, whitespace: string, noun: string): string => {
+      const fixedArticle = article[0] === article[0].toUpperCase() ? 'A' : 'a';
+      return `${fixedArticle}${whitespace}${noun}`;
+    },
+  );
+
   renamed = renamed.replace(/\n{3,}/g, '\n\n');
 
   const restorePairs = PRESERVED_TOKENS.map(
