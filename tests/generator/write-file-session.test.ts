@@ -89,10 +89,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await writeFileSafe({ path, content: 'new' });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/merge/i),
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/overwriting/i),
+      expect.stringMatching(/merge.*overwriting/i),
     );
   });
 
