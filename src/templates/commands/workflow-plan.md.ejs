@@ -21,9 +21,13 @@ git checkout <%= mainBranch %> && git pull origin <%= mainBranch %> && git check
 
 ### Phase 2 — Research & plan
 
-Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md`. The architect agent will:
+Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md`<% if (docsFile) { %> and `<%= docsFile %>`<% } %>. The architect agent will:
 
+<% if (docsFile) { -%>
+1. Read `<%= docsFile %>`, `CLAUDE.md`, and any other project docs — the planner must read `<%= docsFile %>` **first** so the plan reflects documented requirements and non-goals.
+<% } else { -%>
 1. Read `CLAUDE.md` and any project docs.
+<% } -%>
 2. Analyze the user's request: $ARGUMENTS
 3. Grep the codebase for existing components, hooks, utils, types — DRY is non-negotiable.
 4. Write a structured plan to `PLAN.md`:

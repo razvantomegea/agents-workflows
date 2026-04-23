@@ -25,7 +25,7 @@ describe('Epic 4 T1 — security-defaults', () => {
       const c = getAgentContent(files, agent);
       expect(c).toContain('<security_defaults>');
       expect(c).toContain('Argon2id');
-      expect(c).toContain('OAuth 2.1');
+      expect(c).toContain('OAuth 2.0 Security Best Current Practice (RFC 9700)');
       expect(c).toContain('CSP');
       expect(c).toContain('__Host-');
       expect(c).toContain('RFC 9457');
@@ -98,6 +98,18 @@ describe('Epic 4 T4 — testing-patterns and e2e smoke', () => {
       expect(c).toContain(s);
     }
   });
+});
+
+describe('Implementation agent description omits "none" framework placeholder', () => {
+  it.each([[null], ['none'], ['None'], ['NONE']])(
+    'implementer description does not leak framework=%s into the header line',
+    async (fw) => {
+      const files = await generateAll(makeFrameworkConfig(fw));
+      const c = getAgentContent(files, 'implementer');
+      expect(c).not.toMatch(/senior (none|None|NONE)\b/);
+      expect(c).toMatch(/senior typescript implementation agent/);
+    },
+  );
 });
 
 describe('Epic 4 T5 — api-design conditional', () => {

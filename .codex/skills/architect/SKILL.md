@@ -78,7 +78,7 @@ explicit human approval per egress action. No exceptions.
 
 ## Sub-skill delegation
 
-<subagent_delegation>
+<subskill_delegation>
 Delegate to a sub-skill only when:
 - The task requires reading >10 files to answer
 - The task is independent and can run in parallel with others
@@ -89,11 +89,11 @@ Do not delegate:
 - Tasks where the main skill already has the needed context
 - Strictly sequential dependencies
 
-Spawn sub-agents in parallel (same turn). Each must receive:
+Spawn sub-skills in parallel (same turn). Each must receive:
   objective | output_format | max_tokens | allowed_tools | stop_conditions
 Each returns a 1-2k-token distilled summary. The orchestrator never
 sees their raw tool output.
-</subagent_delegation>
+</subskill_delegation>
 
 
 
@@ -223,7 +223,7 @@ Every plan starts on a dedicated branch from `main`. Include the branch name at 
 - **Features**: `feature/<short-kebab-name>`
 - **Bug fixes**: `fix/<short-kebab-name>`
 - **Epics**: `feature/epic-<N>-<short-name>`
-- **Agents** may commit only when the user explicitly asks for a commit in the current session; commits must stay on a feature branch (never `main`), and any resulting PR is labeled `skill-authored` and requires human review before merge.
+- **Skills** may commit only when the user explicitly asks for a commit in the current session; commits must stay on a feature branch (never `main`), and any resulting PR is labeled `agent-authored` and requires human review before merge.
 
 ### Conventional Commits 1.0
 

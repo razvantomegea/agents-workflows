@@ -63,7 +63,7 @@ When reviewing AI-generated code, verify explicitly:
 
 ## Sub-skill delegation
 
-<subagent_delegation>
+<subskill_delegation>
 Delegate to a sub-skill only when:
 - The task requires reading >10 files to answer
 - The task is independent and can run in parallel with others
@@ -74,11 +74,11 @@ Do not delegate:
 - Tasks where the main skill already has the needed context
 - Strictly sequential dependencies
 
-Spawn sub-agents in parallel (same turn). Each must receive:
+Spawn sub-skills in parallel (same turn). Each must receive:
   objective | output_format | max_tokens | allowed_tools | stop_conditions
 Each returns a 1-2k-token distilled summary. The orchestrator never
 sees their raw tool output.
-</subagent_delegation>
+</subskill_delegation>
 
 
 ## When invoked

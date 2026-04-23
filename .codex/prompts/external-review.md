@@ -19,7 +19,7 @@ Run an external code review on the current branch diff. **CodeRabbit CLI** (also
 
 CodeRabbit CLI binary is `coderabbit` with `cr` as the short alias. The sections below cover install, authentication, version check, and invocation per platform. Emit all three platforms; users pick the one that matches their host.
 
-> **Supply-chain note:** do not execute a network response directly with `curl ... | sh`. Download the installer first, verify its checksum against the vendor-published value, then run it. On macOS prefer `brew install coderabbit` so Homebrew handles pinning and verification. `main` is pre-validated by the `safeBranch` schema (`[a-zA-Z0-9._/-]+` only), so embedding it inside a double-quoted `bash -lc` string is shell-safe.
+> **Supply-chain note:** do not execute a network response directly with `curl ... | sh`. Download the installer first, verify its checksum against the vendor-published value, then run it. CodeRabbit does not currently publish a companion `.sha256` file, so obtain the expected digest from the official release documentation (https://docs.coderabbit.ai/cli/installation) and compare it manually against the local hash output. On macOS prefer `brew install coderabbit` so Homebrew handles pinning and verification end-to-end without a manual checksum step. `main` is pre-validated by the `safeBranch` schema (`[a-zA-Z0-9._/-]+` only), so embedding it inside a double-quoted `bash -lc` string is shell-safe.
 
 ### Windows (WSL Ubuntu)
 
@@ -30,7 +30,9 @@ CodeRabbit CLI binary is `coderabbit` with `cr` as the short alias. The sections
 ```bash
 wsl -d Ubuntu -- bash -lc 'curl -fsSLo /tmp/coderabbit-install.sh https://cli.coderabbit.ai/install.sh'
 wsl -d Ubuntu -- bash -lc 'sha256sum /tmp/coderabbit-install.sh'
-# Compare the checksum to the vendor-published value before continuing.
+# Compare the printed digest against the vendor-published value at
+# https://docs.coderabbit.ai/cli/installation before continuing. Abort if it
+# does not match — do NOT proceed to `sh` on an unverified payload.
 wsl -d Ubuntu -- bash -lc 'sh /tmp/coderabbit-install.sh'
 ```
 
@@ -66,7 +68,8 @@ Download:
 curl -fsSLo /tmp/coderabbit-install.sh https://cli.coderabbit.ai/install.sh
 ```
 
-Verify the checksum against the vendor-published value — do not skip this step:
+Verify the checksum against the vendor-published value at
+https://docs.coderabbit.ai/cli/installation — do not skip this step:
 
 ```bash
 # Linux
@@ -75,7 +78,9 @@ sha256sum /tmp/coderabbit-install.sh
 shasum -a 256 /tmp/coderabbit-install.sh
 ```
 
-Only after the checksum matches, run the installer:
+Compare the printed digest against the value published in the CodeRabbit CLI
+installation docs. Abort if they do not match — do NOT proceed to `sh` on an
+unverified payload. Only after the checksum matches, run the installer:
 
 ```bash
 sh /tmp/coderabbit-install.sh

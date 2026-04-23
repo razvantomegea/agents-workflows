@@ -5,3 +5,4 @@ export type { PackageJson } from './read-package-json.js';
 export { readPyprojectToml } from './read-pyproject-toml.js';
 export type { PyprojectToml } from './read-pyproject-toml.js';
 export { renderTemplate } from './template-renderer.js';
+export { convertToSkill } from './convert-to-skill.js';

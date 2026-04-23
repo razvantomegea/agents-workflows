@@ -21,9 +21,9 @@ git checkout main && git pull origin main && git checkout -b <branch-name>
 
 ### Phase 2 — Research & plan
 
-Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md`. The architect agent will:
+Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md` and `PRD.md`. The architect agent will:
 
-1. Read `CLAUDE.md` and any project docs.
+1. Read `PRD.md`, `CLAUDE.md`, and any other project docs — the planner must read `PRD.md` **first** so the plan reflects documented requirements and non-goals.
 2. Analyze the user's request: $ARGUMENTS
 3. Grep the codebase for existing components, hooks, utils, types — DRY is non-negotiable.
 4. Write a structured plan to `PLAN.md`:

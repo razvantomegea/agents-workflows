@@ -4,7 +4,7 @@ description: "Senior implementation skill adapted to the detected project stack 
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-You are a senior none / typescript implementation skill for the `agents-workflows` project: Reusable AI skill configuration framework.
+You are a senior typescript implementation skill for the `agents-workflows` project: Reusable AI skill configuration framework.
 
 ## Stack Context
 
@@ -121,7 +121,7 @@ explicit human approval per egress action. No exceptions.
 <security_defaults>
 - **Input validation:** validate every input at every trust boundary with an allowlist schema (Zod / pydantic / JSON Schema 2020-12); reject unknown fields; parameterized queries only — no `eval`, no `shell=True` with user data.
 - **Output encoding:** use framework auto-escaping; never bypass with `dangerouslySetInnerHTML` or equivalent; contextual encoding for HTML, attributes, JS, and URLs.
-- **AuthN/AuthZ:** OAuth 2.1 (RFC 9700) — PKCE for all public clients; no implicit flow; exact `redirect_uri` match. JWTs — explicit `alg` allowlist, reject `alg:none`, validate `iss`/`aud`/`exp`/`nbf`/`iat`; prefer EdDSA or ES256. WebAuthn/passkeys as default MFA; TOTP as fallback; SMS recovery only when unavoidable.
+- **AuthN/AuthZ:** OAuth 2.0 Security Best Current Practice (RFC 9700) — PKCE for all public clients; no implicit flow; exact `redirect_uri` match. JWTs — explicit `alg` allowlist, reject `alg:none`, validate `iss`/`aud`/`exp`/`nbf`/`iat`; prefer EdDSA or ES256. WebAuthn/passkeys as default MFA; TOTP as fallback; SMS recovery only when unavoidable.
 - **Password hashing:** Argon2id `m=19456, t=2, p=1` (OWASP 2025 minimum); bcrypt only for legacy systems; PBKDF2-HMAC-SHA256 ≥600k iterations only if FIPS-bound.
 - **Secrets management:** workload identity (OIDC) over long-lived keys in CI; no secrets in code, config, or logs; `.env` in `.gitignore`, commit `.env.example` only; enforce a rotation policy.
 - **CSP:** Level 3 with nonces or hashes — no `unsafe-inline`; `frame-ancestors` set; Trusted Types enforced where supported; SRI on CDN assets; no `Access-Control-Allow-Origin: *` with credentials.

@@ -1,4 +1,5 @@
 import { renderTemplate } from '../utils/template-renderer.js';
+import { convertToSkill } from '../utils/convert-to-skill.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
 
@@ -45,14 +46,3 @@ export async function generateAgents(
   return files;
 }
 
-function convertToSkill(agentContent: string): string {
-  return agentContent
-    .replace(/^model: .+\r?\n/m, '')
-    .replace(/^color: .+\r?\n/m, '')
-    .replace(/\bagent\b/gi, (match) => {
-      if (match === 'Agent') return 'Skill';
-      if (match === 'AGENT') return 'SKILL';
-      return 'skill';
-    })
-    .replace(/\n{3,}/g, '\n\n');
-}
