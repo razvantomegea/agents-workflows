@@ -6,3 +6,5 @@ export { readPyprojectToml } from './read-pyproject-toml.js';
 export type { PyprojectToml } from './read-pyproject-toml.js';
 export { renderTemplate } from './template-renderer.js';
 export { convertToSkill } from './convert-to-skill.js';
+export { renderUnifiedDiff, computeUnifiedPatch, DIFF_LINE_CAP } from './diff.js';
+export type { RenderDiffInput } from './diff.js';

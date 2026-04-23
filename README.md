@@ -31,6 +31,44 @@ The CLI will:
 3. **Generate** adapted agent configurations in `.claude/agents/`, `.codex/skills/`, and root config files
 4. **Write** a manifest (`.agents-workflows.json`) for future updates
 
+## Re-running on an existing project
+
+Running `init` or `update` on a project that already has generated files is safe. Before writing any file that already exists, the CLI pauses and asks what to do:
+
+```
+AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
+```
+
+### Prompt answers
+
+| Answer | Meaning |
+|---|---|
+| `[y]es` | Overwrite this file. |
+| `[n]o` | Skip this file; leave it unchanged. |
+| `[a]ll` | Overwrite all remaining conflicting files without further prompts (sticky for the rest of the run). |
+| `[s]kip-all` | Skip all remaining conflicting files without further prompts (sticky for the rest of the run). |
+| `[m]erge` | Structured merge — only offered for file types that support it (see below). |
+
+### CLI flags
+
+| Flag | Effect |
+|---|---|
+| `--yes` | Non-interactive: overwrite every conflicting file (equivalent to picking `[a]ll` up front). |
+| `--no-prompt` | Non-interactive: skip every conflicting file (equivalent to `[s]kip-all` up front). |
+| `--merge-strategy=<keep\|overwrite\|merge>` | Default action applied automatically to every conflict without prompting. |
+
+### Merge support
+
+| File type | Merge behaviour |
+|---|---|
+| Markdown (`AGENTS.md`, `CLAUDE.md`, agent prompts, command files) | Structured merge by top-level heading. User-edited sections are preserved. Sections marked `<!-- agents-workflows:managed -->` are updated by the generator. |
+| JSON (`.claude/settings.local.json`, Codex config) | Deep-merge with array union (de-duplicated). User wins on scalar conflicts for non-managed keys. |
+| Any other format | Falls back to yes / no / all / skip; no structured merge option is offered. |
+
+### CI usage
+
+For CI, use `--yes` to accept all changes or `--no-prompt` to only create new files and skip existing ones; both exit 0 without reading stdin.
+
 ## Supported stacks
 
 | Category | Detected |

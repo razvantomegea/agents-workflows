@@ -1,19 +1,23 @@
-import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { logger } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
 import { askInstallScope, type InstallScope } from '../prompt/install-scope.js';
-import { generateAll } from '../generator/index.js';
+import { generateAll, writeFileSafe } from '../generator/index.js';
+import { withSafetySession } from './safety-session.js';
+import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { DetectedAiAgent, DetectedStack } from '../detector/types.js';
+import type { MergeStrategy } from '../generator/index.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
   yes?: boolean;
+  noPrompt?: boolean;
+  mergeStrategy?: MergeStrategy;
 }
 
 export async function initCommand(
@@ -47,7 +51,7 @@ async function resolveInstallScope(
   detected: DetectedStack,
   options: InitCommandOptions,
 ): Promise<InstallScope> {
-  if (options.config || options.yes) return 'root';
+  if (options.config || options.yes || options.noPrompt) return 'root';
   logger.blank();
   return askInstallScope(detected.monorepo);
 }
@@ -101,15 +105,25 @@ async function installSinglePackage(
   };
 
   const manifestPath = join(projectRoot, '.agents-workflows.json');
+  const safetyFlags = parseSafetyFlags({
+    yes: options.yes,
+    noPrompt: options.noPrompt,
+    mergeStrategy: options.mergeStrategy,
+  });
+
   try {
-    logger.info('Writing files:');
-    const writeResult = await writeGeneratedFiles(projectRoot, files, {
-      confirmMarkdownOverwrite: true,
+    await withSafetySession(safetyFlags, async () => {
+      logger.info('Writing files:');
+      const writeResult = await writeGeneratedFiles(projectRoot, files);
+      await writeFileSafe({
+        path: manifestPath,
+        content: JSON.stringify(manifest, null, 2),
+        displayPath: '.agents-workflows.json',
+      });
+      if (writeResult.skippedPaths.length > 0) {
+        logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+      }
     });
-    await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
-    if (writeResult.skippedPaths.length > 0) {
-      logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
-    }
   } catch (error) {
     await restoreBackupFiles(projectRoot, backup);
     throw error;

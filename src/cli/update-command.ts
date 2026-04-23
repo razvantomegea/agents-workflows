@@ -1,16 +1,21 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
 import { logger, fileExists } from '../utils/index.js';
 import { manifestSchema } from '../schema/manifest.js';
-import { generateAll } from '../generator/index.js';
+import { generateAll, writeFileSafe } from '../generator/index.js';
+import { withSafetySession } from './safety-session.js';
+import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
 import { askMainBranch } from '../prompt/questions.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
+import type { MergeStrategy } from '../generator/index.js';
 
 export interface UpdateCommandOptions {
   yes?: boolean;
+  noPrompt?: boolean;
+  mergeStrategy?: MergeStrategy;
 }
 
 export async function updateCommand(
@@ -42,11 +47,12 @@ export async function updateCommand(
     process.exit(1);
   }
 
+  const nonInteractive = options.yes || options.noPrompt;
   const config = {
     ...parsed.data.config,
     project: {
       ...parsed.data.config.project,
-      mainBranch: options.yes
+      mainBranch: nonInteractive
         ? parsed.data.config.project.mainBranch
         : await askMainBranch(parsed.data.config.project.mainBranch),
     },
@@ -80,7 +86,7 @@ export async function updateCommand(
   }
 
   logger.blank();
-  const proceed = options.yes || await confirm({ message: 'Apply changes?', default: true });
+  const proceed = nonInteractive || await confirm({ message: 'Apply changes?', default: true });
 
   if (!proceed) {
     logger.info('Aborted.');
@@ -91,24 +97,33 @@ export async function updateCommand(
     changed.some((d) => d.path === f.path),
   );
 
-  await backupExistingFiles(projectRoot, changedFiles);
-  const writeResult = await writeGeneratedFiles(projectRoot, changedFiles, {
-    confirmMarkdownOverwrite: true,
-    confirmOverwrite: options.yes ? async () => true : undefined,
+  const safetyFlags = parseSafetyFlags({
+    yes: options.yes,
+    noPrompt: options.noPrompt,
+    mergeStrategy: options.mergeStrategy,
   });
-  const nextManifest: AgentsWorkflowsManifest = {
-    ...parsed.data,
-    generatedAt: new Date().toISOString(),
-    stackConfigHash: hashConfig(JSON.stringify(config)),
-    config,
-    files: files.map((file) => file.path),
-  };
-  await writeFile(manifestPath, JSON.stringify(nextManifest, null, 2), 'utf-8');
 
-  logger.success(`Updated ${writeResult.writtenPaths.length} file(s).`);
-  if (writeResult.skippedPaths.length > 0) {
-    logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
-  }
+  await withSafetySession(safetyFlags, async () => {
+    await backupExistingFiles(projectRoot, changedFiles);
+    const writeResult = await writeGeneratedFiles(projectRoot, changedFiles);
+    const nextManifest: AgentsWorkflowsManifest = {
+      ...parsed.data,
+      generatedAt: new Date().toISOString(),
+      stackConfigHash: hashConfig(JSON.stringify(config)),
+      config,
+      files: files.map((file) => file.path),
+    };
+    await writeFileSafe({
+      path: manifestPath,
+      content: JSON.stringify(nextManifest, null, 2),
+      displayPath: '.agents-workflows.json',
+    });
+
+    logger.success(`Updated ${writeResult.writtenPaths.length} file(s).`);
+    if (writeResult.skippedPaths.length > 0) {
+      logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+    }
+  });
 }
 
 function hashConfig(json: string): string {
