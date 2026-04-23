@@ -183,6 +183,8 @@ Before any destructive operation, state: (1) what changes, (2) where
 
 ## Tooling / hooks
 
+`agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
+
 The generated `.claude/settings.local.json` enforces safety at the tool-call layer via Claude Code hooks:
 
 - **PreToolUse `Bash`** — a shell guard runs before every Bash invocation and blocks commands matching the destructive-pattern list (`rm -rf`, `git push --force`, `git reset --hard`, etc.). Exit 2 = blocked with refusal message; exit 0 = allowed.
