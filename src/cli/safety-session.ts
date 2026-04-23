@@ -6,8 +6,8 @@ export async function withSafetySession<T>(
   flags: SafetyFlags,
   fn: () => Promise<T>,
 ): Promise<T> {
-  applySafetyFlags(flags);
   try {
+    applySafetyFlags(flags);
     return await fn();
   } finally {
     resetWriteSession();

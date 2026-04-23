@@ -139,7 +139,7 @@ export function mergeJson({ existing, incoming, path }: { existing: string; inco
   } else if (Array.isArray(existingParsed) && Array.isArray(incomingParsed)) {
     merged = mergeArrays(existingParsed as JsonArray, incomingParsed as JsonArray);
   } else {
-    // Scalar top-level: user wins (existing), unless incoming is of different shape
+    // Scalar or mismatched top-level types: existing wins.
     merged = existingParsed;
   }
 

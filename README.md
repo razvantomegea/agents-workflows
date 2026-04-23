@@ -35,7 +35,7 @@ The CLI will:
 
 Running `init` or `update` on a project that already has generated files is safe. Before writing any file that already exists, the CLI pauses and asks what to do:
 
-```
+```text
 AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 ```
 
@@ -55,7 +55,7 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 |---|---|
 | `--yes` | Non-interactive: overwrite every conflicting file (equivalent to picking `[a]ll` up front). |
 | `--no-prompt` | Non-interactive: skip every conflicting file (equivalent to `[s]kip-all` up front). |
-| `--merge-strategy=<keep\|overwrite\|merge>` | Default action applied automatically to every conflict without prompting. |
+| `--merge-strategy=<keep&#124;overwrite&#124;merge>` | Default action applied automatically to every conflict without prompting. |
 
 ### Merge support
 

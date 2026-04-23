@@ -8,7 +8,7 @@ import {
 } from '../../src/generator/write-file.js';
 import type { MergeFunction } from '../../src/generator/write-file.js';
 import { logger } from '../../src/utils/index.js';
-import { makePrompt, createTempDir } from './write-file-helpers.js';
+import { makePrompt, restorePrompt, createTempDir } from './write-file-helpers.js';
 
 describe('writeFileSafe — session overrides and special cases', () => {
   let tmpDir: string;
@@ -21,6 +21,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
   });
 
   afterEach(async () => {
+    restorePrompt();
     await rm(tmpDir, { recursive: true, force: true });
     warnSpy.mockRestore();
   });
@@ -107,21 +108,20 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await expect(readFile(path, 'utf-8')).resolves.toBe('same+extra+same');
   });
 
-  it('S6: stickyAll with merge callback invokes merge and returns merged', async () => {
+  it('S6: stickyAll overwrites even when a merge callback is provided', async () => {
     makePrompt('n');
     configureWriteSession({ stickyAll: true });
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'base', 'utf-8');
 
-    const mergeFn: MergeFunction = jest.fn(
-      ({ existing, incoming }: { existing: string; incoming: string; path: string }) =>
-        `${existing}|${incoming}`,
-    ) as MergeFunction;
+    const mergeFn = jest.fn<MergeFunction>(
+      ({ existing, incoming }) => `${existing}|${incoming}`,
+    );
     const result = await writeFileSafe({ path, content: 'patch', merge: mergeFn });
 
-    expect(result).toEqual({ status: 'merged', path });
-    expect(mergeFn).toHaveBeenCalledTimes(1);
-    await expect(readFile(path, 'utf-8')).resolves.toBe('base|patch');
+    expect(result).toEqual({ status: 'written', path });
+    expect(mergeFn).not.toHaveBeenCalled();
+    await expect(readFile(path, 'utf-8')).resolves.toBe('patch');
   });
 
   it('resetWriteSession clears sticky state so next call prompts again', async () => {

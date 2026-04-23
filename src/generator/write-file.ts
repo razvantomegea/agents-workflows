@@ -1,8 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { fileExists } from '../utils/index.js';
-import { renderUnifiedDiff } from '../utils/index.js';
-import { logger } from '../utils/index.js';
+import { fileExists, renderUnifiedDiff, logger } from '../utils/index.js';
 
 export type WriteFileStatus = 'written' | 'skipped' | 'merged' | 'unchanged';
 export type MergeStrategy = 'keep' | 'overwrite' | 'merge';
@@ -111,11 +109,6 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   }
 
   if (session.stickyAll) {
-    if (merge != null) {
-      const merged = await merge({ existing, incoming: content, path });
-      await performWrite(path, merged);
-      return { status: 'merged', path };
-    }
     await performWrite(path, content);
     return { status: 'written', path };
   }
@@ -129,11 +122,6 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   }
 
   if (session.override === 'overwrite') {
-    if (merge != null) {
-      const merged = await merge({ existing, incoming: content, path });
-      await performWrite(path, merged);
-      return { status: 'merged', path };
-    }
     await performWrite(path, content);
     return { status: 'written', path };
   }
@@ -155,12 +143,6 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   const answer = await promptFn({ path: label, canMerge: merge != null });
 
   if (answer === 'a') {
-    if (merge != null) {
-      const merged = await merge({ existing, incoming: content, path });
-      await performWrite(path, merged);
-      session = { ...session, stickyAll: true };
-      return { status: 'merged', path };
-    }
     await performWrite(path, content);
     session = { ...session, stickyAll: true };
     return { status: 'written', path };
