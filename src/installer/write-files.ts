@@ -1,18 +1,17 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, dirname } from 'node:path';
-import { confirm } from '@inquirer/prompts';
+import { join } from 'node:path';
 import type { GeneratedFile } from '../generator/types.js';
+import { writeFileSafe, _setPromptFn, _restoreDefaultPromptFn } from '../generator/write-file.js';
+import type { WriteFileResult, PromptFn, PromptAnswer } from '../generator/write-file.js';
 import { logger } from '../utils/logger.js';
-import { fileExists } from '../utils/file-exists.js';
 
 export interface WriteGeneratedFilesOptions {
-  confirmMarkdownOverwrite?: boolean;
   confirmOverwrite?: (path: string) => Promise<boolean>;
 }
 
 export interface WriteGeneratedFilesResult {
   writtenPaths: string[];
   skippedPaths: string[];
+  mergedPaths: string[];
 }
 
 export async function writeGeneratedFiles(
@@ -22,47 +21,47 @@ export async function writeGeneratedFiles(
 ): Promise<WriteGeneratedFilesResult> {
   const writtenPaths: string[] = [];
   const skippedPaths: string[] = [];
+  const mergedPaths: string[] = [];
 
-  for (const file of files) {
-    const fullPath = join(projectRoot, file.path);
-    if (!(await shouldWriteFile(fullPath, file, options))) {
-      skippedPaths.push(file.path);
-      logger.warn(`  skipped ${file.path}`);
-      continue;
-    }
-
-    await mkdir(dirname(fullPath), { recursive: true });
-    await writeFile(fullPath, file.content, 'utf-8');
-    writtenPaths.push(file.path);
-    logger.file(file.path);
+  const promptAdapter = buildPromptAdapter(options);
+  if (promptAdapter != null) {
+    _setPromptFn(promptAdapter);
   }
 
-  return { writtenPaths, skippedPaths };
+  try {
+    for (const file of files) {
+      const fullPath = join(projectRoot, file.path);
+      const result: WriteFileResult = await writeFileSafe({
+        path: fullPath,
+        content: file.content,
+        displayPath: file.path,
+      });
+
+      if (result.status === 'written') {
+        writtenPaths.push(file.path);
+        logger.file(file.path);
+      } else if (result.status === 'merged') {
+        mergedPaths.push(file.path);
+        logger.file(file.path);
+      } else if (result.status === 'skipped') {
+        skippedPaths.push(file.path);
+        logger.warn(`  skipped ${file.path}`);
+      }
+    }
+  } finally {
+    if (promptAdapter != null) {
+      _restoreDefaultPromptFn();
+    }
+  }
+
+  return { writtenPaths, skippedPaths, mergedPaths };
 }
 
-async function shouldWriteFile(
-  fullPath: string,
-  file: GeneratedFile,
-  options: WriteGeneratedFilesOptions,
-): Promise<boolean> {
-  if (!options.confirmMarkdownOverwrite || !file.path.endsWith('.md')) {
-    return true;
-  }
-
-  if (!(await fileExists(fullPath))) {
-    return true;
-  }
-
-  const existing = await readFile(fullPath, 'utf-8');
-  if (existing === file.content) {
-    return false;
-  }
-
-  const ask = options.confirmOverwrite ?? ((path: string): Promise<boolean> =>
-    confirm({
-      message: `Replace existing Markdown file ${path}?`,
-      default: false,
-    }));
-
-  return ask(file.path);
+function buildPromptAdapter(options: WriteGeneratedFilesOptions): PromptFn | null {
+  if (options.confirmOverwrite == null) return null;
+  const confirmOverwrite = options.confirmOverwrite;
+  return async ({ path }: { path: string; canMerge: boolean }): Promise<PromptAnswer> => {
+    const result = await confirmOverwrite(path);
+    return result ? 'y' : 'n';
+  };
 }

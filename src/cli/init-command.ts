@@ -1,19 +1,25 @@
-import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import { logger } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
 import { askInstallScope, type InstallScope } from '../prompt/install-scope.js';
-import { generateAll } from '../generator/index.js';
+import { generateAll, writeFileSafe } from '../generator/index.js';
+import { withSafetySession } from './safety-session.js';
+import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
+import { printDetected } from './print-detected.js';
+import { printDetectedAiTools } from './print-detected-ai-tools.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { StackConfig } from '../schema/stack-config.js';
-import type { DetectedAiAgent, DetectedStack } from '../detector/types.js';
+import type { DetectedStack } from '../detector/types.js';
+import type { MergeStrategy } from '../generator/index.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
   yes?: boolean;
+  noPrompt?: boolean;
+  mergeStrategy?: MergeStrategy;
 }
 
 export async function initCommand(
@@ -32,12 +38,22 @@ export async function initCommand(
   const scope = await resolveInstallScope(detected, options);
 
   if (scope === 'root') {
-    await installSinglePackage(projectRoot, detected, options, rootMonorepoConfig(detected));
+    await installSinglePackage({
+      projectRoot,
+      detected,
+      options,
+      monorepoOverride: rootMonorepoConfig(detected),
+    });
     return;
   }
 
   if (scope === 'both') {
-    await installSinglePackage(projectRoot, detected, options, rootMonorepoConfig(detected));
+    await installSinglePackage({
+      projectRoot,
+      detected,
+      options,
+      monorepoOverride: rootMonorepoConfig(detected),
+    });
   }
 
   await installWorkspaces(projectRoot, detected, options);
@@ -47,7 +63,7 @@ async function resolveInstallScope(
   detected: DetectedStack,
   options: InitCommandOptions,
 ): Promise<InstallScope> {
-  if (options.config || options.yes) return 'root';
+  if (options.config || options.yes || options.noPrompt) return 'root';
   logger.blank();
   return askInstallScope(detected.monorepo);
 }
@@ -72,16 +88,28 @@ async function installWorkspaces(
     logger.heading(`Workspace: ${workspace}`);
     const workspaceDetected = await detectStack(workspacePath);
     printDetected(workspaceDetected);
-    await installSinglePackage(workspacePath, workspaceDetected, options, null);
+    await installSinglePackage({
+      projectRoot: workspacePath,
+      detected: workspaceDetected,
+      options,
+      monorepoOverride: null,
+    });
   }
 }
 
-async function installSinglePackage(
-  projectRoot: string,
-  detected: DetectedStack,
-  options: InitCommandOptions,
-  monorepoOverride: StackConfig['monorepo'],
-): Promise<void> {
+interface InstallSinglePackageParams {
+  projectRoot: string;
+  detected: DetectedStack;
+  options: InitCommandOptions;
+  monorepoOverride: StackConfig['monorepo'];
+}
+
+async function installSinglePackage({
+  projectRoot,
+  detected,
+  options,
+  monorepoOverride,
+}: InstallSinglePackageParams): Promise<void> {
   logger.blank();
   const baseConfig = options.config ?? await runPromptFlow(detected, projectRoot, { yes: options.yes });
   const config: StackConfig = { ...baseConfig, monorepo: monorepoOverride ?? baseConfig.monorepo };
@@ -101,15 +129,25 @@ async function installSinglePackage(
   };
 
   const manifestPath = join(projectRoot, '.agents-workflows.json');
+  const safetyFlags = parseSafetyFlags({
+    yes: options.yes,
+    noPrompt: options.noPrompt,
+    mergeStrategy: options.mergeStrategy,
+  });
+
   try {
-    logger.info('Writing files:');
-    const writeResult = await writeGeneratedFiles(projectRoot, files, {
-      confirmMarkdownOverwrite: true,
+    await withSafetySession(safetyFlags, async () => {
+      logger.info('Writing files:');
+      const writeResult = await writeGeneratedFiles(projectRoot, files);
+      await writeFileSafe({
+        path: manifestPath,
+        content: JSON.stringify(manifest, null, 2),
+        displayPath: '.agents-workflows.json',
+      });
+      if (writeResult.skippedPaths.length > 0) {
+        logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+      }
     });
-    await writeFile(manifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
-    if (writeResult.skippedPaths.length > 0) {
-      logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
-    }
   } catch (error) {
     await restoreBackupFiles(projectRoot, backup);
     throw error;
@@ -127,40 +165,4 @@ async function installSinglePackage(
 
 function hashConfig(json: string): string {
   return createHash('sha256').update(json).digest('hex').slice(0, 16);
-}
-
-function printDetected(detected: DetectedStack): void {
-  const entries = [
-    ['Language', detected.language],
-    ['Framework', detected.framework],
-    ['UI Library', detected.uiLibrary],
-    ['State', detected.stateManagement],
-    ['Database', detected.database],
-    ['Testing', detected.testFramework],
-    ['E2E', detected.e2eFramework],
-    ['Linter', detected.linter],
-    ['Formatter', detected.formatter],
-    ['Pkg Manager', detected.packageManager],
-    ['Docs', detected.docsFile],
-  ] as const;
-
-  for (const [label, detection] of entries) {
-    if (detection.value) {
-      logger.label(label, `${detection.value} (${Math.round(detection.confidence * 100)}%)`);
-    }
-  }
-
-  if (detected.monorepo.isMonorepo) {
-    logger.label('Monorepo', `${detected.monorepo.tool ?? 'unknown'} (${detected.monorepo.workspaces.length} workspace(s))`);
-  }
-}
-
-function printDetectedAiTools(agents: readonly DetectedAiAgent[]): void {
-  const names = agents
-    .filter((agent) => agent.cliAvailable)
-    .map((agent) => agent.name);
-
-  if (names.length > 0) {
-    logger.info(`Detected AI tools on PATH: ${names.join(', ')}`);
-  }
 }

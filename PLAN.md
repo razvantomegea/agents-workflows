@@ -1,221 +1,209 @@
-# Plan - Epic 6: Extended Code Standards
-_Branch: `feature/epic-6-extended-standards` | Date: 2026-04-22_
+# Plan - Epic 7: CLI Generator Safe File Handling
+_Branch: `feature/epic-7-safe-file-handling` | Date: 2026-04-23_
 
 ## Context
 
-Epic 6 extends the `agents-workflows` template library with seven new partials (supply-chain, observability, design-principles, refactoring, performance, deployment, concurrency), one MADR ADR seed, one GitHub release workflow, one standalone `SUPPLY_CHAIN.md` governance doc, and expanded Tooling + Deployment sections in `AGENTS.md.ejs`. Covers PRD sections §2.3, §2.7, §2.9, §2.10, §2.11, §2.14, §2.15, §2.16, §2.17 (tasks E6.T1–E6.T9, compressed to 8 plan tasks per workflow cap).
+Epic 7 delivers data-preserving re-runs of `agents-workflows init` / `update`. Today the CLI uses a boolean Markdown-only prompt via `writeGeneratedFiles` that can still blow away hand-edited JSON configs and prompts once per file with no diff preview, no yes-to-all / skip-all, no merge path. This epic funnels every generator write through a single `writeFileSafe` helper that shows a colored diff, offers `[y]/[n]/[a]/[s]/[m]`, and supports structured Markdown and JSON merges, plus CI flags (`--yes`, `--no-prompt`, `--merge-strategy`). Goal: a re-run of `init` never destroys user customizations, matching PRD §1.4.
 
-Key pipeline fact discovered during exploration: EJS partials referenced via `<%- include('../partials/xxx.md.ejs') %>` render automatically when the host agent template is generated. **Standalone output files** (new `SUPPLY_CHAIN.md`, `.github/workflows/release.yml`, `docs/decisions/0001-adr-template.md`) do NOT auto-emit — they must be wired into `src/generator/generate-root-config.ts` via explicit `renderTemplate(...)` + `files.push({ path, content })` calls.
+**PRD vs code note.** PRD lines 1732 and 1752 say the `writeFileSafe` helper lives at `src/generator/write-file.ts` and must replace every `fs.write*` call in `src/generator/`. The actual generator (`src/generator/*`) currently emits an in-memory `GeneratedFile[]` and performs zero filesystem writes — all writes happen in `src/installer/write-files.ts` and the two CLI commands (`src/cli/init-command.ts`, `src/cli/update-command.ts`). This plan follows the PRD's exact file path (`src/generator/write-file.ts`) for the new helper but refactors the real write sites across `installer/` and `cli/` so no silent overwrite path remains. Raised here per the "flag the mismatch" rule.
 
 ## Pre-implementation checklist
 
-- [ ] Read `PRD.md` lines 884–918, 1015–1042, 1071–1101, 1103–1127, 1129–1151, 1213–1239, 1241–1266, 1268–1295, 1297–1322, 1677–1714
-- [ ] Read `CLAUDE.md` (files ≤200 lines, no `any`, DRY, Jest only for real logic, sub-agent routing)
-- [ ] Grepped `src/templates/` for duplicates — confirmed: only brief one-line mentions exist in `review-checklist.md.ejs` (SBOM, observability, MADR, Ousterhout, Metz) and `security-reviewer.md.ejs` (SBOM bullet). Full partials are safe to add without content collision; cross-reference in notes rather than copy.
-- [ ] Confirmed EJS include syntax: `<%- include('../partials/<name>.md.ejs') %>` (verified in `implementer.md.ejs` L11–L36, `architect.md.ejs` L11–L19, `code-optimizer.md.ejs` L11–L21). No context object is required for static partials — only partials that need data (e.g. `stack-context`, `code-style`) pass one.
-- [ ] Pipeline impact understood: new partials auto-render when included by an agent template; new standalone files (`SUPPLY_CHAIN.md`, `release.yml`, `0001-adr-template.md`) must be explicitly added to `generateRootConfig` in `src/generator/generate-root-config.ts`.
-- [ ] Verified no type duplication — all new `.ts` changes reuse existing `GeneratedFile` / `GeneratorContext` types from `src/generator/types.ts`.
-- [ ] Confirmed no magic numbers — budget values in performance partial (170KB, 2.5s, 200ms, 0.1) are literal PRD values, documented inline.
+- [ ] Confirm branch is `feature/epic-7-safe-file-handling` and tree is clean (`git status`)
+- [ ] Read `PRD.md` lines 1718-1759 (Epic 7) and §1.4 destructive-ops philosophy
+- [ ] Grepped codebase for existing equivalents (components, hooks, utils, types, constants)
+- [ ] Confirmed `@inquirer/prompts@^7`, `diff@^7`, `chalk@^5` already in `package.json`; verify `remark` / `remark-parse` / `remark-stringify` / `unified` need to be added for T3
+- [ ] Grep every existing write site: `writeFile`, `writeFileSync`, `outputFile`, `fs.promises.writeFile` under `src/` — inventory: `src/installer/write-files.ts:35`, `src/cli/init-command.ts:109`, `src/cli/update-command.ts:106`
+- [ ] Confirm no existing diff helper beyond `src/installer/diff-files.ts` (it wraps `createTwoFilesPatch`) — T2 must either extend or share logic, not reimplement
+- [ ] Verified no type duplication - shared types imported, not redeclared
+- [ ] Confirmed no magic numbers - all values reference design tokens or named constants (80-line diff cap lives as `UPPER_SNAKE_CASE` constant in `src/utils/diff.ts`)
+
+## Dependency ordering
+
+- **T2** (`diff.ts`) ships first — it is a leaf, no dependencies on the others, but T1 consumes it for the preview step.
+- **T1** (`writeFileSafe` + refactor existing writes) depends on T2; it can start in parallel only if it imports a pre-agreed `renderUnifiedDiff` signature from T2, else sequence T2 → T1.
+- **T3** (Markdown merge) and **T4** (JSON merge) both depend on T1 because `writeFileSafe` owns the `merge?: (existing, incoming) => string | Promise<string>` contract; they can run in parallel with each other once T1's interface is defined.
+- **T5** (CLI flags) depends on T1 — it wires `--yes` / `--no-prompt` / `--merge-strategy` into the shared module-level state that T1 introduces.
+- **T6** (docs) has no code dependency and can run in parallel with any of T1–T5.
 
 ## Tasks
 
-### Task 1 - Supply-chain partial + standalone doc + release workflow [SCHEMA] [LOGIC]
-**Files**:
-- `src/templates/partials/supply-chain.md.ejs` (new)
-- `src/templates/governance/SUPPLY_CHAIN.md.ejs` (new)
-- `src/templates/ci/release.yml.ejs` (new, creates `src/templates/ci/` dir)
-- `src/templates/agents/security-reviewer.md.ejs` (edit — add `<%- include('../partials/supply-chain.md.ejs') %>`)
-- `src/generator/generate-root-config.ts` (edit — emit `SUPPLY_CHAIN.md` and `.github/workflows/release.yml`)
+### Task 1 - E7.T1 `writeFileSafe` helper + refactor every write site `[LOGIC][TEST]`
 
-**Input**: PRD §2.3 paste-ready snippet (lines 894–918). E6.T1 acceptance: workflow pins `actions/*` by full 40-char commit SHA; workflow declares default-deny `permissions: {}` at top level and grants only minimum per-job scopes (`contents: read`, `id-token: write` for cosign OIDC).
+**Files**
+- `src/generator/write-file.ts` (new)
+- `src/generator/write-file-prompt.ts` (new, split if `write-file.ts` approaches 200 lines — keeps prompt UI isolated from core write logic)
+- `src/generator/index.ts` (add barrel export for `writeFileSafe`, `MergeStrategy`, `WriteFileResult`)
+- `src/installer/write-files.ts` (refactor: `writeGeneratedFiles` loop replaces its `writeFile` + `shouldWriteFile` branch with a single `writeFileSafe` call per file)
+- `src/cli/init-command.ts` (refactor line 109: manifest `writeFile` now goes through `writeFileSafe`)
+- `src/cli/update-command.ts` (refactor line 106: manifest `writeFile` now goes through `writeFileSafe`)
+- `tests/generator/write-file.test.ts` (new, colocated with generator test folder per existing `tests/generator/*` convention)
 
-**Output**:
-- Partial containing the PRD §2.3 "Supply-chain rules" and "For published artifacts" blocks (CycloneDX via Syft, cosign keyless, SLSA L2, EU CRA readiness, slopsquatting defense).
-- `SUPPLY_CHAIN.md` rendered at repo root of the target project (or `docs/SUPPLY_CHAIN.md` — match existing `docs/GOVERNANCE.md` precedent in `generate-root-config.ts` L33).
-- `release.yml` rendered at `.github/workflows/release.yml` of target project, gated behind `config.governance.enabled` (follow existing PR template + governance gating pattern L27).
+**Input**
+Current state: three direct `fs.writeFile` call-sites plus the older boolean `confirmMarkdownOverwrite` prompt. T2's `renderUnifiedDiff` is available.
 
-**Notes**:
-- File-size gotcha: partial must stay ≤200 lines; the full PRD snippet is ~25 lines of rules, safely under limit. `SUPPLY_CHAIN.md.ejs` reuses the partial via `<%- include('../partials/supply-chain.md.ejs') %>` to keep DRY — do NOT copy content into both files.
-- EJS `actions/checkout@<sha>` strings must be literal; do not accidentally templatize them.
-- The existing `security-reviewer.md.ejs` L83 "Dependency and supply chain" section stays — the new partial augments it with build-time signing/SBOM rules. Verify no duplicate bullet phrasing.
-- Rendered `release.yml` must be valid YAML after EJS render (no stray `<%` leaking). Use `<%- ... %>` only for project-name interpolation; keep the workflow body verbatim.
-- DRY risk: the `SUPPLY_CHAIN.md.ejs` governance doc is a thin wrapper around the partial — that is intentional reuse, not duplication.
-- Emit the governance file only when `config.governance.enabled === true` (match GOVERNANCE.md behavior). `release.yml` also governance-gated.
+**Output**
+A single `writeFileSafe({ path, content, merge?, projectRoot })` function returning `{ status: 'written' | 'skipped' | 'merged' | 'unchanged' }`. Uses `@inquirer/prompts` `select` (or `expand`) for the 5-choice menu `[y]es / [n]o / [a]ll / [s]kip-all / [m]erge` (`m` only offered if `merge` callback supplied). Module-level session state tracks sticky `all` and `skip-all` plus an override slot for CLI flags. If the file doesn't exist, write without prompting. If content is byte-identical, return `unchanged` without prompting. Uses `renderUnifiedDiff` before prompting. All three previous write sites now import from this helper; no direct `writeFile` / `writeFileSync` remains anywhere under `src/generator/`, `src/installer/`, or `src/cli/` (backup restore path in `src/installer/backup.ts` uses `copyFile` and stays).
 
----
+**Notes**
+- DRY: delete the now-dead `shouldWriteFile` helper in `src/installer/write-files.ts`; remove `confirmMarkdownOverwrite` / `confirmOverwrite` options or keep them as thin adapters that delegate to `writeFileSafe` for backward-compat with `tests/installer/write-files.test.ts` (prefer updating the test).
+- DRY: re-use `src/utils/file-exists.ts` and `src/installer/diff-files.ts` logic; if preview rendering overlaps with `diffFiles`, call `renderUnifiedDiff` in both instead of duplicating.
+- 200-line cap: split prompt rendering into `write-file-prompt.ts` if needed. Hard rule.
+- Type safety: explicit `WriteFileStatus` union type exported from the module; no `any`; session state typed as `{ stickyAll: boolean; stickySkip: boolean; override: MergeStrategy | null }`.
+- All param objects — `writeFileSafe` takes exactly one options object (project rule: >2 params → object).
+- Jest: cover each prompt answer (`y`, `n`, `a`, `s`, `m`), unchanged-file short-circuit, non-existent-file path, sticky propagation across two calls, and module-state reset helper for test isolation.
+- Mock `@inquirer/prompts` via `jest.unstable_mockModule` (repo uses ESM + experimental-vm-modules).
 
-### Task 2 - Observability partial [SCHEMA] [PARALLEL]
-**Files**:
-- `src/templates/partials/observability.md.ejs` (new)
-- `src/templates/agents/implementer.md.ejs` (edit — add include after `error-handling-code.md.ejs` L35)
-- `src/templates/agents/code-reviewer.md.ejs` (edit — add include after `error-handling-code.md.ejs` L19)
+### Task 2 - E7.T2 Colored unified-diff preview helper `[LOGIC][TEST]` `[PARALLEL]`
 
-**Input**: PRD §2.7 paste-ready snippet (lines 1026–1042). E6.T2 scope: OTel SDK + OTLP, W3C `traceparent`, SLIs/SLOs, structured logs, PII redaction, low-cardinality labels.
+**Files**
+- `src/utils/diff.ts` (new)
+- `src/utils/index.ts` (add barrel export for `renderUnifiedDiff`, `DIFF_LINE_CAP`)
+- `tests/utils/diff.test.ts` (new, mirrors `tests/utils/convert-to-skill.test.ts`)
 
-**Output**: Partial rendered in implementer + code-reviewer outputs. Includes: structured-log contract, log levels, PII redaction at logger (allowlist), OTel instrumentation boundaries (HTTP/RPC/DB), SLIs/SLOs per service, label-cardinality rules, optional continuous profiling.
+**Input**
+Existing dependency `diff@^7` (`createTwoFilesPatch`) and `chalk@^5`. Existing `src/installer/diff-files.ts` already uses `createTwoFilesPatch` — confirm before adding a second caller.
 
-**Notes**:
-- `review-checklist.md.ejs` L57–L59 already has a brief "Observability" checklist row mentioning OpenTelemetry — the new partial expands it, does not replace it. Cross-reference in code-reviewer: the checklist row stays for review gating; the partial gives the full standard.
-- PARALLEL with Task 3, 4, 5, 7 — all edit disjoint partials + disjoint agent include lines.
-- Keep file ≤70 lines (PRD snippet is ~17 lines of bullets).
+**Output**
+Pure function `renderUnifiedDiff({ path, before, after, lineCap? })` returning an ANSI-colored unified-diff string. Green for `+`, red for `-`, dim for hunk headers. Cap at `DIFF_LINE_CAP = 80` lines with footer `… (N more)`. Empty string (not a no-op throw) when `before === after`. File stays under 40 lines per PRD. Module constant `DIFF_LINE_CAP` is UPPER_SNAKE_CASE.
 
----
+**Notes**
+- DRY: export a `computeUnifiedPatch(before, after, path)` sub-function that `src/installer/diff-files.ts` can also consume in a follow-up (not required by this epic but the shape must not block it). Do not import chalk inside `computeUnifiedPatch` — keep color logic separate so `diff-files.ts` can adopt the plain-text path.
+- Type safety: explicit `RenderDiffInput` interface exported; no `any`; `lineCap?: number` optional with default constant.
+- 200-line cap: file must stay under 40 lines per PRD acceptance — enforce.
+- Jest: cover (a) cap truncation with `… (N more)` footer, (b) no-diff edge case returns `''`, (c) ANSI codes present when color enabled, (d) multi-hunk output.
 
-### Task 3 - Design-principles partial [SCHEMA] [PARALLEL]
-**Files**:
-- `src/templates/partials/design-principles.md.ejs` (new)
-- `src/templates/agents/architect.md.ejs` (edit — add include after `subagent-delegation.md.ejs` L19, before `## Planning protocol`)
-- `src/templates/agents/code-reviewer.md.ejs` (edit — add include after the Task 2 observability include)
+### Task 3 - E7.T3 Markdown-aware merge `[LOGIC][TEST]`
 
-**Input**: PRD §2.9 paste-ready snippet (lines 1083–1101). Content: composition over inheritance, deep modules (Ousterhout), duplication > wrong abstraction (Metz, Rule of Three), locality of behavior (Gross), functional core/imperative shell (Bernhardt), SOLID-as-vocabulary, AHA, data-oriented hot paths.
+**Files**
+- `src/generator/merge-markdown.ts` (new)
+- `src/generator/index.ts` (export `mergeMarkdown`)
+- `tests/generator/merge-markdown.test.ts` (new; PRD says `tests/merge-markdown.test.ts` but project convention is `tests/generator/*.test.ts` — colocate there)
+- `package.json` (add `remark`, `remark-parse`, `remark-stringify`, `unified`, `mdast-util-*` types as needed — only if tree-walking mdast directly)
 
-**Output**: Partial rendered in architect + code-reviewer. Gives both agents the same 2025–2026 design vocabulary.
+**Input**
+T1's interface is stable. AGENTS.md template already uses `<!-- agents-workflows:managed-start -->` / `-end -->` block markers — decide whether Epic 7 keeps block markers or shifts to per-heading `<!-- agents-workflows:managed -->` tags as PRD 1743 specifies. Plan per PRD: per-heading managed tag.
 
-**Notes**:
-- `review-checklist.md.ejs` L43–L45 already has "Rule of Three" and "Ousterhout" one-liners; keep them (they drive checklist gating) and let the partial provide the full rationale. Document this split in the partial header comment.
-- PARALLEL with Tasks 2, 4, 5, 7 (disjoint edits).
-- Ordering note: include `design-principles` in `code-reviewer.md.ejs` AFTER `observability.md.ejs` to keep Task 2 and Task 3 edits additive with clear insertion points. If parallelized, merge conflicts at the same line may occur — if running in parallel, one task must apply first and the other rebases on the resulting file.
+**Output**
+`mergeMarkdown({ existing, incoming })` returns a merged Markdown string. Parse both with `remark`. Key by top-level heading text (`#`, `##`). Rules:
+- User heading with no managed tag → user body wins (preserved verbatim).
+- Heading whose preceding HTML comment contains `agents-workflows:managed` → generator body wins.
+- New managed headings not present in existing → appended at end of document.
+- Idempotent on unchanged input (running twice = same output).
 
----
+**Notes**
+- DRY: if the existing AGENTS.md template's block-marker pattern is retained elsewhere, document the two-marker systems coexist; do not duplicate parsing logic between template rendering and merge.
+- Type safety: use `mdast` types from `@types/mdast`; no `any` on AST nodes; define a local `MarkdownSection` interface (heading text + node range).
+- 200-line cap: if AST walk grows, extract `find-managed-sections.ts` helper — Rule of Three before extracting.
+- Install check: verify `remark`, `remark-parse`, `remark-stringify`, `unified` are deps; if absent, add them in this task's deliverable and note version pins (`remark@^15`, `unified@^11`).
+- Jest: four cases per PRD — (a) idempotency on unchanged input, (b) user's custom non-managed heading preserved, (c) new managed heading appended, (d) managed-tagged heading overwritten by generator body. Plus edge cases: empty input, missing top-level heading, heading-only doc.
 
-### Task 4 - Refactoring + Performance partials [SCHEMA]
-**Files**:
-- `src/templates/partials/refactoring.md.ejs` (new)
-- `src/templates/partials/performance.md.ejs` (new)
-- `src/templates/agents/code-optimizer.md.ejs` (edit — add both includes after `error-handling-self.md.ejs` L21)
-- `src/templates/agents/ui-designer.md.ejs` (edit — add `performance.md.ejs` include after `accessibility.md.ejs` L19)
+### Task 4 - E7.T4 JSON-aware merge `[LOGIC][TEST]` `[PARALLEL]`
 
-**Input**:
-- PRD §2.10 snippet (lines 1115–1127): behavior-preserving transforms, preparatory refactoring (Beck), strangler fig, branch-by-abstraction, tagged TODOs, Fowler debt quadrant, Boy Scout Rule.
-- PRD §2.11 snippet (lines 1141–1151): profile before optimize, Big-O flagging, web performance budget (JS ≤170KB, LCP ≤2.5s, INP ≤200ms, CLS ≤0.1 at p75), CI budget enforcement, hot-path data-oriented exception.
+**Files**
+- `src/generator/merge-json.ts` (new)
+- `src/generator/index.ts` (export `mergeJson`)
+- `tests/generator/merge-json.test.ts` (new; PRD says `tests/merge-json.test.ts` — colocate under `tests/generator/` per project convention)
 
-**Output**: Two separate partials. `refactoring.md.ejs` → code-optimizer only. `performance.md.ejs` → code-optimizer + ui-designer.
+**Input**
+T1 interface stable. Target files: `.claude/settings.local.json` (has `permissions.allow[]`, `permissions.deny[]`, `hooks{}`) and any Codex config JSON.
 
-**Notes**:
-- E6.T5 acceptance: web budget bullet **only emitted when UI framework detected** — wrap that bullet in `<% if (isFrontend || isMobile) { %> ... <% } %>` using the existing `isFrontend`/`isMobile` context flags from `build-context.ts` L14–L17. Verify flag availability in `GeneratorContext` (types.ts L36–L38).
-- Combines E6.T4 + E6.T5 into one plan task (both edit `code-optimizer.md.ejs` and are tightly related) — saves one task slot. Apply both include lines in a single edit.
-- DRY risk: performance partial's "profile before optimizing" bullet overlaps in spirit with code-optimizer's existing "Measure or reason about performance impact" line in `code-optimizer.md.ejs` L27. Keep the partial authoritative; the existing line stays as process guidance. Document the split.
-- Conditional rendering requires the partial's `include(...)` call in `ui-designer.md.ejs` to pass `isFrontend` / `isMobile` explicitly OR rely on top-level context — verify by checking how `accessibility.md.ejs` accesses context (it uses none — top-level context is implicitly available). So no extra data object needed on include.
+**Output**
+`mergeJson({ existing, incoming })` → merged JSON string (stable key order, 2-space indent). Rules:
+- Objects: deep-merge key-by-key. User wins on scalar conflicts unless the key is listed in a `MANAGED_JSON_KEYS` constant (start empty, documented extension point).
+- Arrays of primitives: union, de-duplicated, sorted for deterministic diffs.
+- Arrays of objects: concatenate unique-by-JSON-stringify (conservative; covers hook entries).
+- Stable key order via `Object.keys(...).sort()` when serializing.
 
----
+**Notes**
+- DRY: `MANAGED_JSON_KEYS` lives in `src/generator/merge-json.ts` as UPPER_SNAKE_CASE const; if T3 grows an equivalent `MANAGED_MD_TAG` pattern, both constants live in their respective merge modules (no cross-module coupling).
+- Type safety: accept `Record<string, unknown>` / `unknown[]` — explicit recursive function signatures, no `any`. Export a `JsonValue` discriminated type if one doesn't already exist (grep `src/schema/` first).
+- 200-line cap: if deep-merge + de-dup grow past ~120 lines, extract `union-arrays.ts` helper.
+- Jest: (a) user-added allow entry preserved on re-run with new generator deny rules applied, (b) stable key order across runs (snapshot-safe), (c) nested object deep-merge, (d) scalar conflict with user winning, (e) idempotency.
 
-### Task 5 - Concurrency partial [SCHEMA]
-**Files**:
-- `src/templates/partials/concurrency.md.ejs` (new)
-- `src/templates/agents/implementer.md.ejs` (edit — add include after Task 2's observability include, before `## When invoked` L38)
+### Task 5 - E7.T5 CLI flags `--yes`, `--no-prompt`, `--merge-strategy` `[API][LOGIC][TEST]`
 
-**Input**: PRD §2.17 snippet (lines 1309–1322): shared-nothing default, structured concurrency (TaskGroup / nursery / coroutineScope), cooperative cancellation, scoped deadlines, never-block-event-loop, bounded concurrency, consistent lock ordering, no-lock-across-await.
+**Files**
+- `src/cli/index.ts` (extend existing `commander` setup; do NOT create a new parser — `init` already has `-y, --yes`, keep that and add `--no-prompt`, `--merge-strategy`)
+- `src/cli/init-command.ts` (thread new options into `writeFileSafe` session state)
+- `src/cli/update-command.ts` (thread new options into `writeFileSafe` session state)
+- `src/generator/write-file.ts` (expose `configureWriteSession({ override, noPrompt })` setter consumed by CLI)
+- `tests/cli/flags.test.ts` (new; mirrors `tests/cli/list-command.test.ts` style)
 
-**Output**: Partial rendered in `implementer.md`. Single-language-agnostic file citing Python 3.11+ TaskGroup, Swift, Kotlin, Java 21, Trio/AnyIO, Go channels.
+**Input**
+T1 complete — `writeFileSafe` has a module-level session state.
 
-**Notes**:
-- NOT parallel with Task 2: both edit `implementer.md.ejs`. Sequence Task 2 first, then Task 5, so insertion anchors don't clash.
-- ≤30 lines expected.
+**Output**
+- `--yes` → session `stickyAll = true` (answer overwrite-all, non-interactive).
+- `--no-prompt` → session `stickySkip = true` (answer skip-all, non-interactive).
+- `--merge-strategy=<keep|overwrite|merge>` → sets `override` strategy (keep = skip, overwrite = write, merge = run merge callback; fall back to overwrite if no merge available).
+- Flags validate mutually: `--yes` + `--no-prompt` → exit non-zero with clear message. `--merge-strategy` must accept exactly the three values (zod enum or commander `choices`).
+- `agents-workflows --help` documents each flag.
+- Exit codes: 0 on success, non-zero on validation error.
 
----
+**Notes**
+- DRY: do NOT add a second CLI parser — extend the existing `commander` Command chain in `src/cli/index.ts`. The existing `init` already has `-y, --yes`; reuse that flag and add the new two to both `init` and `update` sub-commands (same option set, consider a helper `applySafetyFlags(command: Command)` to avoid copy-paste — extract only if Rule of Three triggers across `init` + `update` + any future subcommand).
+- Type safety: add a `SafetyFlags` interface in `src/cli/types.ts` or colocate in `src/cli/safety-flags.ts`; typed via zod enum for `merge-strategy`.
+- 200-line cap: `init-command.ts` is 167 lines today — adding flag plumbing risks overflow. Extract flag plumbing into a helper if `init-command.ts` crosses 190.
+- Jest: assert each flag short-circuits the prompt (spy on `@inquirer/prompts` — must not be called), assert `--yes` + `--no-prompt` exits non-zero, assert `--merge-strategy=keep` skips, `=overwrite` writes, `=merge` invokes merge callback and falls back when none provided.
 
-### Task 6 - ADR seed template + documentation guidance [SCHEMA] [LOGIC]
-**Files**:
-- `src/templates/docs/decisions/0001-adr-template.md.ejs` (new, creates `src/templates/docs/decisions/` dir)
-- `src/templates/partials/documentation.md.ejs` (new — PRD §2.14 architect snippet)
-- `src/templates/agents/architect.md.ejs` (edit — add `documentation.md.ejs` include after `design-principles.md.ejs` from Task 3)
-- `src/templates/agents/code-reviewer.md.ejs` (edit — add `documentation.md.ejs` include)
-- `src/generator/generate-root-config.ts` (edit — emit `docs/decisions/0001-adr-template.md` on init, gated on a sensible condition — see Notes)
+### Task 6 - E7.T6 README + AGENTS.md tooling note `[LOGIC]` `[PARALLEL]`
 
-**Input**:
-- PRD §2.14 (lines 1213–1239). MADR 4 fields: Context, Decision Drivers, Considered Options, Decision, Consequences. Diátaxis README structure. Comments-explain-why. C4 Levels 1–2.
-- E6.T6 acceptance: "MADR 4 template scaffolded on init."
+**Files**
+- `README.md` (new section "Re-running on an existing project" — add after "Quick start")
+- `src/templates/config/AGENTS.md.ejs` (insert one-liner under the existing `## Tooling / hooks` section, line 135)
 
-**Output**:
-- `docs/decisions/0001-adr-template.md` written to target project root.
-- Partial embedded in architect + code-reviewer outputs defining ADR/README/comment/diagram rules.
+**Input**
+Epic 7 surface area understood (the 5 prompt answers, the 3 flags, Markdown/JSON merge behavior + unsupported-format fallback).
 
-**Notes**:
-- Gating question for the ADR seed emit: PRD says "scaffolded on init" — safest gate is always emit. Alternative: gate on `config.governance.enabled` to match `GOVERNANCE.md` precedent. RECOMMEND: always emit, because MADR scaffolding is lightweight and has no coupling to governance toggle. Confirm with user if in doubt — but default to always-emit in implementation.
-- DRY split between partial and ADR template: the `.md.ejs` file is the **filled template skeleton** (headings + placeholder prose per MADR 4); the partial is the **rules for when/how to write ADRs**. No content overlap.
-- Ordering with Task 3: this task edits `architect.md.ejs` and `code-reviewer.md.ejs` at include lines that Task 3 also touches. Run Task 3 first, then Task 6 — NOT parallel with Task 3.
-- Naming: keep `documentation.md.ejs` (not `adr.md.ejs`) because partial covers ADR + README + comments + C4 diagrams collectively.
+**Output**
+- README section explains: the 5 prompt answers (`[y]/[n]/[a]/[s]/[m]`), the 3 CLI flags (`--yes`, `--no-prompt`, `--merge-strategy`), which formats support structured merge (Markdown, JSON) vs yes/no fallback (everything else).
+- AGENTS.md template gets a one-liner: "`agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default."
 
----
+**Notes**
+- DRY: the one-liner sources its wording from the README section — do not drift. If the same sentence appears again in a third doc later, extract to a shared partial (`src/templates/partials/no-destructive-writes.md.ejs`); not yet warranted (Rule of Three).
+- No code changes — docs + template only. Can run in parallel with T1–T5.
+- Verify the rendered AGENTS.md (via `pnpm test` on `tests/generator/epic-5-agents-md.test.ts`) still passes — check for snapshot diffs.
 
-### Task 7 - Tooling + Deployment partials + wiring into `AGENTS.md.ejs` [SCHEMA]
-**Files**:
-- `src/templates/partials/tooling.md.ejs` (new — PRD §2.15 snippet)
-- `src/templates/partials/deployment.md.ejs` (new — PRD §2.16 snippet)
-- `src/templates/config/AGENTS.md.ejs` (edit — add `<%- include('../partials/tooling.md.ejs') %>` and `<%- include('../partials/deployment.md.ejs') %>` before `<!-- agents-workflows:managed-end -->` at L144)
+## Risks and rollback
 
-**Input**:
-- PRD §2.15 snippet (lines 1252–1266): one-formatter-per-language, `.editorconfig`, type-check-in-CI, Biome-for-new-projects + ESLint-legacy guidance, treewide-format + `.git-blame-ignore-revs`, CodeQL/Semgrep/SonarQube/audit tools.
-- PRD §2.16 snippet (lines 1279–1295): env-based config + typed schema, stateless processes, dev/prod parity, OpenFeature + provider, progressive delivery (Argo Rollouts / Flagger), expand-contract migrations.
-- E6.T7 + E6.T8 acceptance: Biome-vs-ESLint guidance + CodeQL/Semgrep present; expand-contract migration + OpenFeature + progressive-delivery rules present.
+- **Risk**: `remark` ecosystem on Node 20 ESM — the project uses `--experimental-vm-modules`. Verify `remark@^15` resolves cleanly before merging T3. Rollback: if remark integration stalls, degrade T3 to regex-based heading split with a TODO; keep the merge interface stable so a later swap is local.
+- **Risk**: `@inquirer/prompts` ESM mocking in Jest is fragile. Rollback: if mocks misbehave, inject the prompt fn via options (`writeFileSafe({ ..., promptFn })`) and default-bind to `@inquirer/prompts` at module top — preserves test-ability without `unstable_mockModule`.
+- **Risk**: `src/cli/init-command.ts` at 167 lines is close to the 200-cap; adding flag plumbing may trip it. Rollback: extract `apply-safety-flags.ts` helper under `src/cli/` before edits land.
+- **Risk**: Existing `tests/installer/write-files.test.ts` relies on `confirmMarkdownOverwrite` / `confirmOverwrite` options. Rollback path: keep those options as adapter shims over `writeFileSafe` for one release, deprecation-comment them, migrate the test.
+- **Rollback**: every task lives on the feature branch; revert individual commits per task if regressions appear. Do not squash until the full loop passes.
 
-**Output**: Two new partials, both included near the end of `AGENTS.md.ejs`. Keeps `AGENTS.md.ejs` under 200 lines (currently 144 — two include lines add 2 lines).
+## Out of scope (non-goals)
 
-**Notes**:
-- Combines E6.T7 + E6.T8 into one plan task (both edit `AGENTS.md.ejs` — avoids two separate edits to the same file).
-- Rationale for partial-based approach: inline sections would push `AGENTS.md.ejs` past 200 lines. Using partials also lets `implementer.md` / other agents include the same content later if desired.
-- DRY risk: `AGENTS.md.ejs` L110 already has "Always use `<%= tooling.packageManagerPrefix %>` for running scripts." The new Tooling partial must NOT duplicate that line — scope it to formatters, linters, type-checkers, static analysis.
-- `coderabbit-setup.md.ejs` mentions supply-chain curl/sh safety — does not overlap with deployment content.
-- The Tooling partial should reference `tooling.linter` / `tooling.formatter` from context ONLY if naming the detected tool adds value; otherwise keep language-agnostic per the PRD snippet.
-
----
-
-### Task 8 - Verification pass [TEST]
-**Files**:
-- No new template files. Execution and optional test-file only.
-- Possible new: `src/generator/__tests__/generate-root-config.test.ts` (only if generator-output coverage does not already exist — see Notes).
-
-**Input**: All files created/edited in Tasks 1–7.
-
-**Output**: Proof the generator still produces valid output. Specifically:
-- `pnpm check-types` passes (zero errors).
-- `pnpm test` passes.
-- `pnpm lint` clean (Oxlint).
-- Manual: run the CLI entry against a fixture StackConfig (governance enabled, frontend framework) and confirm the new files (`SUPPLY_CHAIN.md`, `release.yml`, `0001-adr-template.md`) appear and all partials render without stray `<% %>` leakage.
-
-**Notes**:
-- Epic 6 adds **minimal new TypeScript logic** — the only `.ts` changes are 2–3 `files.push({...})` entries in `generate-root-config.ts`. Per CLAUDE.md: "only add Jest tests when there is actual logic to test." If `generate-root-config.ts` already has a snapshot or behavior test, extending the existing coverage is sufficient. If NOT, add one focused Jest test asserting:
-  1. `generateRootConfig` emits `SUPPLY_CHAIN.md` + `release.yml` iff `config.governance.enabled === true`.
-  2. `generateRootConfig` emits `docs/decisions/0001-adr-template.md` unconditionally (per Task 6 decision).
-- Check `src/generator/__tests__/` (or sibling test dir) before authoring — do not duplicate snapshot tests.
-- This task is the gate for the external code-review + security-review loop in the post-implementation checklist.
-
----
-
-## Task summary table
-
-| # | Title | Tags | New files | Edited files |
-|---|---|---|---|---|
-| 1 | Supply-chain partial + doc + release workflow | `[SCHEMA] [LOGIC]` | `partials/supply-chain.md.ejs`, `governance/SUPPLY_CHAIN.md.ejs`, `ci/release.yml.ejs` | `agents/security-reviewer.md.ejs`, `generator/generate-root-config.ts` |
-| 2 | Observability partial | `[SCHEMA] [PARALLEL]` | `partials/observability.md.ejs` | `agents/implementer.md.ejs`, `agents/code-reviewer.md.ejs` |
-| 3 | Design-principles partial | `[SCHEMA] [PARALLEL]` | `partials/design-principles.md.ejs` | `agents/architect.md.ejs`, `agents/code-reviewer.md.ejs` |
-| 4 | Refactoring + Performance partials | `[SCHEMA]` | `partials/refactoring.md.ejs`, `partials/performance.md.ejs` | `agents/code-optimizer.md.ejs`, `agents/ui-designer.md.ejs` |
-| 5 | Concurrency partial | `[SCHEMA]` | `partials/concurrency.md.ejs` | `agents/implementer.md.ejs` |
-| 6 | ADR seed + documentation partial | `[SCHEMA] [LOGIC]` | `docs/decisions/0001-adr-template.md.ejs`, `partials/documentation.md.ejs` | `agents/architect.md.ejs`, `agents/code-reviewer.md.ejs`, `generator/generate-root-config.ts` |
-| 7 | Tooling + Deployment partials in `AGENTS.md.ejs` | `[SCHEMA]` | `partials/tooling.md.ejs`, `partials/deployment.md.ejs` | `config/AGENTS.md.ejs` |
-| 8 | Verification pass | `[TEST]` | (optional) `generator/__tests__/generate-root-config.test.ts` | — |
-
----
+- Binary-file merge (out — PRD: "unsupported formats fall back to yes/no/all/skip").
+- Three-way merge with upstream template history (out — no tracked "last-generated" snapshot yet).
+- TOML / YAML structured merge (out — only Markdown + JSON per PRD).
+- Conflict markers inside files — merge either succeeds cleanly or falls back to overwrite/skip.
+- Undo / redo UI beyond the existing `src/installer/backup.ts` backup-on-failure flow.
 
 ## Post-implementation checklist
 
-- [ ] `pnpm check-types` — zero errors
-- [ ] `pnpm test` — all suites pass (existing + any new governance-gating test)
-- [ ] `pnpm lint` — zero warnings (Oxlint)
-- [ ] Every new/edited file ≤200 lines (measure with `wc -l`)
-- [ ] No `any` types introduced in `src/generator/generate-root-config.ts` or any other `.ts` edit
-- [ ] Render a fixture StackConfig (governance enabled, frontend framework) and confirm these files appear in generated output:
-  - [ ] `docs/SUPPLY_CHAIN.md` (or root `SUPPLY_CHAIN.md` — match decision in Task 1)
-  - [ ] `.github/workflows/release.yml`
-  - [ ] `docs/decisions/0001-adr-template.md`
-- [ ] Render a fixture StackConfig with governance disabled — confirm supply-chain + release.yml are omitted; ADR seed emits per Task 6 gating decision
-- [ ] Render a fixture StackConfig with `isFrontend === false` — confirm performance partial's web-budget bullet is suppressed (E6.T5 acceptance)
-- [ ] Launch `code-reviewer` agent on all modified files — fix every critical and warning finding
-- [ ] Launch `security-reviewer` agent in parallel (focus on `release.yml` SHA pinning, permissions default-deny, OIDC token scope)
-- [ ] Launch `code-optimizer` pass on `generate-root-config.ts` — flag any DRY violations introduced
-- [ ] External review (fresh-context, different model family) on final diff
-- [ ] DRY scan complete — no duplicated content between new partials and existing `review-checklist.md.ejs` / `security-reviewer.md.ejs` bullets
+- [ ] `pnpm check-types` - zero errors
+- [ ] `pnpm test` - all suites pass
+- [ ] `pnpm lint` - zero warnings
+- [ ] Manual idempotency smoke test: run `pnpm dev init` in a scratch repo, hand-edit `CLAUDE.md` and `.claude/settings.local.json`, run `pnpm dev init` again — confirm hand-edits preserved, diff preview shown, each prompt answer behaves per PRD
+- [ ] Run `code-reviewer` agent on all modified files - all critical and warning findings fixed
+- [ ] Run `security-reviewer` agent in parallel - all critical and warning findings fixed
+- [ ] DRY scan complete - no duplicated code across modified files (especially `diff-files.ts` vs `diff.ts`, `write-files.ts` vs `write-file.ts`)
+- [ ] No `any` types introduced; all new functions have explicit parameter and return types
+- [ ] All new files under 200 lines; `diff.ts` under 40 lines
+
+## Summary
+
+| Task | Tag | Files | Parallelizable |
+|---|---|---|---|
+| T1 `writeFileSafe` + refactor writes | `[LOGIC][TEST]` | `src/generator/write-file.ts`, `src/generator/write-file-prompt.ts`, `src/generator/index.ts`, `src/installer/write-files.ts`, `src/cli/init-command.ts`, `src/cli/update-command.ts`, `tests/generator/write-file.test.ts` | No (depends on T2) |
+| T2 Colored unified-diff helper | `[LOGIC][TEST]` | `src/utils/diff.ts`, `src/utils/index.ts`, `tests/utils/diff.test.ts` | Yes |
+| T3 Markdown-aware merge | `[LOGIC][TEST]` | `src/generator/merge-markdown.ts`, `src/generator/index.ts`, `tests/generator/merge-markdown.test.ts`, `package.json` | Yes (after T1 interface frozen) |
+| T4 JSON-aware merge | `[LOGIC][TEST]` | `src/generator/merge-json.ts`, `src/generator/index.ts`, `tests/generator/merge-json.test.ts` | Yes (after T1 interface frozen) |
+| T5 CLI flags `--yes`/`--no-prompt`/`--merge-strategy` | `[API][LOGIC][TEST]` | `src/cli/index.ts`, `src/cli/init-command.ts`, `src/cli/update-command.ts`, `src/generator/write-file.ts`, `tests/cli/flags.test.ts` | No (depends on T1) |
+| T6 README + AGENTS.md tooling note | `[LOGIC]` | `README.md`, `src/templates/config/AGENTS.md.ejs` | Yes |
 
 ## External errors
 
-_(None recorded. Populate during implementation if generator render, EJS parse, or type-check surfaces an issue requiring escalation.)_
+_(none)_

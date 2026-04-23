@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { Command } from 'commander';
+import { Command, Option } from 'commander';
 import { initCommand } from './init-command.js';
 import { updateCommand } from './update-command.js';
 import { listCommand } from './list-command.js';
 import { stackConfigSchema, type StackConfig } from '../schema/stack-config.js';
+import { handleSafetyErrors } from './safety-flags.js';
+import type { MergeStrategy } from '../generator/index.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -19,11 +21,20 @@ export function createCli(): Command {
     .description('Detect your project stack and generate agent configurations')
     .option('-d, --dir <path>', 'Project root directory', process.cwd())
     .option('-c, --config <path>', 'Path to a StackConfig JSON file for non-interactive init')
-    .option('-y, --yes', 'Use detected values and defaults without interactive prompts', false)
-    .action(async (options: { dir: string; config?: string; yes: boolean }) => {
-      await initCommand(options.dir, {
-        config: options.config ? await readConfigFile(options.config, options.dir) : undefined,
-        yes: options.yes,
+    .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
+    .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
+    .addOption(
+      new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
+        .choices(['keep', 'overwrite', 'merge']),
+    )
+    .action(async (options: { dir: string; config?: string; yes: boolean; prompt: boolean; mergeStrategy?: MergeStrategy }) => {
+      await handleSafetyErrors(async () => {
+        await initCommand(options.dir, {
+          config: options.config ? await readConfigFile(options.config, options.dir) : undefined,
+          yes: options.yes,
+          noPrompt: !options.prompt,
+          mergeStrategy: options.mergeStrategy,
+        });
       });
     });
 
@@ -31,9 +42,20 @@ export function createCli(): Command {
     .command('update')
     .description('Re-generate agent configurations from .agents-workflows.json')
     .option('-d, --dir <path>', 'Project root directory', process.cwd())
-    .option('-y, --yes', 'Apply changes without prompting', false)
-    .action(async (options: { dir: string; yes: boolean }) => {
-      await updateCommand(options.dir, { yes: options.yes });
+    .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
+    .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
+    .addOption(
+      new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
+        .choices(['keep', 'overwrite', 'merge']),
+    )
+    .action(async (options: { dir: string; yes: boolean; prompt: boolean; mergeStrategy?: MergeStrategy }) => {
+      await handleSafetyErrors(async () => {
+        await updateCommand(options.dir, {
+          yes: options.yes,
+          noPrompt: !options.prompt,
+          mergeStrategy: options.mergeStrategy,
+        });
+      });
     });
 
   program
