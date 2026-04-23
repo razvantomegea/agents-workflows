@@ -88,15 +88,6 @@ async function performWrite(path: string, content: string): Promise<void> {
   await writeFile(path, content, 'utf-8');
 }
 
-async function applyMerge(
-  mergeFn: MergeFunction,
-  existing: string,
-  incoming: string,
-  path: string,
-): Promise<string> {
-  return mergeFn({ existing, incoming, path });
-}
-
 export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileResult> {
   const { path, content, merge, displayPath } = input;
   const label = displayPath ?? path;
@@ -113,7 +104,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   }
 
   if (existing === content && merge != null) {
-    const merged = await applyMerge(merge, existing, content, path);
+    const merged = await merge({ existing, incoming: content, path });
     if (merged === existing) return { status: 'unchanged', path };
     await performWrite(path, merged);
     return { status: 'merged', path };
@@ -121,7 +112,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
 
   if (session.stickyAll) {
     if (merge != null) {
-      const merged = await applyMerge(merge, existing, content, path);
+      const merged = await merge({ existing, incoming: content, path });
       await performWrite(path, merged);
       return { status: 'merged', path };
     }
@@ -139,7 +130,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
 
   if (session.override === 'overwrite') {
     if (merge != null) {
-      const merged = await applyMerge(merge, existing, content, path);
+      const merged = await merge({ existing, incoming: content, path });
       await performWrite(path, merged);
       return { status: 'merged', path };
     }
@@ -149,7 +140,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
 
   if (session.override === 'merge') {
     if (merge != null) {
-      const merged = await applyMerge(merge, existing, content, path);
+      const merged = await merge({ existing, incoming: content, path });
       await performWrite(path, merged);
       return { status: 'merged', path };
     }
@@ -164,8 +155,14 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   const answer = await promptFn({ path: label, canMerge: merge != null });
 
   if (answer === 'a') {
-    session = { ...session, stickyAll: true };
+    if (merge != null) {
+      const merged = await merge({ existing, incoming: content, path });
+      await performWrite(path, merged);
+      session = { ...session, stickyAll: true };
+      return { status: 'merged', path };
+    }
     await performWrite(path, content);
+    session = { ...session, stickyAll: true };
     return { status: 'written', path };
   }
 
@@ -180,7 +177,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   }
 
   if (answer === 'm' && merge != null) {
-    const merged = await applyMerge(merge, existing, content, path);
+    const merged = await merge({ existing, incoming: content, path });
     await performWrite(path, merged);
     return { status: 'merged', path };
   }

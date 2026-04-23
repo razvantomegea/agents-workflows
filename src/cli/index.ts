@@ -5,8 +5,7 @@ import { initCommand } from './init-command.js';
 import { updateCommand } from './update-command.js';
 import { listCommand } from './list-command.js';
 import { stackConfigSchema, type StackConfig } from '../schema/stack-config.js';
-import { SafetyFlagsError } from './safety-flags.js';
-import { logger } from '../utils/index.js';
+import { handleSafetyErrors } from './safety-flags.js';
 import type { MergeStrategy } from '../generator/index.js';
 
 export function createCli(): Command {

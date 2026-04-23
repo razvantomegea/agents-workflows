@@ -1,5 +1,6 @@
 import { configureWriteSession } from '../generator/index.js';
 import type { MergeStrategy } from '../generator/index.js';
+import { logger } from '../utils/index.js';
 
 export interface SafetyFlags {
   yes: boolean;
@@ -75,5 +76,18 @@ export function applySafetyFlags(flags: SafetyFlags): void {
 
   if (flags.mergeStrategy !== null) {
     configureWriteSession({ override: flags.mergeStrategy });
+  }
+}
+
+export async function handleSafetyErrors(action: () => Promise<void>): Promise<void> {
+  try {
+    await action();
+  } catch (error) {
+    if (error instanceof SafetyFlagsError) {
+      logger.error(error.message);
+      process.exit(1);
+      return;
+    }
+    throw error;
   }
 }
