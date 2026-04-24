@@ -86,9 +86,7 @@ const RAW_INTERPRETER_PATTERNS: readonly string[] = [
   'node -e',
   'node --eval',
   'python -c',
-  'python -m',
   'python3 -c',
-  'python3 -m',
 ];
 
 /**
@@ -103,7 +101,7 @@ export const BASH_DENY_COMMAND_PATTERNS: readonly string[] = [
   'twine upload',
   'terraform apply',
   'kubectl apply',
-  'kubectl delete namespace',
+  'kubectl delete',
   'Invoke-WebRequest',
   'iwr',
   'Invoke-RestMethod',
