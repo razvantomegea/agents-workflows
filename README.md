@@ -176,7 +176,7 @@ npx agents-workflows init --yes
 |---|---|
 | Always | `AGENTS.md`, `.agents-workflows.json` |
 | Claude Code | `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/scripts/*.sh`, `CLAUDE.md`, `.claude/settings.json` |
-| Codex CLI | `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.sh`, `.codex/scripts/sync-codex.ps1` |
+| Codex CLI | `.codex/config.toml`, `.codex/rules/project.rules`, `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.sh`, `.codex/scripts/sync-codex.ps1` |
 
 ## Project structure
 
@@ -261,6 +261,7 @@ Jest suite mirrors `src/` one-to-one.
 | `.codex/prompts/` | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` |
 | `.codex/scripts/` | `sync-codex.sh`, `sync-codex.ps1` |
 | `.codex/config.toml` | Codex skill/prompt registry |
+| `.codex/rules/project.rules` | Project-scoped Codex policy rules (forbid/allow) |
 
 ### Other top-level folders
 

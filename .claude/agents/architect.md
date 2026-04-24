@@ -242,7 +242,17 @@ Format: `type(scope): subject`. Allowed types: `feat`, `fix`, `docs`, `style`, `
 
 ### PR Size Cap
 
-- PRs ≤ 400 LOC changed. If larger, split using stacked PRs (Graphite / ghstack / git-town).
+- PRs ≤ 400 LOC changed. If larger, split into a stacked PR chain (one logical change per PR; stack depth ≤ 5).
+
+**Stacked PR tooling — canonical commands:**
+
+| Tool | Create stack entry | Push / sync |
+|------|--------------------|-------------|
+| Graphite | `gt create -m "feat: …"` | `gt submit` |
+| ghstack | `ghstack` (no extra sub-command) | `ghstack` |
+| git-town | `git town hack <branch>` | `git town sync` |
+
+**Merge order:** always merge bottom-up (base PR first). Never rebase an in-flight stack onto a stale base — sync with `gt sync` / `ghstack` / `git town sync` instead.
 
 ### Commit Signing
 

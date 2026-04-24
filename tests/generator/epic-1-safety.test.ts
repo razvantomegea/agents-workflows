@@ -1,6 +1,8 @@
 import { generateAll } from '../../src/generator/index.js';
+import { DENY_PATTERNS } from '../../src/generator/permission-constants.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 import { makeStackConfig } from './fixtures.js';
+import { assertSettingsJsonShape } from './settings-json-shape.helper.js';
 
 const AGENTS_WITH_UNTRUSTED = [
   'architect',
@@ -116,7 +118,7 @@ describe('Epic 1 safety partials', () => {
     );
     expect(parsed.permissions.allow).not.toContain('Read(./**)');
     expect(parsed.permissions.allow.filter((rule: string) => rule.includes('|'))).toEqual([]);
-    expect(parsed.permissions.deny).toHaveLength(51);
+    expect(parsed.permissions.deny).toHaveLength(DENY_PATTERNS.length);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');
     expect(parsed.permissions.deny).toContain('Bash(rm --recursive:*)');
     expect(parsed.permissions.deny).toContain('Bash(cargo publish:*)');
@@ -137,9 +139,7 @@ describe('Epic 1 safety partials', () => {
       permissions: { defaultMode: string };
       sandbox: { mode: string; allowedDomains: string[] };
     };
-    expect(parsed.permissions.defaultMode).toBe('default');
-    expect(parsed.sandbox.mode).toBe('workspace-write');
-    expect(parsed.sandbox.allowedDomains).toHaveLength(7);
+    assertSettingsJsonShape(parsed);
   });
 
   it('emits .codex/config.toml with Codex-native safety defaults', async () => {

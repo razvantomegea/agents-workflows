@@ -5,7 +5,8 @@
       "MultiEdit(./**)",
       "Write(./**)",
       "Bash(pnpm:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node -e ' *)"
     ],
     "deny": [
       "Bash(rm -rf:*)",
@@ -45,7 +46,10 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "#!/usr/bin/env sh\ninput=$(cat)\nif command -v jq >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | jq -r '.tool_input.command // empty')\nelif command -v node >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | node -e \"let data=''; process.stdin.setEncoding('utf8'); process.stdin.on('data', (chunk) => { data += chunk; }); process.stdin.on('end', () => { try { const parsed = JSON.parse(data); const value = parsed?.tool_input?.command; process.stdout.write(typeof value === 'string' ? value : ''); } catch { process.stdout.write(''); } });\")\nelse\n  # Escape-aware fallback parser for shells without jq/node.\n  cmd=$(printf '%s' \"$input\" | awk 'BEGIN { in_cmd = 0; escaped = 0; out = \"\" } { for (i = 1; i <= length($0); i++) { ch = substr($0, i, 1); if (!in_cmd) { buffer = buffer ch; if (buffer ~ /\"tool_input\"[[:space:]]*:[[:space:]]*\\{[^}]*\"command\"[[:space:]]*:[[:space:]]*\"$/) { in_cmd = 1; buffer = \"\" } else if (length(buffer) > 256) { buffer = substr(buffer, length(buffer) - 255) } } else { if (escaped) { out = out ch; escaped = 0 } else if (ch == \"\\\\\") { escaped = 1 } else if (ch == \"\\\"\") { print out; exit } else { out = out ch } } } } END { if (!in_cmd) print \"\" }')\nfi\ncmd=$(printf '%s' \"$cmd\" | tr -s '[:space:]' ' ')\n[ -z \"$cmd\" ] && exit 0\npatterns=\"rm -rf|rm -r|rm --recursive|rm --force|git push --force|git push -f|git push --force-with-lease|git reset --hard|git clean -fd|git clean -f|git branch -D\"\nif printf '%s' \"$cmd\" | grep -qE \"$patterns\"; then\n  printf '%s\\n' \"Blocked: destructive command matched guard pattern.\" >&2\n  exit 2\nfi\nexit 0" }
+          {
+            "type": "command",
+            "command": "#!/usr/bin/env sh\ninput=$(cat)\nif command -v jq >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | jq -r '.tool_input.command // empty')\nelif command -v node >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | node -e \"let data=''; process.stdin.setEncoding('utf8'); process.stdin.on('data', (chunk) => { data += chunk; }); process.stdin.on('end', () => { try { const parsed = JSON.parse(data); const value = parsed?.tool_input?.command; process.stdout.write(typeof value === 'string' ? value : ''); } catch { process.stdout.write(''); } });\")\nelse\n  # Escape-aware fallback parser for shells without jq/node.\n  cmd=$(printf '%s' \"$input\" | awk 'BEGIN { in_cmd = 0; escaped = 0; out = \"\" } { for (i = 1; i <= length($0); i++) { ch = substr($0, i, 1); if (!in_cmd) { buffer = buffer ch; if (buffer ~ /\"tool_input\"[[:space:]]*:[[:space:]]*\\{[^}]*\"command\"[[:space:]]*:[[:space:]]*\"$/) { in_cmd = 1; buffer = \"\" } else if (length(buffer) > 256) { buffer = substr(buffer, length(buffer) - 255) } } else { if (escaped) { out = out ch; escaped = 0 } else if (ch == \"\\\\\") { escaped = 1 } else if (ch == \"\\\"\") { print out; exit } else { out = out ch } } } } END { if (!in_cmd) print \"\" }')\nfi\ncmd=$(printf '%s' \"$cmd\" | tr -s '[:space:]' ' ')\n[ -z \"$cmd\" ] && exit 0\npatterns=\"rm -rf|rm -r|rm --recursive|rm --force|git push --force|git push -f|git push --force-with-lease|git reset --hard|git clean -fd|git clean -f|git branch -D\"\nif printf '%s' \"$cmd\" | grep -qE \"$patterns\"; then\n  printf '%s\\n' \"Blocked: destructive command matched guard pattern.\" >&2\n  exit 2\nfi\nexit 0"
+          }
         ]
       }
     ],
@@ -53,7 +57,10 @@
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "pnpm lint --fix || true" }
+          {
+            "type": "command",
+            "command": "pnpm lint --fix || true"
+          }
         ]
       }
     ]

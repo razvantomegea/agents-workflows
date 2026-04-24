@@ -36,8 +36,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 
 ## Session hygiene
 
-- Commit early and often with descriptive messages — `git revert` is
-  the agent's real undo button.
+- Never commit or push unless the user explicitly asks.
 - Every agent session starts from a clean tree on a named branch.
 - For parallel/competing agent runs, use `git worktree add` — one
   worktree per task — to prevent cross-contamination.
@@ -72,6 +71,9 @@ This file provides guidance to Claude Code when working with code in this reposi
 | Unit tests | `test-writer` |
 
 Use sub-agents with independent, single, simple tasks as much as possible.
+
+**Sub-agent deny-bypass caveat.** Claude sub-agents spawned via the `Task` tool do not enforce `permissions.deny` (tracked upstream: [#25000](https://github.com/anthropics/claude-code/issues/25000), [#43142](https://github.com/anthropics/claude-code/issues/43142)). Do not route destructive operations (`git push`, `rm -rf`, `git reset --hard`) through sub-agents — keep them on the main agent where hooks and denies apply. Always review `git diff` and the session transcript before committing; the deny list is defense-in-depth only.
+
 
 ## Planning Workflow
 
@@ -129,5 +131,9 @@ DRY and reusability are critical principles — enforced without exception:
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
+
+## Shared agent policy
+
+The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. `~/.codex/rules/default.rules` accumulates approved prompts across sessions — prune it quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
 
 <!-- agents-workflows:managed-end -->

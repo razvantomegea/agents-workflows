@@ -1,17 +1,23 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { PostToolUseHook, PreToolUseHook } from './types.js';
 import {
+  ALLOWED_DOMAINS,
+  BASH_DENY_COMMAND_PATTERNS,
   DENY_PATTERNS,
-  DESTRUCTIVE_BASH_PATTERNS,
+  escapeRegexLiteral,
+  EXPECTED_ALLOWED_DOMAINS_COUNT,
   PRE_TOOL_USE_PATTERN_EXTRAS,
   LOCAL_GIT_ALLOWS,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
 export {
-  DESTRUCTIVE_BASH_PATTERNS,
+  ALLOWED_DOMAINS,
+  BASH_DENY_COMMAND_PATTERNS,
   PRE_TOOL_USE_PATTERN_EXTRAS,
   DENY_PATTERNS,
+  escapeRegexLiteral,
+  EXPECTED_ALLOWED_DOMAINS_COUNT,
   LOCAL_GIT_ALLOWS,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
@@ -55,7 +61,8 @@ export function buildPermissions(input: PermissionsInput): string[] {
     // Extract the bare command name, e.g. "tsc" from "Bash(tsc:*)"
     const match = /^Bash\(([^:]+):/.exec(entry);
     const command = match ? match[1] : null;
-    if (command && !isCoveredByGlob(command, prefix) && !perms.includes(entry)) {
+    const isHighRiskRuntime = command === 'node' || command === 'npx';
+    if (command && !isHighRiskRuntime && !isCoveredByGlob(command, prefix) && !perms.includes(entry)) {
       perms.push(entry);
     }
   }
@@ -70,8 +77,16 @@ export function buildDenyList(): string[] {
 // The hook reads the PreToolUse JSON payload from stdin. Claude Code sends:
 // {"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"..."}}
 // Exit 2 = block with refusal message; exit 0 = allow.
+
+// Anchor each literal pattern at command/word boundaries so short aliases
+// (e.g. `irm`, `iwr`) cannot substring-match inside benign words like
+// `firmware` or `confirm`.
+function anchorLiteralPattern(value: string): string {
+  return `(^|[[:space:]])${escapeRegexLiteral(value)}([[:space:]]|$)`;
+}
+
 const PATTERNS_ALTERNATION = [
-  ...DESTRUCTIVE_BASH_PATTERNS,
+  ...BASH_DENY_COMMAND_PATTERNS.map(anchorLiteralPattern),
   ...PRE_TOOL_USE_PATTERN_EXTRAS,
 ].join('|');
 

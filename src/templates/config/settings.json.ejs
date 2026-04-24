@@ -16,13 +16,9 @@
     "mode": "workspace-write",
     "autoAllowBashIfSandboxed": true,
     "allowedDomains": [
-      "api.github.com",
-      "registry.npmjs.org",
-      "nodejs.org",
-      "raw.githubusercontent.com",
-      "objects.githubusercontent.com",
-      "pypi.org",
-      "files.pythonhosted.org"
+<% allowedDomains.forEach(function(domain, i) { -%>
+      <%- jsonString(domain) %><%= i < allowedDomains.length - 1 ? ',' : '' %>
+<% }); -%>
     ]
   }<% if (postToolUseHooks.length > 0 || preToolUseHooks.length > 0) { %>,
   "hooks": {

@@ -49,8 +49,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 ## Session hygiene
 
-- Commit early and often with descriptive messages — `git revert` is
-  the agent's real undo button.
+- Never commit or push unless the user explicitly asks.
 - Every agent session starts from a clean tree on a named branch.
 - For parallel/competing agent runs, use `git worktree add` — one
   worktree per task — to prevent cross-contamination.
@@ -83,6 +82,9 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Review loop orchestration | `reviewer` |
 | Optimization pass | `code-optimizer` |
 | Unit tests | `test-writer` |
+
+**Sub-agent deny-bypass caveat.** Claude sub-agents spawned via the `Task` tool do not enforce `permissions.deny` (tracked upstream: [#25000](https://github.com/anthropics/claude-code/issues/25000), [#43142](https://github.com/anthropics/claude-code/issues/43142)). Do not route destructive operations (`git push`, `rm -rf`, `git reset --hard`) through sub-agents — keep them on the main agent where hooks and denies apply. Always review `git diff` and the session transcript before committing; the deny list is defense-in-depth only.
+
 
 ## Model routing (verify current model IDs in vendor docs)
 

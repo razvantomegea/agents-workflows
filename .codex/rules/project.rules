@@ -100,7 +100,7 @@ prefix_rule(
 # cannot match inside. Use `pwsh -File <script.ps1>` for auditable scripts.
 
 prefix_rule(
-  pattern = [["pwsh", "powershell"], ["-Command", "-c", "-EncodedCommand"]],
+  pattern = [["pwsh", "pwsh.exe", "powershell", "powershell.exe"], ["-Command", "-c", "-EncodedCommand"]],
   decision = "forbidden",
   justification = "Script-body is opaque to prefix_rule; use -File <script.ps1> for auditable scripts.",
 )
@@ -111,20 +111,44 @@ prefix_rule(
   justification = "cmd wrapper tokenizes script body; use an explicit script file.",
 )
 
-# --- Allow: Node/TS toolchain ----------------------------------------------
+# --- Allow: Node/TS toolchain (explicit safe entrypoints only) -------------
 
 prefix_rule(
-  pattern = [["node", "npm", "npx", "pnpm", "yarn", "tsc", "tsx", "vitest", "jest", "eslint", "prettier"]],
+  pattern = [["pnpm", "npm", "yarn"], ["test", "lint", "check-types", "build", "install", "add", "remove", "up"]],
   decision = "allow",
-  justification = "Node/TS toolchain",
+  justification = "Package-manager operations scoped to vetted subcommands",
 )
 
-# --- Allow: Python toolchain ----------------------------------------------
+prefix_rule(
+  pattern = ["npx", ["agents-workflows", "tsc", "tsx", "vitest", "jest", "eslint", "prettier"]],
+  decision = "allow",
+  justification = "npx only for vetted local toolchain entrypoints",
+)
 
 prefix_rule(
-  pattern = [["python", "python3", "pip"]],
+  pattern = ["node", ["dist/index.js", "scripts/build.mjs", "--version", "-v"]],
   decision = "allow",
-  justification = "Python toolchain",
+  justification = "Node runtime only for vetted local entrypoints",
+)
+
+prefix_rule(
+  pattern = [["tsc", "tsx", "vitest", "jest", "eslint", "prettier"]],
+  decision = "allow",
+  justification = "Direct toolchain binaries",
+)
+
+# --- Allow: Python toolchain (explicit safe entrypoints only) --------------
+
+prefix_rule(
+  pattern = [["pip"], ["install", "list", "show", "freeze"]],
+  decision = "allow",
+  justification = "pip scoped to non-destructive package operations",
+)
+
+prefix_rule(
+  pattern = [["python", "python3"], ["--version", "-V"]],
+  decision = "allow",
+  justification = "Python runtime limited to version checks",
 )
 
 # --- Allow: Local / read-only git subcommands -----------------------------

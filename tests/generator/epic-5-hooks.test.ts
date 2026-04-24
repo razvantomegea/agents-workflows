@@ -1,7 +1,12 @@
 import { generateAll } from '../../src/generator/index.js';
-import { DESTRUCTIVE_BASH_PATTERNS, buildDenyList } from '../../src/generator/permissions.js';
+import {
+  BASH_DENY_COMMAND_PATTERNS,
+  EXPECTED_ALLOWED_DOMAINS_COUNT,
+  buildDenyList,
+} from '../../src/generator/permissions.js';
 import type { CommandHook, PostToolUseHook, PreToolUseHook } from '../../src/generator/types.js';
 import { makeStackConfig } from './fixtures.js';
+import { assertSettingsJsonShape } from './settings-json-shape.helper.js';
 
 interface SandboxBlock {
   mode: string;
@@ -71,7 +76,7 @@ describe('Epic 5 — settings.json top-level fields (E9.T2)', () => {
   });
 
   it('has sandbox.allowedDomains with exactly 7 entries', () => {
-    expect(parsedSettings.sandbox.allowedDomains).toHaveLength(7);
+    expect(parsedSettings.sandbox.allowedDomains).toHaveLength(EXPECTED_ALLOWED_DOMAINS_COUNT);
   });
 
   it('sandbox.allowedDomains includes the required registries and APIs', () => {
@@ -87,11 +92,17 @@ describe('Epic 5 — settings.json top-level fields (E9.T2)', () => {
 });
 
 describe('Epic 5 — DESTRUCTIVE_BASH_PATTERNS sync with deny list', () => {
-  it('every DESTRUCTIVE_BASH_PATTERNS entry appears as Bash(<pattern>:*) in buildDenyList()', () => {
+  it('every BASH_DENY_COMMAND_PATTERNS entry appears as Bash(<pattern>:*) in buildDenyList()', () => {
     const deny = buildDenyList();
-    for (const pattern of DESTRUCTIVE_BASH_PATTERNS) {
+    for (const pattern of BASH_DENY_COMMAND_PATTERNS) {
       expect(deny).toContain(`Bash(${pattern}:*)`);
     }
+  });
+});
+
+describe('Epic 5 — settings.json shape helper parity', () => {
+  it('matches the shared settings JSON shape assertions', () => {
+    assertSettingsJsonShape(parsedSettings);
   });
 });
 

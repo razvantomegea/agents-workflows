@@ -1534,7 +1534,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 ### E1.T8 — Mirror deny list for Codex CLI [§1.4] — S — [DONE]
 - **Files**: `src/templates/config/codex-config.toml.ejs` (new) + wire into `src/generator/generate-root-config.ts`
 - **Done when**: `.codex/config.toml` emitted on Codex-enabled outputs; deny list parity verified by test.
-- **Shipped**: Codex CLI has no deny-list table (its schema only supports `approval_policy` / `sandbox_mode` / `[sandbox_workspace_write]`). Literal pattern parity would produce an invalid TOML that Codex rejects. Instead achieved practical parity with fewer current-project prompts: `approval_policy = "on-failure"` (runs sandboxed commands and asks only when more access is needed), `sandbox_mode = "workspace-write"` (writes confined to project root), `network_access = false` (blocks outbound egress). Same workspace safety envelope, Codex-native keys.
+- **Shipped**: Codex CLI has no deny-list table (its schema only supports `approval_policy` / `sandbox_mode` / `[sandbox_workspace_write]`). Literal pattern parity would produce an invalid TOML that Codex rejects. Instead achieved practical parity with fewer current-project prompts: `approval_policy = "on-request"` (runs sandboxed commands and asks only when more access is needed), `sandbox_mode = "workspace-write"` (writes confined to project root), `network_access = false` (blocks outbound egress). Same workspace safety envelope, Codex-native keys.
 
 ---
 
@@ -1775,15 +1775,15 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ## Epic 9 — Agent Permission & Sandbox Hardening [MUST]
 
-**Landed on** `feature/epic-9-permission-sandbox-hardening` (E9.T1–T5, T10–T15 complete; E9.T6–T8 blocked on missing Cursor/Copilot/Windsurf emission plumbing in the generator — tracked for the epic that introduces that pipeline). Note: PRD-specified `approval_policy = "on-failure"` was replaced with `"on-request"` because the former was deprecated by upstream Codex CLI; update PRD wording accordingly.
+**Landed on** `feature/epic-9-permission-sandbox-hardening` (E9.T1–T5, T10–T15 complete; E9.T6–T8 blocked on missing Cursor/Copilot/Windsurf emission plumbing in the generator — tracked for the epic that introduces that pipeline). The Epic 9/10 safe posture now consistently uses `approval_policy = "on-request"` with `network_access = false`.
 
 **Goal.** Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. Deny-first rules and the sandbox are complementary layers; neither is trusted alone.
 
-**Rationale.** `.claude/settings.local.json` exists but is gitignored and local-only, so teammates do not inherit a safe default. `.codex/config.toml` is already sandboxed (`approval_policy = "on-failure"`, `network_access = false`) but is not shared. Both directories are blanket-ignored in `.gitignore`. This epic commits a minimal, merge-not-replace baseline: every existing deny is preserved, no allow rule becomes broader, Codex remains sandboxed, and network access stays disabled until the hardening tasks (E9.T10–E9.T15) land. Epic 9 is the **hardening gate** for Epic 10: non-interactive mode does not unlock until every MUST item here is complete and the E9.T15 smoke suite is green on the target platform.
+**Rationale.** `.claude/settings.local.json` exists but is gitignored and local-only, so teammates do not inherit a safe default. `.codex/config.toml` is already sandboxed (`approval_policy = "on-request"`, `network_access = false`) but is not shared. Both directories are blanket-ignored in `.gitignore`. This epic commits a minimal, merge-not-replace baseline: every existing deny is preserved, no allow rule becomes broader, Codex remains sandboxed, and network access stays disabled until the hardening tasks (E9.T10–E9.T15) land. Epic 9 is the **hardening gate** for Epic 10: non-interactive mode does not unlock until every MUST item here is complete and the E9.T15 smoke suite is green on the target platform.
 
 **Acceptance.**
 - `.claude/settings.json` (new, shared) is committed; its deny list is a strict superset of the current `.claude/settings.local.json` deny list. No existing deny is dropped.
-- `.codex/config.toml` is committed with `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Non-interactive enablement (`approval_policy = "never"`, `network_access = true`) is an opt-in under Epic 10 gated on E9.T10–E9.T15.
+- `.codex/config.toml` is committed with `approval_policy = "on-request"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Non-interactive enablement (`approval_policy = "never"`, `network_access = true`) is an opt-in under Epic 10 gated on E9.T10–E9.T15.
 - `.codex/rules/project.rules` (new) lints clean under `codex execpolicy check --rules .codex/rules/project.rules` and includes the Unix (E9.T3), Windows-native (E9.T10), exfil (E9.T11), and shell-wrapper (E9.T12) forbid sets.
 - `.gitignore` un-ignores `!/.claude/settings.json`, `!/.codex/config.toml`, `!/.codex/rules/` via negation while `.claude/settings.local.json` and other transient paths stay ignored. Verified via `git check-ignore -v`.
 - Claude Code `sandbox` block is **required**: `sandbox.mode = "workspace-write"` and `sandbox.autoAllowBashIfSandboxed = true` ship in `.claude/settings.json`. Schema verification against current Claude Code docs (including `allowedDomains` support) is E9.T13; if a key renames, the implementing PR updates in-place and never drops the protection. Windows hosts treat permission rules as the primary guard since kernel-layer sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
@@ -1804,7 +1804,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ### E9.T3 — `.codex/config.toml` committed + `project.rules` [§1.9] — M
 - **Files**: `.codex/config.toml` (tracked, unchanged content from current local state), `.codex/rules/project.rules` (new).
-- **Change**: Keep `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules covering the Unix-family surface: `git push`, `git commit` (including `git commit --amend`), `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh`, `curl | bash`, `wget | sh`, `wget | bash`. Add `allow` rules for the Node/TS/Python toolchain (`node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`) plus read-only git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`). No broad `["git"]` prefix allows. No `curl` / `wget` allow. Non-interactive enablement (`approval_policy = "never"`) is handled by Epic 10 as an opt-in and depends on E9.T10–E9.T15.
+- **Change**: Keep `approval_policy = "on-request"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules covering the Unix-family surface: `git push`, `git commit` (including `git commit --amend`), `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh`, `curl | bash`, `wget | sh`, `wget | bash`. Add `allow` rules for vetted Node/TS/Python entrypoints plus read-only git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`). No broad `["git"]` prefix allows. No `curl` / `wget` allow. Non-interactive enablement (`approval_policy = "never"`) is handled by Epic 10 as an opt-in and depends on E9.T10–E9.T15.
 - **Done when**: `codex execpolicy check --rules .codex/rules/project.rules` exits 0; no match/not_match rule conflicts; Codex posture is unchanged or stricter vs. current; every publish/infra/destructive item in the list above matches a forbid rule.
 
 ### E9.T4 — `.gitignore` surgical un-ignore [§1.9] — S
@@ -1918,7 +1918,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 **Goal.** Make both Claude Code and Codex run workflow sessions headlessly **when the user explicitly opts in** (via `agents-workflows init` / `update`), while keeping deny/forbid policy and workspace sandbox boundaries fully active. Non-interactive is an informed-consent choice, not a default. These sessions are **developer-assisted runs on feature branches**; this epic does not claim or require suitability for unattended CI automation.
 
-**Blocked on Epic 9 completion.** Non-interactive mode MUST NOT unlock until every MUST item in Epic 9, including E9.T10–E9.T15, is complete and the E9.T15 smoke suite is green on the target platform (Windows in particular — see §1.9.1 item 10.2). The live configs in this repo stay on the Epic 9 safe posture (`approval_policy = "on-failure"`, `defaultMode = "default"`, `network_access = false`) until the gate is cleared.
+**Blocked on Epic 9 completion.** Non-interactive mode MUST NOT unlock until every MUST item in Epic 9, including E9.T10–E9.T15, is complete and the E9.T15 smoke suite is green on the target platform (Windows in particular — see §1.9.1 item 10.2). The live configs in this repo stay on the Epic 9 safe posture (`approval_policy = "on-request"`, `defaultMode = "default"`, `network_access = false`) until the gate is cleared.
 
 **Critical distinction.** This epic targets **non-interactive approvals**, not **sandbox bypass**. "Non-interactive" means approval prompts are skipped; it does not mean the sandbox is relaxed. Do **not** use:
 - Claude: `--dangerously-skip-permissions`
@@ -1932,7 +1932,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - Blocked until Epic 9 (including E9.T10–E9.T15) is complete and the smoke suite passes on Windows.
 - The generator exposes an opt-in (`askNonInteractiveMode`, E10.T9) behind a two-stage disclosure (E10.T14). Default is OFF; `--yes` alone never enables non-interactive.
 - `.claude/settings.json` emits `"permissions.defaultMode": "bypassPermissions"` **iff** `security.nonInteractiveMode === true` in the persisted manifest; otherwise `"default"`.
-- `.codex/config.toml` emits `approval_policy = "never"` and `network_access = true` **iff** `security.nonInteractiveMode === true`; otherwise `approval_policy = "on-failure"` and `network_access = false`.
+- `.codex/config.toml` emits `approval_policy = "never"` and `network_access = true` **iff** `security.nonInteractiveMode === true`; otherwise `approval_policy = "on-request"` and `network_access = false`.
 - `.codex/rules/project.rules` remains enforced and unchanged/stricter for forbidden commands (Unix + Windows-native + exfil + shell-wrappers).
 - Docs include canonical one-line invocations for local and logged runs; no dangerous bypass flags appear in examples.
 - Docs explicitly state: developer-assisted feature-branch runs only; human `git diff` review required before any manual commit/push; not a claim of unattended CI suitability.
@@ -1965,7 +1965,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   ```
   When `false`:
   ```toml
-  approval_policy = "on-failure"
+  approval_policy = "on-request"
   sandbox_mode = "workspace-write"
 
   [sandbox_workspace_write]
@@ -2087,7 +2087,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   [sandbox_workspace_write]
   network_access = true
   <% } else { %>
-  approval_policy = "on-failure"
+  approval_policy = "on-request"
   sandbox_mode = "workspace-write"
 
   [sandbox_workspace_write]
@@ -2155,7 +2155,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   5. Manifest round-trip: write a config with `security.nonInteractiveMode === true` + `runsIn === 'vm'`, run `update --yes`, verify manifest preserves every `security` field verbatim.
   6. Manifest round-trip: write a config with no `security` key (simulating an old manifest), run `update`, verify it parses with safe defaults and can be re-written.
   7. Template snapshot: non-interactive `.codex/config.toml` contains `approval_policy = "never"` + `network_access = true` + the `runsIn` + `acknowledged` comment block referencing §1.9.1.
-  8. Template snapshot: safe-default `.codex/config.toml` contains `approval_policy = "on-failure"` + `network_access = false` and **no** non-interactive comment block.
+  8. Template snapshot: safe-default `.codex/config.toml` contains `approval_policy = "on-request"` + `network_access = false` and **no** non-interactive comment block.
   9. Template snapshot: `.claude/settings.json` emits `"defaultMode": "bypassPermissions"` in the non-interactive branch and `"default"` in the safe branch; `sandbox` block is present in both.
 - **Done when**: all nine cases green; `pnpm test` passes; existing `tests/generator/epic-1-safety.test.ts` still green (no regression on deny list).
 

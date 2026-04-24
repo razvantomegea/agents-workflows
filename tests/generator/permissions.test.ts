@@ -78,19 +78,25 @@ describe('buildPermissions', () => {
     }
   });
 
-  it('emits all 6 TOOLCHAIN_ALLOWS entries for a pnpm stack', () => {
+  it('emits all 4 TOOLCHAIN_ALLOWS entries for a pnpm stack', () => {
     const perms = buildPermissions(PNPM_INPUT);
-    expect(TOOLCHAIN_ALLOWS).toHaveLength(6);
+    expect(TOOLCHAIN_ALLOWS).toHaveLength(4);
     for (const entry of TOOLCHAIN_ALLOWS) {
       expect(perms).toContain(entry);
     }
   });
+
+  it('does not auto-allow high-risk node or npx runtime globs', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).not.toContain('Bash(node:*)');
+    expect(perms).not.toContain('Bash(npx:*)');
+  });
 });
 
 describe('buildDenyList', () => {
-  it('returns the 51 documented deny patterns in order starting with Bash(rm -rf:*)', () => {
+  it('returns deny patterns in order starting with Bash(rm -rf:*)', () => {
     const deny = buildDenyList();
-    expect(deny).toHaveLength(51);
+    expect(deny).toHaveLength(DENY_PATTERNS.length);
     expect(deny[0]).toBe('Bash(rm -rf:*)');
     expect(deny).toContain('Bash(git push --force:*)');
     expect(deny).toContain('Bash(git push --force-with-lease:*)');
@@ -115,10 +121,10 @@ describe('buildDenyList', () => {
 
   it('contains all four pipe-to-shell entries', () => {
     const deny = buildDenyList();
-    expect(deny).toContain('Bash(curl:* | sh)');
-    expect(deny).toContain('Bash(curl:* | bash)');
-    expect(deny).toContain('Bash(wget:* | sh)');
-    expect(deny).toContain('Bash(wget:* | bash)');
+    expect(deny).toContain('Bash(curl* | sh)');
+    expect(deny).toContain('Bash(curl* | bash)');
+    expect(deny).toContain('Bash(wget* | sh)');
+    expect(deny).toContain('Bash(wget* | bash)');
   });
 
   it('does NOT contain plain Bash(curl:*) or Bash(wget:*)', () => {
@@ -137,8 +143,8 @@ describe('DENY_PATTERNS — E9.T1 + E9.T11 required entries', () => {
     'Bash(Invoke-WebRequest:*)', 'Bash(iwr:*)',
     'Bash(Invoke-RestMethod:*)', 'Bash(irm:*)',
     'Bash(curl.exe:*)', 'Bash(wget.exe:*)',
-    'Bash(curl:* | sh)', 'Bash(curl:* | bash)',
-    'Bash(wget:* | sh)', 'Bash(wget:* | bash)',
+    'Bash(curl* | sh)', 'Bash(curl* | bash)',
+    'Bash(wget* | sh)', 'Bash(wget* | bash)',
   ];
 
   it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern) => {

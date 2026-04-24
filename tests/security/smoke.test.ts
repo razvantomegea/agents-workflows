@@ -10,16 +10,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
   buildDenyList,
-  DESTRUCTIVE_BASH_PATTERNS,
+  BASH_DENY_COMMAND_PATTERNS,
   PRE_TOOL_USE_PATTERN_EXTRAS,
 } from '../../src/generator/permissions.js';
+import { generateAll } from '../../src/generator/index.js';
+import type { GeneratedFile } from '../../src/generator/types.js';
+import { makeStackConfig } from '../generator/fixtures.js';
 
-const codexRules = readFileSync(
-  resolve('src/templates/config/codex-project-rules.ejs'),
-  'utf8',
-);
 const denyList = buildDenyList();
-const guardAlternation = [...DESTRUCTIVE_BASH_PATTERNS, ...PRE_TOOL_USE_PATTERN_EXTRAS].join('|');
+const guardAlternation = [...BASH_DENY_COMMAND_PATTERNS, ...PRE_TOOL_USE_PATTERN_EXTRAS].join('|');
 
 interface SmokeCase {
   id: string;
@@ -121,6 +120,20 @@ const CASES: readonly SmokeCase[] = [
   },
 ];
 
+let codexRules = '';
+let generatedSettings = '';
+
+beforeAll(async () => {
+  const files = await generateAll(makeStackConfig());
+  const codex = files.find((file: GeneratedFile) => file.path === '.codex/rules/project.rules');
+  const settings = files.find((file: GeneratedFile) => file.path === '.claude/settings.json');
+  if (!codex || !settings) {
+    throw new Error('Expected generated .codex/rules/project.rules and .claude/settings.json');
+  }
+  codexRules = codex.content;
+  generatedSettings = settings.content;
+});
+
 describe('Epic 9 E9.T15 — security smoke suite (automated cases)', () => {
   CASES.forEach((c) => {
     it(`${c.id}: ${c.description} is blocked by policy`, () => {
@@ -138,6 +151,13 @@ describe('Epic 9 E9.T15 — security smoke suite (automated cases)', () => {
 
   it('case-R3 (home-path): Edit(~/**) is also in the deny list', () => {
     expect(denyList).toContain('Edit(~/**)');
+  });
+
+  it('generated settings artifact still contains all deny patterns', () => {
+    const parsed = JSON.parse(generatedSettings) as { permissions: { deny: string[] } };
+    for (const deny of denyList) {
+      expect(parsed.permissions.deny).toContain(deny);
+    }
   });
 
   it('residual-case placeholder: sub-agent Task() bypass is documented, not fixed', () => {

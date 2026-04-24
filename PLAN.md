@@ -20,25 +20,25 @@ Ship a committed, deny-first permission policy for Claude Code and Codex so laun
 **Output**: `DENY_PATTERNS` superset covering `Bash(git push:*)`, `Bash(git commit:*)`, `Bash(git commit --amend:*)`, `Bash(git rm:*)`, `Bash(sudo:*)`, `Bash(curl:* | sh)`, `Bash(curl:* | bash)`, `Bash(wget:* | sh)`, `Bash(wget:* | bash)`, `Edit(/**)`, `Edit(~/**)`, `Write(/**)`, `Write(~/**)`, `MultiEdit(/**)`, `MultiEdit(~/**)`, and exfil `Bash(Invoke-WebRequest:*)`, `Bash(iwr:*)`, `Bash(Invoke-RestMethod:*)`, `Bash(irm:*)`, `Bash(curl.exe:*)`, `Bash(wget.exe:*)`. `buildPermissions` allow includes `Bash(git status|diff|log|branch|add|checkout|switch|stash|pull:*)`, `Bash(tsc|jest|eslint|prettier|node|npx:*)` (skip duplicates already covered by pnpm glob).
 **Notes**: Every existing deny must remain verbatim (E9 acceptance: "no existing deny is dropped"). Keep one source-of-truth constant — extend, do not fork. If file exceeds 200 lines, extract constants to `permission-constants.ts` and import.
 
-### Task 2 - Shared `.claude/settings.json` + sandbox block [TEMPLATE] [LOGIC]
+### Task 2 - Shared `.claude/settings.json` + sandbox block [LOGIC] [SCHEMA]
 **Files**: `src/templates/config/settings-local.json.ejs` (rename to `settings.json.ejs`), `src/generator/generate-root-config.ts` (L25–26 output path change), `.claude/settings.json` (generated output, tracked).
 **Input**: Task 1 deny/allow constants; E9.T2 + E9.T13 schema (`sandbox.mode`, `sandbox.autoAllowBashIfSandboxed`, `sandbox.allowedDomains`).
 **Output**: Emits `.claude/settings.json` (shared) with `"defaultMode": "default"`, full deny/allow, existing `hooks.PostToolUse` preserved verbatim, and `"sandbox": { "mode": "workspace-write", "autoAllowBashIfSandboxed": true, "allowedDomains": ["api.github.com","registry.npmjs.org","nodejs.org","raw.githubusercontent.com","objects.githubusercontent.com","pypi.org","files.pythonhosted.org"] }`. Output path switches from `settings.local.json` → `settings.json`.
 **Notes**: JSON must parse. `settings.local.json` is no longer emitted by `init`. Preserve `PreToolUse` + `PostToolUse` hooks. No broad `Bash(git:*)` allow.
 
-### Task 3 - Codex config + project.rules template [TEMPLATE]
+### Task 3 - Codex config + project.rules template [LOGIC] [SCHEMA]
 **Files**: `src/templates/config/codex-config.toml.ejs` (edit), `src/templates/config/codex-project-rules.ejs` (new), `src/generator/generate-root-config.ts` (register new template → `.codex/rules/project.rules`), `.codex/config.toml` (regenerated), `.codex/rules/project.rules` (regenerated).
 **Input**: E9.T3 (Unix forbids + toolchain allows), E9.T10 (Windows-native removes), E9.T11 (exfil), E9.T12 (shell wrappers).
 **Output**: `codex-config.toml.ejs` emits `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. `codex-project-rules.ejs` emits forbid rules for `git push`, `git commit`, `git commit --amend`, `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh|bash`, `wget | sh|bash`, `Remove-Item`, `Remove-ItemProperty`, `del`, `erase`, `rmdir`, `rd`, `ri`, `rm` (PS alias), `Invoke-WebRequest`, `iwr`, `Invoke-RestMethod`, `irm`, `curl.exe`, `wget.exe`, `pwsh -Command|-c|-EncodedCommand`, `powershell -Command|-c|-EncodedCommand`, `cmd /c|/k`, `cmd.exe /c|/k`. Allow rules: `node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`, read-only git subcommands (`status|diff|log|branch|add|checkout|switch|stash`). No broad `["git"]` allow; no `curl`/`wget` allow.
 **Notes**: Keep each rules file ≤200 lines; split the partial if needed. Every forbid carries a short inline justification. No `--dangerously-bypass-approvals-and-sandbox` anywhere.
 
-### Task 4 - `.gitignore` surgical un-ignore [SCHEMA] [PARALLEL]
+### Task 4 - `.gitignore` surgical un-ignore [SCHEMA]
 **Files**: `.gitignore`, `src/templates/root/gitignore.ejs` (edit if generator emits this file; otherwise direct edit).
 **Input**: E9.T4 negation spec.
 **Output**: Appends `!/.claude/settings.json`, `!/.codex/config.toml`, `!/.codex/rules/`, and adds `.claude/settings.local.json` to the ignore list. `git check-ignore -v .claude/settings.json` → NOT ignored; `.claude/settings.local.json` → ignored; `.codex/config.toml` → NOT ignored.
 **Notes**: PLAN instruction (NOT automated): after Epic 9 merges, user must `git rm --cached .claude/settings.local.json` then commit the ignore update — architect does not perform this.
 
-### Task 5 - Sub-agent caveat + policy-boundaries paragraph [TEMPLATE] [DOC] [PARALLEL]
+### Task 5 - Sub-agent caveat + policy-boundaries paragraph [LOGIC]
 **Files**: `src/templates/partials/subagent-caveat.md.ejs` (new), `src/templates/config/CLAUDE.md.ejs` (include partial + append ≤8-line boundary paragraph), `src/templates/config/AGENTS.md.ejs` (include partial).
 **Input**: E9.T5 (policy-boundary paragraph), E9.T14 (sub-agent caveat verbatim three-sentence copy).
 **Output**: Partial contains the three-sentence caveat including GitHub issue links `#25000` and `#43142`. Both CLAUDE.md and AGENTS.md include the partial in the Sub-agent Routing / permission section. CLAUDE.md gains a ≤8-line paragraph describing shared `.claude/settings.json` + `.codex/config.toml` + `.codex/rules/project.rules`, per-developer `.claude/settings.local.json`, `~/.codex/rules/default.rules` prune reminder, and Windows primary-guard note.
@@ -50,13 +50,13 @@ Ship a committed, deny-first permission policy for Claude Code and Codex so laun
 **Output**: Jest automates the 13 must-block cases (`case-G1..G8`, `case-R1..R3`, `case-W4`, `case-N1`) by asserting each denied pattern is present in the rendered policy outputs. Residual / manual cases (`case-W1..W3`, `case-N2`, sub-agent bypass 10.1, Windows sandbox 10.2, settings `bypassPermissions` 10.4) captured in `docs/security-smoke-runbook.md` with reproducible manual steps. Tests run via `pnpm test tests/security`.
 **Notes**: Keep `smoke.test.ts` ≤200 lines — split into `smoke-git.test.ts` / `smoke-fs.test.ts` / `smoke-network.test.ts` if needed. Residual cases document expected failure mode; no silent passes. Pure helper logic (pattern lookup) extracted to `src/utils/` with its own Jest test per global rule.
 
-### Task 7 - Generator + hooks test updates [TEST] [PARALLEL]
+### Task 7 - Generator + hooks test updates [TEST]
 **Files**: `tests/generator/permissions.test.ts`, `tests/generator/epic-5-hooks.test.ts`, `tests/generator/generate-root-config.test.ts` (new or existing — grep first).
 **Input**: Task 1, 2, 3 outputs.
 **Output**: New assertions for every Task 1 deny pattern; hook matcher tests updated if `PreToolUse` emit changed; test that `generate-root-config.ts` emits `.claude/settings.json` (not `settings.local.json`) and includes the `sandbox` block with `mode`/`autoAllowBashIfSandboxed`/`allowedDomains`; test that `codex-project-rules.ejs` renders every forbid and allow required by E9.T3/T10/T11/T12.
 **Notes**: Use table-driven tests to avoid duplication across deny-pattern cases (DRY). Do not duplicate fixtures — import from production constants where possible.
 
-### Task 8 - Cursor / Copilot / Windsurf partial deltas [DOC]
+### Task 8 - Cursor / Copilot / Windsurf partial deltas [LOGIC]
 **Files**: `src/templates/partials/cursor-deny-destructive.md.ejs` (add if missing), `src/templates/partials/copilot-dangerous-ops.md.ejs` (add if missing), `src/templates/partials/windsurf-forbidden-commands.md.ejs` (add if missing) — exact deltas determined by `ls src/templates/partials/` and grep of `src/generator/` for cursor/copilot/windsurf wiring.
 **Input**: E9.T6 (Cursor `00-deny-destructive-ops.mdc` with `alwaysApply: true`), E9.T7 (`.github/copilot-instructions.md` §1.4 deny items + prompt frontmatter `tools:` minimization), E9.T8 (`.windsurf/rules/00-forbidden-commands.md` with `activation: always_on`, "Yolo mode forbidden" line).
 **Output**: Partials contain §1.4 deny list enumeration verbatim + the no-sandbox caveat (Cursor), branch-protection dependency note (Copilot), Manual/Auto approval-mode requirement (Windsurf). Wired into existing emission if plumbing exists.
