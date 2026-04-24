@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "default",
     "allow": [
 <% permissions.forEach(function(permission, i) { -%>
       <%- jsonString(permission) %><%= i < permissions.length - 1 ? ',' : '' %>
@@ -9,6 +10,19 @@
 <% denyList.forEach(function(pattern, i) { -%>
       <%- jsonString(pattern) %><%= i < denyList.length - 1 ? ',' : '' %>
 <% }); -%>
+    ]
+  },
+  "sandbox": {
+    "mode": "workspace-write",
+    "autoAllowBashIfSandboxed": true,
+    "allowedDomains": [
+      "api.github.com",
+      "registry.npmjs.org",
+      "nodejs.org",
+      "raw.githubusercontent.com",
+      "objects.githubusercontent.com",
+      "pypi.org",
+      "files.pythonhosted.org"
     ]
   }<% if (postToolUseHooks.length > 0 || preToolUseHooks.length > 0) { %>,
   "hooks": {

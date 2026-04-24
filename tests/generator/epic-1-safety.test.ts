@@ -93,9 +93,9 @@ describe('Epic 1 safety partials', () => {
     expect(agentsMd?.content).toContain('npm publish');
   });
 
-  it('renders .claude/settings.local.json with deny list and PostToolUse hook', async () => {
+  it('renders .claude/settings.json with deny list and PostToolUse hook', async () => {
     const files = await generateAll(makeStackConfig());
-    const settings = files.find((file: GeneratedFile) => file.path === '.claude/settings.local.json');
+    const settings = files.find((file: GeneratedFile) => file.path === '.claude/settings.json');
     expect(settings).toBeDefined();
     const parsed = JSON.parse(settings!.content) as {
       permissions: { allow: string[]; deny: string[] };
@@ -116,8 +116,7 @@ describe('Epic 1 safety partials', () => {
     );
     expect(parsed.permissions.allow).not.toContain('Read(./**)');
     expect(parsed.permissions.allow.filter((rule: string) => rule.includes('|'))).toEqual([]);
-    expect(parsed.permissions.deny).toHaveLength(30);
-    expect(parsed.permissions.deny.filter((rule: string) => rule.includes('|'))).toEqual([]);
+    expect(parsed.permissions.deny).toHaveLength(51);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');
     expect(parsed.permissions.deny).toContain('Bash(rm --recursive:*)');
     expect(parsed.permissions.deny).toContain('Bash(cargo publish:*)');
@@ -127,6 +126,20 @@ describe('Epic 1 safety partials', () => {
     expect(parsed.hooks?.PostToolUse[0].hooks).toEqual([
       { type: 'command', command: expect.stringContaining('--fix') },
     ]);
+  });
+
+  it('settings.json JSON parses and has required top-level shape', async () => {
+    const files = await generateAll(makeStackConfig());
+    const settings = files.find((file: GeneratedFile) => file.path === '.claude/settings.json');
+    expect(settings).toBeDefined();
+    expect(() => JSON.parse(settings!.content)).not.toThrow();
+    const parsed = JSON.parse(settings!.content) as {
+      permissions: { defaultMode: string };
+      sandbox: { mode: string; allowedDomains: string[] };
+    };
+    expect(parsed.permissions.defaultMode).toBe('default');
+    expect(parsed.sandbox.mode).toBe('workspace-write');
+    expect(parsed.sandbox.allowedDomains).toHaveLength(7);
   });
 
   it('emits .codex/config.toml with Codex-native safety defaults', async () => {

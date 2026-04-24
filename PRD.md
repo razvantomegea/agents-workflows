@@ -1775,6 +1775,8 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ## Epic 9 — Agent Permission & Sandbox Hardening [MUST]
 
+**Landed on** `feature/epic-9-permission-sandbox-hardening` (E9.T1–T5, T10–T15 complete; E9.T6–T8 blocked on missing Cursor/Copilot/Windsurf emission plumbing in the generator — tracked for the epic that introduces that pipeline). Note: PRD-specified `approval_policy = "on-failure"` was replaced with `"on-request"` because the former was deprecated by upstream Codex CLI; update PRD wording accordingly.
+
 **Goal.** Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. Deny-first rules and the sandbox are complementary layers; neither is trusted alone.
 
 **Rationale.** `.claude/settings.local.json` exists but is gitignored and local-only, so teammates do not inherit a safe default. `.codex/config.toml` is already sandboxed (`approval_policy = "on-failure"`, `network_access = false`) but is not shared. Both directories are blanket-ignored in `.gitignore`. This epic commits a minimal, merge-not-replace baseline: every existing deny is preserved, no allow rule becomes broader, Codex remains sandboxed, and network access stays disabled until the hardening tasks (E9.T10–E9.T15) land. Epic 9 is the **hardening gate** for Epic 10: non-interactive mode does not unlock until every MUST item here is complete and the E9.T15 smoke suite is green on the target platform.

@@ -22,13 +22,16 @@ export async function generateRootConfig(
     const claudeMd = await renderTemplate('config/CLAUDE.md.ejs', context);
     files.push({ path: 'CLAUDE.md', content: claudeMd });
 
-    const settings = await renderTemplate('config/settings-local.json.ejs', context);
-    files.push({ path: '.claude/settings.local.json', content: settings });
+    const settings = await renderTemplate('config/settings.json.ejs', context);
+    files.push({ path: '.claude/settings.json', content: settings });
   }
 
   if (config.targets.codexCli) {
     const codexConfig = await renderTemplate('config/codex-config.toml.ejs', context);
     files.push({ path: '.codex/config.toml', content: codexConfig });
+
+    const codexRules = await renderTemplate('config/codex-project-rules.ejs', context);
+    files.push({ path: '.codex/rules/project.rules', content: codexRules });
   }
 
   const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);

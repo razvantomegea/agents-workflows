@@ -43,6 +43,8 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | UI/UX design & review | `ui-designer` |
 <% } -%>
 
+<%- include('../partials/subagent-caveat.md.ejs') %>
+
 ## Model routing (verify current model IDs in vendor docs)
 
 | Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
@@ -136,12 +138,12 @@ Before any destructive operation, state: (1) what changes, (2) where
 
 `agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
 
-The generated `.claude/settings.local.json` enforces safety at the tool-call layer via Claude Code hooks:
+The generated `.claude/settings.json` enforces safety at the tool-call layer via Claude Code hooks:
 
 - **PreToolUse `Bash`** — a shell guard runs before every Bash invocation and blocks commands matching the destructive-pattern list (`rm -rf`, `git push --force`, `git reset --hard`, etc.). Exit 2 = blocked with refusal message; exit 0 = allowed.
 - **PostToolUse `Edit|MultiEdit|Write`** — runs the configured lint/format command automatically after every file edit.
 
-Review or adjust hook entries in `.claude/settings.local.json` under the `"hooks"` key.
+Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key. Per-developer overrides go in `.claude/settings.local.json` (gitignored).
 
 <%- include('../partials/tooling.md.ejs') %>
 

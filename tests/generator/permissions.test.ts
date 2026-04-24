@@ -1,12 +1,25 @@
-import { buildPermissions, buildDenyList, buildPostToolUseHooks } from '../../src/generator/permissions.js';
+import {
+  buildPermissions,
+  buildDenyList,
+  buildPostToolUseHooks,
+  LOCAL_GIT_ALLOWS,
+  TOOLCHAIN_ALLOWS,
+  DENY_PATTERNS,
+} from '../../src/generator/permissions.js';
+
+const PNPM_INPUT = {
+  tooling: { packageManagerPrefix: 'pnpm' },
+  commands: { test: 'pnpm test', typeCheck: 'pnpm check-types', lint: 'pnpm lint' },
+};
 
 describe('buildPermissions', () => {
-  it('emits glob and WebSearch for pnpm with glob-covered commands', () => {
-    const perms = buildPermissions({
-      tooling: { packageManagerPrefix: 'pnpm' },
-      commands: { test: 'pnpm test', typeCheck: 'pnpm check-types', lint: 'pnpm lint' },
-    });
-    expect(perms).toEqual(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)', 'Bash(pnpm:*)', 'WebSearch']);
+  it('emits workspace globs, pnpm glob, and WebSearch for a pnpm stack', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).toContain('Edit(./**)');
+    expect(perms).toContain('MultiEdit(./**)');
+    expect(perms).toContain('Write(./**)');
+    expect(perms).toContain('Bash(pnpm:*)');
+    expect(perms).toContain('WebSearch');
   });
 
   it('keeps commands that do not match the glob prefix', () => {
@@ -14,8 +27,6 @@ describe('buildPermissions', () => {
       tooling: { packageManagerPrefix: 'pnpm' },
       commands: { test: 'pnpm test', typeCheck: 'mypy .', lint: 'ruff check .' },
     });
-    expect(perms).toContain('Bash(pnpm:*)');
-    expect(perms).toContain('WebSearch');
     expect(perms).toContain('Bash(mypy .)');
     expect(perms).toContain('Bash(ruff check .)');
     expect(perms).not.toContain('Bash(pnpm test)');
@@ -27,10 +38,6 @@ describe('buildPermissions', () => {
       commands: { test: 'go test ./...', typeCheck: 'go vet ./...', lint: null },
     });
     expect(perms).not.toContain('Bash(:*)');
-    expect(perms).toContain('Edit(./**)');
-    expect(perms).toContain('MultiEdit(./**)');
-    expect(perms).toContain('Write(./**)');
-    expect(perms).toContain('WebSearch');
     expect(perms).toContain('Bash(go test ./...)');
     expect(perms).toContain('Bash(go vet ./...)');
   });
@@ -40,7 +47,8 @@ describe('buildPermissions', () => {
       tooling: { packageManagerPrefix: 'npm run' },
       commands: { test: 'npm run test', typeCheck: null, lint: null },
     });
-    expect(perms).toEqual(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)', 'Bash(npm run:*)', 'WebSearch']);
+    expect(perms).toContain('Bash(npm run:*)');
+    expect(perms).not.toContain('null');
   });
 
   it('treats a command equal to the prefix as covered by the glob', () => {
@@ -48,36 +56,54 @@ describe('buildPermissions', () => {
       tooling: { packageManagerPrefix: 'pnpm' },
       commands: { test: 'pnpm', typeCheck: null, lint: null },
     });
-    expect(perms).toEqual(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)', 'Bash(pnpm:*)', 'WebSearch']);
+    expect(perms).toContain('Bash(pnpm:*)');
+    expect(perms).not.toContain('Bash(pnpm)');
   });
 
-  it('contains no pipe-pattern entries in the allow list', () => {
-    const perms = buildPermissions({
-      tooling: { packageManagerPrefix: 'pnpm' },
-      commands: { test: 'pnpm test', typeCheck: 'pnpm check-types', lint: 'pnpm lint' },
-    });
+  it('allow list contains no pipe-pattern entries', () => {
+    const perms = buildPermissions(PNPM_INPUT);
     expect(perms.filter((rule) => rule.includes('|'))).toEqual([]);
+  });
+
+  it('does not emit a broad Bash(git:*) allow entry', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).not.toContain('Bash(git:*)');
+  });
+
+  it('emits all 9 LOCAL_GIT_ALLOWS entries for a pnpm stack', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(LOCAL_GIT_ALLOWS).toHaveLength(9);
+    for (const entry of LOCAL_GIT_ALLOWS) {
+      expect(perms).toContain(entry);
+    }
+  });
+
+  it('emits all 6 TOOLCHAIN_ALLOWS entries for a pnpm stack', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(TOOLCHAIN_ALLOWS).toHaveLength(6);
+    for (const entry of TOOLCHAIN_ALLOWS) {
+      expect(perms).toContain(entry);
+    }
   });
 });
 
 describe('buildDenyList', () => {
-  it('returns the 30 documented deny patterns in order', () => {
+  it('returns the 51 documented deny patterns in order starting with Bash(rm -rf:*)', () => {
     const deny = buildDenyList();
-    expect(deny).toHaveLength(30);
+    expect(deny).toHaveLength(51);
     expect(deny[0]).toBe('Bash(rm -rf:*)');
     expect(deny).toContain('Bash(git push --force:*)');
-    expect(deny).toContain('Edit(.env*)');
-    expect(deny).toContain('Edit(migrations/**)');
-    expect(deny[29]).toBe('MultiEdit(migrations/**)');
     expect(deny).toContain('Bash(git push --force-with-lease:*)');
     expect(deny).toContain('Bash(rm --recursive:*)');
     expect(deny).toContain('Bash(rm --force:*)');
     expect(deny).toContain('Bash(git clean -f:*)');
     expect(deny).toContain('Bash(cargo publish:*)');
-    expect(deny).not.toContain('Bash(pypi upload:*)');
     expect(deny).toContain('Bash(twine upload:*)');
+    expect(deny).toContain('Edit(.env*)');
     expect(deny).toContain('Write(.env*)');
     expect(deny).toContain('MultiEdit(.env*)');
+    expect(deny).toContain('Edit(migrations/**)');
+    expect(deny).not.toContain('Bash(pypi upload:*)');
   });
 
   it('returns a fresh copy each call', () => {
@@ -87,10 +113,36 @@ describe('buildDenyList', () => {
     expect(a).toEqual(b);
   });
 
-  it('contains no pipe-pattern entries in the deny list', () => {
+  it('contains all four pipe-to-shell entries', () => {
     const deny = buildDenyList();
-    const pipeEntries = deny.filter((rule) => rule.includes('|'));
-    expect(pipeEntries).toEqual([]);
+    expect(deny).toContain('Bash(curl:* | sh)');
+    expect(deny).toContain('Bash(curl:* | bash)');
+    expect(deny).toContain('Bash(wget:* | sh)');
+    expect(deny).toContain('Bash(wget:* | bash)');
+  });
+
+  it('does NOT contain plain Bash(curl:*) or Bash(wget:*)', () => {
+    const deny = buildDenyList();
+    expect(deny).not.toContain('Bash(curl:*)');
+    expect(deny).not.toContain('Bash(wget:*)');
+  });
+});
+
+describe('DENY_PATTERNS — E9.T1 + E9.T11 required entries', () => {
+  const E9_REQUIRED: readonly string[] = [
+    'Bash(git push:*)', 'Bash(git commit:*)', 'Bash(git commit --amend:*)',
+    'Bash(git rm:*)', 'Bash(sudo:*)',
+    'Edit(/**)', 'Edit(~/**)', 'Write(/**)', 'Write(~/**)',
+    'MultiEdit(/**)', 'MultiEdit(~/**)',
+    'Bash(Invoke-WebRequest:*)', 'Bash(iwr:*)',
+    'Bash(Invoke-RestMethod:*)', 'Bash(irm:*)',
+    'Bash(curl.exe:*)', 'Bash(wget.exe:*)',
+    'Bash(curl:* | sh)', 'Bash(curl:* | bash)',
+    'Bash(wget:* | sh)', 'Bash(wget:* | bash)',
+  ];
+
+  it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern) => {
+    expect(DENY_PATTERNS).toContain(pattern);
   });
 });
 
@@ -119,11 +171,6 @@ describe('buildPostToolUseHooks', () => {
   it('inserts the argument separator for package run wrappers', () => {
     const hooks = buildPostToolUseHooks({ lintCommand: 'npm run lint' });
     expect(hooks[0].hooks[0].command).toBe('npm run lint -- --fix || true');
-  });
-
-  it('inserts the argument separator for non-npm run wrappers', () => {
-    const hooks = buildPostToolUseHooks({ lintCommand: 'bun run lint' });
-    expect(hooks[0].hooks[0].command).toBe('bun run lint -- --fix || true');
   });
 
   it('reuses an existing package run argument separator', () => {

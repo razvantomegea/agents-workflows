@@ -8,3 +8,11 @@ coverage/
 .env.local
 .env.development.local
 .env.test.local
+
+# Claude Code / Codex CLI — per-developer caches stay local; shared policy is tracked.
+.claude/settings.local.json
+.claude/.cache/
+.codex/.cache/
+!/.claude/settings.json
+!/.codex/config.toml
+!/.codex/rules/
