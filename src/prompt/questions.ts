@@ -180,6 +180,14 @@ export async function askAgentSelection(
   return checkbox({ message: 'Select agents to generate:', choices });
 }
 
+/**
+ * Prompt the user to choose which CLI command workflows to generate.
+ *
+ * Displays a checkbox list of available commands (by default `workflowPlan` and `workflowFix` are selected)
+ * and returns the identifiers of the chosen commands.
+ *
+ * @returns The selected command identifiers as an array of strings.
+ */
 export async function askCommandSelection(): Promise<string[]> {
   const choices = [
     { name: '/workflow-plan — End-to-end feature workflow', value: 'workflowPlan', checked: true },

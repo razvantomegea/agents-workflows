@@ -6,12 +6,31 @@ export function findFile(files: GeneratedFile[], filePath: string): GeneratedFil
   return files.find((f) => f.path === filePath);
 }
 
+/**
+ * Retrieve the content string of a generated file at the given path.
+ *
+ * @param files - Array of generated files to search
+ * @param filePath - Path of the file to locate
+ * @returns The located file's `content` string
+ * @throws Error if no file with `filePath` exists (message: `File not found: <filePath>`)
+ */
 export function getContent(files: GeneratedFile[], filePath: string): string {
   const file = findFile(files, filePath);
   if (!file) throw new Error(`File not found: ${filePath}`);
   return file.content;
 }
 
+/**
+ * Create a StackConfig by merging explicit default values with provided overrides.
+ *
+ * The function builds a complete configuration object from fixed base defaults for stack, targets,
+ * selected commands, governance, agents, and other top-level sections, then applies any fields
+ * present in `overrides` to those defaults. The returned config sets `agents.reactTsSenior` to the
+ * explicit override when provided; otherwise it is inferred from the merged stack's framework and language.
+ *
+ * @param overrides - Partial configuration values to override the defaults
+ * @returns The assembled StackConfig with defaults merged and override values applied
+ */
 export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConfig {
   const baseStack: StackConfig['stack'] = { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null, i18nLibrary: null };
   const baseTargets: StackConfig['targets'] = { claudeCode: true, codexCli: true };

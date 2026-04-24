@@ -2,6 +2,15 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+/**
+ * Create a temporary project with a package.json, run a callback against it, and remove the project directory afterward.
+ *
+ * Ensures the temporary directory is removed after the callback completes or throws.
+ *
+ * @param prefix - Prefix for the temporary directory name created in the OS temp directory
+ * @param dependencies - Mapping of package names to version strings to write into the generated `package.json`
+ * @param callback - Async function invoked with the path to the temporary project root
+ */
 export async function withPackageJson({
   prefix,
   dependencies,

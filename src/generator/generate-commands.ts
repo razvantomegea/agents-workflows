@@ -16,6 +16,16 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
   { key: 'workflowTcr', templateFile: 'commands/workflow-tcr.md.ejs', outputName: 'workflow-tcr.md' },
 ];
 
+/**
+ * Generate file artifacts for each enabled command and target.
+ *
+ * Renders the templates for commands marked in `config.selectedCommands` and produces
+ * GeneratedFile entries for each enabled `config.targets` destination.
+ *
+ * @param config - Stack configuration that selects which commands to generate and which targets are enabled
+ * @param context - Generator context used when rendering command templates
+ * @returns An array of GeneratedFile objects representing the rendered files (e.g., paths under `.claude/commands/` and `.codex/prompts/` for enabled targets)
+ */
 export async function generateCommands(
   config: StackConfig,
   context: GeneratorContext,
