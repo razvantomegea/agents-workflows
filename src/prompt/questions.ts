@@ -200,4 +200,5 @@ export async function askCommandSelection(): Promise<string[]> {
   return checkbox({ message: 'Select commands to generate:', choices });
 }
 
-export { askTargets, askGovernance } from './questions-governance.js';
+export { askTargets } from './ask-targets.js';
+export { askGovernance } from './ask-governance.js';

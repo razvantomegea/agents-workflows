@@ -2,7 +2,7 @@
 _Branch: `feature/epic-8-situational-enhancements` | Date: 2026-04-23_
 
 ## Context
-Epic 8 [NICE] adds five situational enhancements to the generated agent configs: an i18n partial gated by library detection (E8.T1), a TCR (`test && commit || revert`) workflow command (E8.T2), an OSCAL continuous-compliance scaffold under governance (E8.T3), expanded continuous-profiling guidance inside the existing observability partial (E8.T4), and a Graphite/ghstack stacked-PR tooling mention inside the git-rules partial (E8.T5). NICE only deprioritises this work versus MUST/SHOULD epics — every task must still satisfy DRY, the 200-line file cap, explicit typing (no `any`), and the standard review/test loop.
+Epic 8 [NICE] adds five situational enhancements to the generated agent configs: an i18n partial gated by library detection (E8.T1), a TCR (`test && commit || revert`) workflow command (E8.T2), an OSCAL continuous-compliance scaffold under governance (E8.T3), expanded continuous-profiling guidance inside the existing observability partial (E8.T4), and a Graphite/ghstack stacked-PR tooling mention inside the git-rules partial (E8.T5). NICE only deprioritizes this work versus MUST/SHOULD epics — every task must still satisfy DRY, the 200-line file cap, explicit typing (no `any`), and the standard review/test loop.
 
 ## Pre-implementation checklist
 
@@ -11,9 +11,9 @@ Epic 8 [NICE] adds five situational enhancements to the generated agent configs:
 - [ ] Read `src/templates/partials/git-rules.md.ejs` "PR Size Cap" section that already mentions `Graphite / ghstack / git-town` to confirm where the E8.T5 expansion lands without duplicating
 - [ ] Grep `src/detector/` for an existing i18n-library detector (none expected — confirms a new detector is required for E8.T1)
 - [ ] Grep `src/templates/agents/{ui-designer,implementer}.md.ejs` for any existing i18n include (none expected — confirms partial is new)
-- [ ] Read `src/detector/dependency-detector.ts` and `detect-auth.ts` to mirror the `createDependencyDetector` pattern for the new i18n detector
-- [ ] Read `src/generator/generate-commands.ts` and the `selectedCommands` schema/prompt wiring to mirror the registration shape used for `workflow-fix` / `workflow-longhorizon` when adding TCR
-- [ ] Read `src/generator/generate-root-config.ts` governance-block structure to mirror the conditional emit pattern for the OSCAL template
+- [ ] Read `src/detector/dependency-detector.ts` and `src/detector/detect-auth.ts` to mirror the `createDependencyDetector` pattern for the new i18n detector
+- [ ] Read `src/generator/generate-commands.ts`, `src/schema/stack-config.ts`, `src/prompt/default-config.ts`, `src/prompt/prompt-flow.ts`, and `src/prompt/questions.ts` to mirror the registration shape used for `workflow-fix` / `workflow-longhorizon` when adding TCR
+- [ ] Read `src/generator/generate-root-config.ts` governance-block structure to mirror the conditional emit pattern for the OSCAL template (`src/templates/governance/oscal-component.json.ejs`)
 - [ ] Grepped codebase for existing equivalents (components, hooks, utils, types, constants)
 - [ ] Verified no type duplication - shared types imported, not redeclared
 - [ ] Confirmed no magic numbers - all values reference design tokens or named constants
@@ -165,7 +165,7 @@ Epic 8 [NICE] adds five situational enhancements to the generated agent configs:
 
 ## External errors
 
-CodeRabbit external review (2026-04-23) surfaced 11 findings outside the Epic 8 changeset — recorded here, not fixed in this branch:
+CodeRabbit external review (2026-04-23) surfaced 10 findings outside the Epic 8 changeset — recorded here, not fixed in this branch:
 - `.github/workflows/ci.yml`: missing `pnpm lint` CI step (pre-existing infra).
 - `src/templates/partials/architect-fail-safe.md.ejs`: CRLF line endings (pre-existing).
 - `src/templates/agents/test-writer.md.ejs`: doc says tests live in separate `tests/` dir; project convention is colocated (pre-existing template — both Claude and Codex outputs reflect this).

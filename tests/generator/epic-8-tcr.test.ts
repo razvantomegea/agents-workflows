@@ -2,6 +2,8 @@ import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 import { makeStackConfig, findFile, getContent } from './fixtures.js';
 
+const DEFAULT_MAIN_BRANCH = 'main';
+
 const ENABLED_COMMANDS = {
   workflowPlan: true,
   workflowFix: true,
@@ -50,7 +52,7 @@ describe('Epic 8 T3 — workflow-tcr: enabled (claudeCode only)', () => {
 
   it('warns about mainBranch', () => {
     const content = getContent(files, '.claude/commands/workflow-tcr.md');
-    expect(content).toContain('main');
+    expect(content).toContain(DEFAULT_MAIN_BRANCH);
     expect(content).toContain('Never run TCR on');
   });
 

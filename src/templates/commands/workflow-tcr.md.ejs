@@ -24,6 +24,13 @@ run the test suite — if green, commit; if red, hard-revert all uncommitted cha
 3. The working tree has untracked files that are not covered by `.gitignore` and
    should not be auto-committed. Review `.gitignore` first.
 
+   > **Note on untracked files**: `git add -u` (used below) only stages modifications
+   > and deletions of already-tracked files — it will NOT stage new untracked files.
+   > `git reset --hard` (used below) resets the index and working tree to `HEAD` for
+   > tracked files but does NOT delete untracked files. If you must discard untracked
+   > files too, inspect `.gitignore` first and then run `git clean -fd` manually —
+   > TCR itself will not do that for you.
+
 If all checks pass, proceed below.
 
 ## Instructions
@@ -79,8 +86,9 @@ Print a one-line summary:
 - **NEVER skip the pre-flight checks.** Skipping them risks committing broken code
   or reverting work on the wrong branch.
 - Only tracked files modified in the current working tree are staged and committed
-  (`git add -u` never touches untracked files). Do not manually stage unrelated
-  files before invoking this command.
+  (`git add -u` never touches untracked files, and `git reset --hard` does not remove
+  them either). Do not manually stage unrelated files before invoking this command;
+  if untracked files must be discarded, run `git clean -fd` explicitly.
 - Do not suppress or ignore test failures to avoid a revert. The revert IS the
   workflow — it forces a clean state so the next attempt can succeed.
 

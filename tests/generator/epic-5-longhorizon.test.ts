@@ -2,14 +2,35 @@ import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 import { makeStackConfig, findFile, getContent } from './fixtures.js';
 
+const LONGHORIZON_ENABLED_COMMANDS = {
+  workflowPlan: true,
+  workflowFix: true,
+  externalReview: true,
+  workflowLonghorizon: true,
+  workflowTcr: false,
+};
+
+const LONGHORIZON_CODEX_COMMANDS = {
+  ...LONGHORIZON_ENABLED_COMMANDS,
+  externalReview: false,
+};
+
+const LONGHORIZON_DISABLED_COMMANDS = {
+  ...LONGHORIZON_CODEX_COMMANDS,
+  workflowLonghorizon: false,
+};
+
+const CLAUDE_ONLY_TARGETS = { claudeCode: true, codexCli: false };
+const BOTH_TARGETS = { claudeCode: true, codexCli: true };
+
 describe('Epic 5 T1 — workflow-longhorizon: enabled (claudeCode only)', () => {
   let files: GeneratedFile[];
 
   beforeAll(async () => {
     files = await generateAll(
       makeStackConfig({
-        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: true, workflowLonghorizon: true, workflowTcr: false },
-        targets: { claudeCode: true, codexCli: false },
+        selectedCommands: LONGHORIZON_ENABLED_COMMANDS,
+        targets: CLAUDE_ONLY_TARGETS,
       }),
     );
   });
@@ -78,8 +99,8 @@ describe('Epic 5 T1 — workflow-longhorizon: enabled with codexCli target', () 
   beforeAll(async () => {
     files = await generateAll(
       makeStackConfig({
-        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false, workflowLonghorizon: true, workflowTcr: false },
-        targets: { claudeCode: true, codexCli: true },
+        selectedCommands: LONGHORIZON_CODEX_COMMANDS,
+        targets: BOTH_TARGETS,
       }),
     );
   });
@@ -99,8 +120,8 @@ describe('Epic 5 T1 — workflow-longhorizon: disabled', () => {
   beforeAll(async () => {
     files = await generateAll(
       makeStackConfig({
-        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false, workflowLonghorizon: false, workflowTcr: false },
-        targets: { claudeCode: true, codexCli: true },
+        selectedCommands: LONGHORIZON_DISABLED_COMMANDS,
+        targets: BOTH_TARGETS,
       }),
     );
   });

@@ -1,8 +1,6 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
-import { makeStackConfig, getContent } from './fixtures.js';
-
-const ARCHITECT_PATH = '.claude/agents/architect.md';
+import { makeStackConfig, getContent, ARCHITECT_PATH } from './fixtures.js';
 
 describe('Epic 8 T6 — stacked PR tooling note in git-rules partial', () => {
   let files: GeneratedFile[];
@@ -17,7 +15,8 @@ describe('Epic 8 T6 — stacked PR tooling note in git-rules partial', () => {
 
   it('architect.md contains Graphite canonical command (gt create)', () => {
     const content = getContent(files, ARCHITECT_PATH);
-    expect(content.includes('Graphite') || content.includes('gt create')).toBe(true);
+    expect(content).toContain('Graphite');
+    expect(content).toContain('gt create');
   });
 
   it('architect.md contains ghstack canonical command', () => {

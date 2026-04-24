@@ -22,8 +22,10 @@
 - **Deterministic** — no test depends on another test's state.
 <% if (conventions.testColocation) { -%>
 - **Colocated** — test files live next to their source: `foo.ts` → `foo.test.ts`.
-<% } else { -%>
+<% } else if (testsDir) { -%>
 - **Separate directory** — tests live in `<%= testsDir %>`.
+<% } else { -%>
+- **Separate directory** — tests live in a dedicated tests folder.
 <% } -%>
 <% if (conventions.maxFileLength) { -%>
 - **File length** — keep test files under <%= conventions.maxFileLength %> lines.
@@ -46,7 +48,9 @@
 - **Arrange-Act-Assert** in every test function.
 - **Use fixtures** for setup and teardown.
 - **Parametrize** for testing multiple inputs.
+<% if (conventions.maxFileLength) { -%>
 - Keep test files under <%= conventions.maxFileLength %> lines.
+<% } -%>
 <% } else if (testFramework === 'go-test') { -%>
 ### Core Principles
 

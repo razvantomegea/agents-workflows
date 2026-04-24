@@ -1,15 +1,18 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
-import { makeStackConfig, findFile, getContent } from './fixtures.js';
-
-const IMPLEMENTER_PATH = '.claude/agents/implementer.md';
-const UI_DESIGNER_PATH = '.claude/agents/ui-designer.md';
-const ARCHITECT_PATH = '.claude/agents/architect.md';
-const I18N_HEADING = '## Internationalization';
-const TCR_CLAUDE = '.claude/commands/workflow-tcr.md';
-const TCR_CODEX = '.codex/prompts/workflow-tcr.md';
-const COMPLIANCE_PATH = 'docs/COMPLIANCE.md';
-const OSCAL_PATH = 'docs/oscal/component-definition.json';
+import {
+  makeStackConfig,
+  findFile,
+  getContent,
+  IMPLEMENTER_PATH,
+  UI_DESIGNER_PATH,
+  ARCHITECT_PATH,
+  I18N_HEADING,
+  TCR_CLAUDE_PATH,
+  TCR_CODEX_PATH,
+  COMPLIANCE_PATH,
+  OSCAL_PATH,
+} from './fixtures.js';
 
 describe('Epic 8 integration — all flags ON', () => {
   let files: GeneratedFile[];
@@ -34,11 +37,11 @@ describe('Epic 8 integration — all flags ON', () => {
   });
 
   it('T3: .claude/commands/workflow-tcr.md is emitted', () => {
-    expect(findFile(files, TCR_CLAUDE)).toBeDefined();
+    expect(findFile(files, TCR_CLAUDE_PATH)).toBeDefined();
   });
 
   it('T3: .codex/prompts/workflow-tcr.md is emitted', () => {
-    expect(findFile(files, TCR_CODEX)).toBeDefined();
+    expect(findFile(files, TCR_CODEX_PATH)).toBeDefined();
   });
 
   it('T4: docs/COMPLIANCE.md is emitted', () => {
@@ -76,11 +79,11 @@ describe('Epic 8 integration — all flags OFF (defaults)', () => {
   });
 
   it('T3: .claude/commands/workflow-tcr.md is not emitted', () => {
-    expect(findFile(files, TCR_CLAUDE)).toBeUndefined();
+    expect(findFile(files, TCR_CLAUDE_PATH)).toBeUndefined();
   });
 
   it('T3: .codex/prompts/workflow-tcr.md is not emitted', () => {
-    expect(findFile(files, TCR_CODEX)).toBeUndefined();
+    expect(findFile(files, TCR_CODEX_PATH)).toBeUndefined();
   });
 
   it('T4: docs/COMPLIANCE.md is not emitted', () => {

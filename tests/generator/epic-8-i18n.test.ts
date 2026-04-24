@@ -1,10 +1,12 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
-import { makeStackConfig, getContent } from './fixtures.js';
-
-const IMPLEMENTER_PATH = '.claude/agents/implementer.md';
-const UI_DESIGNER_PATH = '.claude/agents/ui-designer.md';
-const I18N_HEADING = '## Internationalization';
+import {
+  makeStackConfig,
+  getContent,
+  IMPLEMENTER_PATH,
+  UI_DESIGNER_PATH,
+  I18N_HEADING,
+} from './fixtures.js';
 
 describe('Epic 8 T2 — i18n section absent by default', () => {
   let files: GeneratedFile[];

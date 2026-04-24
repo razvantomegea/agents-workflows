@@ -2,8 +2,17 @@ import type { StackConfig } from '../../src/schema/stack-config.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 import { supportsReactTsStack } from '../../src/constants/frameworks.js';
 
+export const IMPLEMENTER_PATH = '.claude/agents/implementer.md';
+export const UI_DESIGNER_PATH = '.claude/agents/ui-designer.md';
+export const ARCHITECT_PATH = '.claude/agents/architect.md';
+export const I18N_HEADING = '## Internationalization';
+export const TCR_CLAUDE_PATH = '.claude/commands/workflow-tcr.md';
+export const TCR_CODEX_PATH = '.codex/prompts/workflow-tcr.md';
+export const COMPLIANCE_PATH = 'docs/COMPLIANCE.md';
+export const OSCAL_PATH = 'docs/oscal/component-definition.json';
+
 export function findFile(files: GeneratedFile[], filePath: string): GeneratedFile | undefined {
-  return files.find((f) => f.path === filePath);
+  return files.find((f: GeneratedFile) => f.path === filePath);
 }
 
 /**

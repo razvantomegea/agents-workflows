@@ -1,8 +1,6 @@
 import { generateAll } from '../../src/generator/index.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
-import { makeStackConfig, getContent } from './fixtures.js';
-
-const IMPLEMENTER_PATH = '.claude/agents/implementer.md';
+import { makeStackConfig, getContent, IMPLEMENTER_PATH } from './fixtures.js';
 
 describe('Epic 8 T5 — continuous profiling expansion in observability partial', () => {
   let files: GeneratedFile[];
@@ -37,7 +35,7 @@ describe('Epic 8 T5 — continuous profiling expansion in observability partial'
   });
 
   it('implementer.md mentions heap allocations profile type', () => {
-    expect(getContent(files, IMPLEMENTER_PATH)).toContain('heap');
+    expect(getContent(files, IMPLEMENTER_PATH)).toContain('heap profiles');
   });
 
   it('implementer.md warns about PII-safe stack symbolisation', () => {
