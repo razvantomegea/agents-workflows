@@ -2,6 +2,16 @@ import { renderTemplate } from '../utils/template-renderer.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
 
+/**
+ * Generate root-level configuration and documentation files based on the provided stack configuration.
+ *
+ * The function conditionally renders and collects templates (e.g., CLAUDE, Codex, AGENTS, ADR template,
+ * and governance-related documents) according to flags in `config` and returns all generated file entries.
+ *
+ * @param config - Stack configuration that controls which templates are rendered (e.g., `targets.claudeCode`, `targets.codexCli`, `governance.enabled`) and provides project metadata when needed
+ * @param context - Rendering context passed into templates to produce file contents
+ * @returns An array of generated files, each with a `path` and rendered `content`
+ */
 export async function generateRootConfig(
   config: StackConfig,
   context: GeneratorContext,
