@@ -42,7 +42,7 @@ describe('Epic 8 T6 — stacked PR tooling note in git-rules partial', () => {
     expect(content.includes('one logical change per PR') || content.includes('logical change')).toBe(true);
   });
 
-  it('git-rules partial is within 60 lines after expansion', async () => {
+  it('git-rules partial template file is within 60 lines', async () => {
     const { readFile } = await import('fs/promises');
     const { join } = await import('path');
 
