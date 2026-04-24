@@ -54,6 +54,9 @@ export interface GeneratorContext extends Record<string, unknown> {
   hasE2eTester: boolean;
   hasSecurityReviewer: boolean;
   hasReactTsSenior: boolean;
+  hasI18n: boolean;
+  // Reserved for future template use; presently only hasI18n is consumed.
+  i18nLibrary: StackConfig['stack']['i18nLibrary'];
   testFramework: string;
   testsDir: string | null;
 }

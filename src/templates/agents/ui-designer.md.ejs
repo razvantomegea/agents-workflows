@@ -19,6 +19,9 @@ You are a UI/UX design specialist for the `<%= project.name %>` project: <%= pro
 <%- include('../partials/accessibility.md.ejs') %>
 
 <%- include('../partials/performance.md.ejs') %>
+<% if (hasI18n) { -%>
+<%- include('../partials/i18n.md.ejs') %>
+<% } -%>
 
 ## When invoked
 

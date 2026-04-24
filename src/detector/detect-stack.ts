@@ -8,11 +8,25 @@ import { detectLinter, detectFormatter } from './detect-linter.js';
 import { detectPackageManager } from './detect-package-manager.js';
 import { detectE2e } from './detect-e2e.js';
 import { detectAuth } from './detect-auth.js';
+import { detectI18n } from './detect-i18n.js';
 import { detectAiAgents } from './detect-ai-agents.js';
 import { detectDocsFile } from './detect-docs-file.js';
 import { detectMonorepo } from './detect-monorepo.js';
 import type { DetectedStack } from './types.js';
 
+/**
+ * Detects the technology stack and developer tooling used by the project at the given root directory.
+ *
+ * @param projectRoot - Path to the project's root directory
+ * @returns A `DetectedStack` object containing detection results for:
+ * - `language`, `runtime`, `framework`, `uiLibrary`, `stateManagement`, `database`
+ * - `auth`, `i18n`
+ * - `testFramework`, `testLibrary`, `e2eFramework`
+ * - `linter`, `formatter`, `packageManager`
+ * - `monorepo`, `aiAgents`, and `docsFile`
+ *
+ * Each field holds the detector's result (typically a `value` and a `confidence` score) where applicable.
+ */
 export async function detectStack(projectRoot: string): Promise<DetectedStack> {
   const [
     language,
@@ -27,6 +41,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     packageManager,
     e2eFramework,
     auth,
+    i18n,
     aiAgents,
     docsFile,
   ] = await Promise.all([
@@ -42,6 +57,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectPackageManager(projectRoot),
     detectE2e(projectRoot),
     detectAuth(projectRoot),
+    detectI18n(projectRoot),
     detectAiAgents(),
     detectDocsFile(projectRoot),
   ]);
@@ -57,6 +73,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     stateManagement,
     database,
     auth,
+    i18n,
     testFramework,
     testLibrary,
     e2eFramework,

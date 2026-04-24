@@ -6,6 +6,14 @@ import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults
 import { resolveCommands, resolvePackageManagerPrefix, type PackageScripts } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 
+/**
+ * Builds a complete StackConfig from detected stack information, optional package scripts, and optional package.json metadata.
+ *
+ * @param detected - Detected stack values produced by environment analysis (language, runtime, framework, tools, AI agent flags, etc.)
+ * @param scripts - Optional package.json `scripts` entries used to influence the resolved command set
+ * @param pkg - Optional parsed package.json used to resolve default project name and description
+ * @returns A fully populated StackConfig containing resolved project, stack, tooling, paths, commands, conventions, agents, selected commands, targets, governance, detected AI agents, and monorepo settings
+ */
 export function createDefaultConfig(
   detected: DetectedStack,
   scripts: PackageScripts = {},
@@ -42,6 +50,7 @@ export function createDefaultConfig(
       stateManagement: detected.stateManagement.value,
       database: detected.database.value,
       auth: detected.auth.value,
+      i18nLibrary: detected.i18n.value,
     },
     tooling: {
       packageManager,
@@ -88,6 +97,7 @@ export function createDefaultConfig(
       workflowFix: true,
       externalReview: false,
       workflowLonghorizon: false,
+      workflowTcr: false,
     },
     targets,
     governance: { enabled: false },

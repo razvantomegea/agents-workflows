@@ -35,6 +35,9 @@ You are a senior <% if (stack.framework && stack.framework.toLowerCase() !== 'no
 <%- include('../partials/error-handling-code.md.ejs') %>
 <%- include('../partials/observability.md.ejs') %>
 <%- include('../partials/concurrency.md.ejs') %>
+<% if (hasI18n) { -%>
+<%- include('../partials/i18n.md.ejs') %>
+<% } -%>
 <%- include('../partials/tdd-discipline.md.ejs') %>
 
 ## When invoked

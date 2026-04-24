@@ -1,5 +1,5 @@
 ## Stack Context
 
-<% stackItems.forEach(function(item) { if (item != null && typeof item === 'string') { var trimmed = item.trim(); if (trimmed !== '' && trimmed.toLowerCase() !== 'none') { -%>
+<% if (Array.isArray(stackItems)) { stackItems.forEach(function(item) { if (item != null && typeof item === 'string') { var trimmed = item.trim(); if (trimmed !== '' && trimmed.toLowerCase() !== 'none') { -%>
 - <%= trimmed %>
-<% } } }); -%>
+<% } } }); } -%>

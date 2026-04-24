@@ -1,0 +1,121 @@
+---
+name: workflow-tcr
+description: "TCR (test && commit || revert) loop on a dedicated branch."
+---
+
+Run a TCR (test-commit-revert) loop on the current change. On every invocation:
+run the test suite — if green, commit; if red, hard-revert all uncommitted changes.
+
+> **TCR semantics**: test && commit || revert (Thoughtworks Radar Vol 33 — Trial).
+
+## Pre-flight safety checks
+
+**STOP immediately if any of the following is true:**
+
+1. The current branch is `<%= mainBranch %>` (or any integration branch). TCR must only run
+   on a dedicated TCR branch. Never run TCR on `<%= mainBranch %>`.
+
+   ```bash
+   git rev-parse --abbrev-ref HEAD
+   ```
+
+2. There are no staged or unstaged changes. TCR has nothing to operate on.
+
+3. The working tree has untracked files that are not covered by `.gitignore` and
+   should not be auto-committed. Review `.gitignore` first.
+
+   > **Note on untracked files**: `git add -u` (used below) only stages modifications
+   > and deletions of already-tracked files — it will NOT stage new untracked files.
+   > `git reset --hard` (used below) resets the index and working tree to `HEAD` for
+   > tracked files but does NOT delete untracked files. If you must discard untracked
+   > files too, inspect `.gitignore` first and then run `git clean -fd` manually —
+   > TCR itself will not do that for you.
+
+If all checks pass, proceed below.
+
+## Instructions
+
+### Step 1 — Run the test suite
+
+```bash
+<%= commands.test %>
+```
+
+### Step 2 — Branch on outcome
+
+**If the test suite passes (exit code 0):**
+
+Commit all current changes with a conventional commit message:
+
+```bash
+git add -u && git commit -m "tcr: <brief description of change>"
+```
+
+> This is the **user-invoked opt-in** to committing. Invoking this slash command
+> constitutes explicit user consent per the project's "NEVER commit unless
+> user-invoked" policy.
+
+**If the test suite fails (exit code non-0):**
+
+Hard-revert all uncommitted changes:
+
+```bash
+git reset --hard HEAD
+```
+
+> **WARNING — destructive operation**: `git reset --hard` permanently discards all
+> uncommitted changes (staged and unstaged). This is intentional TCR behaviour —
+> red tests mean the change is reverted so you start from a clean baseline.
+
+### Step 3 — Report outcome
+
+Print a one-line summary:
+
+- On commit: `TCR: COMMITTED — <commit sha> — tests passed`
+- On revert: `TCR: REVERTED — tests failed — working tree restored to HEAD`
+
+## Verification rules
+
+- **NEVER run TCR on `<%= mainBranch %>`** or any other protected / integration branch.
+  Create a dedicated branch first:
+
+  ```bash
+  git checkout -b tcr/<short-kebab-description>
+  ```
+
+- **NEVER skip the pre-flight checks.** Skipping them risks committing broken code
+  or reverting work on the wrong branch.
+- Only tracked files modified in the current working tree are staged and committed
+  (`git add -u` never touches untracked files, and `git reset --hard` does not remove
+  them either). Do not manually stage unrelated files before invoking this command;
+  if untracked files must be discarded, run `git clean -fd` explicitly.
+- Do not suppress or ignore test failures to avoid a revert. The revert IS the
+  workflow — it forces a clean state so the next attempt can succeed.
+
+## `git reset --hard` and the deny list
+
+The repository's `.claude/settings.local.json` (or equivalent) may include
+`git reset --hard` in the tool deny list (project baseline deny list). If so, Claude Code
+will block the revert step and ask for approval.
+
+**When the deny list blocks the revert:**
+
+1. Claude Code surfaces a permission prompt.
+2. The user must grant per-invocation approval for `git reset --hard` to proceed.
+3. Do NOT work around this by using `git checkout -- .` or `git restore .` as a
+   substitute — they do not reset the index, which breaks TCR semantics.
+4. If approval is not granted, abort the TCR loop and report:
+   `TCR: ABORTED — git reset --hard blocked by deny list`
+
+To run TCR without per-invocation prompts, the user must explicitly add
+`git reset --hard` to the allow list in `.claude/settings.local.json` for this
+project. This is an intentional friction point — TCR's hard-revert is destructive
+and should require conscious user opt-in at the tool level.
+
+## Git rules
+
+- **NEVER commit or push without explicit user invocation** — invoking this
+  slash command IS the user's explicit invocation for the commit step.
+- **NEVER run on `<%= mainBranch %>`.** All TCR work stays on a dedicated branch.
+- Only exception for additional git operations: merging `<%= mainBranch %>` to resolve
+  conflicts before starting a TCR session.

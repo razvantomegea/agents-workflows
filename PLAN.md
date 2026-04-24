@@ -1,209 +1,189 @@
-# Plan - Epic 7: CLI Generator Safe File Handling
-_Branch: `feature/epic-7-safe-file-handling` | Date: 2026-04-23_
+# Plan - Epic 8 Situational Enhancements
+_Branch: `feature/epic-8-situational-enhancements` | Date: 2026-04-23_
 
 ## Context
-
-Epic 7 delivers data-preserving re-runs of `agents-workflows init` / `update`. Today the CLI uses a boolean Markdown-only prompt via `writeGeneratedFiles` that can still blow away hand-edited JSON configs and prompts once per file with no diff preview, no yes-to-all / skip-all, no merge path. This epic funnels every generator write through a single `writeFileSafe` helper that shows a colored diff, offers `[y]/[n]/[a]/[s]/[m]`, and supports structured Markdown and JSON merges, plus CI flags (`--yes`, `--no-prompt`, `--merge-strategy`). Goal: a re-run of `init` never destroys user customizations, matching PRD §1.4.
-
-**PRD vs code note.** PRD lines 1732 and 1752 say the `writeFileSafe` helper lives at `src/generator/write-file.ts` and must replace every `fs.write*` call in `src/generator/`. The actual generator (`src/generator/*`) currently emits an in-memory `GeneratedFile[]` and performs zero filesystem writes — all writes happen in `src/installer/write-files.ts` and the two CLI commands (`src/cli/init-command.ts`, `src/cli/update-command.ts`). This plan follows the PRD's exact file path (`src/generator/write-file.ts`) for the new helper but refactors the real write sites across `installer/` and `cli/` so no silent overwrite path remains. Raised here per the "flag the mismatch" rule.
+Epic 8 [NICE] adds five situational enhancements to the generated agent configs: an i18n partial gated by library detection (E8.T1), a TCR (`test && commit || revert`) workflow command (E8.T2), an OSCAL continuous-compliance scaffold under governance (E8.T3), expanded continuous-profiling guidance inside the existing observability partial (E8.T4), and a Graphite/ghstack stacked-PR tooling mention inside the git-rules partial (E8.T5). NICE only deprioritizes this work versus MUST/SHOULD epics — every task must still satisfy DRY, the 200-line file cap, explicit typing (no `any`), and the standard review/test loop.
 
 ## Pre-implementation checklist
 
-- [ ] Confirm branch is `feature/epic-7-safe-file-handling` and tree is clean (`git status`)
-- [ ] Read `PRD.md` lines 1718-1759 (Epic 7) and §1.4 destructive-ops philosophy
+- [ ] Read `PRD.md` lines 1184–1211 (§2.13 Internationalization paste-ready snippet) and lines 1764–1770 (Epic 8 task list)
+- [ ] Read `src/templates/partials/observability.md.ejs` to confirm the existing single-line continuous-profiling NICE entry that E8.T4 expands
+- [ ] Read `src/templates/partials/git-rules.md.ejs` "PR Size Cap" section that already mentions `Graphite / ghstack / git-town` to confirm where the E8.T5 expansion lands without duplicating
+- [ ] Grep `src/detector/` for an existing i18n-library detector (none expected — confirms a new detector is required for E8.T1)
+- [ ] Grep `src/templates/agents/{ui-designer,implementer}.md.ejs` for any existing i18n include (none expected — confirms partial is new)
+- [ ] Read `src/detector/dependency-detector.ts` and `src/detector/detect-auth.ts` to mirror the `createDependencyDetector` pattern for the new i18n detector
+- [ ] Read `src/generator/generate-commands.ts`, `src/schema/stack-config.ts`, `src/prompt/default-config.ts`, `src/prompt/prompt-flow.ts`, and `src/prompt/questions.ts` to mirror the registration shape used for `workflow-fix` / `workflow-longhorizon` when adding TCR
+- [ ] Read `src/generator/generate-root-config.ts` governance-block structure to mirror the conditional emit pattern for the OSCAL template (`src/templates/governance/oscal-component.json.ejs`)
 - [ ] Grepped codebase for existing equivalents (components, hooks, utils, types, constants)
-- [ ] Confirmed `@inquirer/prompts@^7`, `diff@^7`, `chalk@^5` already in `package.json`; verify `remark` / `remark-parse` / `remark-stringify` / `unified` need to be added for T3
-- [ ] Grep every existing write site: `writeFile`, `writeFileSync`, `outputFile`, `fs.promises.writeFile` under `src/` — inventory: `src/installer/write-files.ts:35`, `src/cli/init-command.ts:109`, `src/cli/update-command.ts:106`
-- [ ] Confirm no existing diff helper beyond `src/installer/diff-files.ts` (it wraps `createTwoFilesPatch`) — T2 must either extend or share logic, not reimplement
 - [ ] Verified no type duplication - shared types imported, not redeclared
-- [ ] Confirmed no magic numbers - all values reference design tokens or named constants (80-line diff cap lives as `UPPER_SNAKE_CASE` constant in `src/utils/diff.ts`)
-
-## Dependency ordering
-
-- **T2** (`diff.ts`) ships first — it is a leaf, no dependencies on the others, but T1 consumes it for the preview step.
-- **T1** (`writeFileSafe` + refactor existing writes) depends on T2; it can start in parallel only if it imports a pre-agreed `renderUnifiedDiff` signature from T2, else sequence T2 → T1.
-- **T3** (Markdown merge) and **T4** (JSON merge) both depend on T1 because `writeFileSafe` owns the `merge?: (existing, incoming) => string | Promise<string>` contract; they can run in parallel with each other once T1's interface is defined.
-- **T5** (CLI flags) depends on T1 — it wires `--yes` / `--no-prompt` / `--merge-strategy` into the shared module-level state that T1 introduces.
-- **T6** (docs) has no code dependency and can run in parallel with any of T1–T5.
+- [ ] Confirmed no magic numbers - all values reference design tokens or named constants
 
 ## Tasks
 
-### Task 1 - E7.T1 `writeFileSafe` helper + refactor every write site `[LOGIC][TEST]`
+### Task 1 - Detect i18n library [LOGIC] [SCHEMA]
+**Files**:
+- `src/detector/detect-i18n.ts` (new)
+- `src/detector/types.ts` (modify — add `i18n: Detection` to `DetectedStack`)
+- `src/detector/detect-stack.ts` (modify — add `detectI18n` to the `Promise.all` and to the returned `DetectedStack`)
+- `src/detector/index.ts` (modify — re-export `detectI18n`)
+- `src/schema/stack-config.ts` (modify — add `stack.i18nLibrary: z.string().nullable().default(null)`)
+- `src/prompt/default-config.ts` (modify — set `stack.i18nLibrary` from detection)
+- `src/prompt/prompt-flow.ts` (modify — propagate `stack.i18nLibrary: detected.i18n.value`)
+- `src/generator/build-context.ts` (modify — surface `hasI18n: Boolean(config.stack.i18nLibrary)` flag)
+- `src/generator/types.ts` (modify — extend `GeneratorContext` with `hasI18n: boolean` and `i18nLibrary: string | null`)
+- `tests/detector/detect-i18n.test.ts` (new)
 
-**Files**
-- `src/generator/write-file.ts` (new)
-- `src/generator/write-file-prompt.ts` (new, split if `write-file.ts` approaches 200 lines — keeps prompt UI isolated from core write logic)
-- `src/generator/index.ts` (add barrel export for `writeFileSafe`, `MergeStrategy`, `WriteFileResult`)
-- `src/installer/write-files.ts` (refactor: `writeGeneratedFiles` loop replaces its `writeFile` + `shouldWriteFile` branch with a single `writeFileSafe` call per file)
-- `src/cli/init-command.ts` (refactor line 109: manifest `writeFile` now goes through `writeFileSafe`)
-- `src/cli/update-command.ts` (refactor line 106: manifest `writeFile` now goes through `writeFileSafe`)
-- `tests/generator/write-file.test.ts` (new, colocated with generator test folder per existing `tests/generator/*` convention)
+**Input**: stack detection runs in `detect-stack.ts`. The new detector must follow `createDependencyDetector` rules and recognise: `i18next`, `react-i18next`, `next-intl`, `next-translate`, `@formatjs/intl`, `react-intl`, `@lingui/core`, `@lingui/react`, `vue-i18n`, `svelte-i18n`, `@nuxtjs/i18n`. Confidence values mirror `detect-auth.ts` (`0.9` for first-class libs, `0.8` for indirect markers like `@formatjs/intl`).
 
-**Input**
-Current state: three direct `fs.writeFile` call-sites plus the older boolean `confirmMarkdownOverwrite` prompt. T2's `renderUnifiedDiff` is available.
+**Output**: `detected.i18n.value` is a non-null string when any matching dep is present in the target project; the value flows through to `config.stack.i18nLibrary` and into `GeneratorContext` as `hasI18n` + `i18nLibrary`. Existing tests still pass.
 
-**Output**
-A single `writeFileSafe({ path, content, merge?, projectRoot })` function returning `{ status: 'written' | 'skipped' | 'merged' | 'unchanged' }`. Uses `@inquirer/prompts` `select` (or `expand`) for the 5-choice menu `[y]es / [n]o / [a]ll / [s]kip-all / [m]erge` (`m` only offered if `merge` callback supplied). Module-level session state tracks sticky `all` and `skip-all` plus an override slot for CLI flags. If the file doesn't exist, write without prompting. If content is byte-identical, return `unchanged` without prompting. Uses `renderUnifiedDiff` before prompting. All three previous write sites now import from this helper; no direct `writeFile` / `writeFileSync` remains anywhere under `src/generator/`, `src/installer/`, or `src/cli/` (backup restore path in `src/installer/backup.ts` uses `copyFile` and stays).
+**Notes**:
+- DRY: reuse `createDependencyDetector` exactly — no new detector primitive.
+- Do NOT add an interactive prompt in `questions.ts` for this — mirror `detectAuth`, which is detection-only and not user-prompted (per `prompt-flow.ts` line 76 setting `auth: null`). This keeps Epic 8 NICE-scoped and avoids prompt churn.
+- `Detection` type already exists in `src/detector/types.ts`; do not redeclare.
+- File budget: `detect-i18n.ts` should stay ≤ 25 lines.
+- Test colocates a fixture only if needed; otherwise unit-test the detector against a mocked `package.json` via the same pattern used by `tests/detector/detect-auth.test.ts` (read it first to mirror exactly).
 
-**Notes**
-- DRY: delete the now-dead `shouldWriteFile` helper in `src/installer/write-files.ts`; remove `confirmMarkdownOverwrite` / `confirmOverwrite` options or keep them as thin adapters that delegate to `writeFileSafe` for backward-compat with `tests/installer/write-files.test.ts` (prefer updating the test).
-- DRY: re-use `src/utils/file-exists.ts` and `src/installer/diff-files.ts` logic; if preview rendering overlaps with `diffFiles`, call `renderUnifiedDiff` in both instead of duplicating.
-- 200-line cap: split prompt rendering into `write-file-prompt.ts` if needed. Hard rule.
-- Type safety: explicit `WriteFileStatus` union type exported from the module; no `any`; session state typed as `{ stickyAll: boolean; stickySkip: boolean; override: MergeStrategy | null }`.
-- All param objects — `writeFileSafe` takes exactly one options object (project rule: >2 params → object).
-- Jest: cover each prompt answer (`y`, `n`, `a`, `s`, `m`), unchanged-file short-circuit, non-existent-file path, sticky propagation across two calls, and module-state reset helper for test isolation.
-- Mock `@inquirer/prompts` via `jest.unstable_mockModule` (repo uses ESM + experimental-vm-modules).
+### Task 2 - i18n partial and conditional includes [UI] [PARALLEL]
+**Files**:
+- `src/templates/partials/i18n.md.ejs` (new)
+- `src/templates/agents/implementer.md.ejs` (modify — conditional include after the `concurrency.md.ejs` line)
+- `src/templates/agents/ui-designer.md.ejs` (modify — conditional include after the `performance.md.ejs` line)
+- `tests/generator/epic-8-i18n.test.ts` (new)
 
-### Task 2 - E7.T2 Colored unified-diff preview helper `[LOGIC][TEST]` `[PARALLEL]`
+**Input**: §2.13 paste-ready snippet (PRD lines 1196–1210). The partial must be a verbatim transcription of the snippet (UTF-8/NFC, no string concat, ICU MessageFormat, `Intl.*`, `Accept-Language` resolution, CSS logical properties, CLDR plural categories, select for gender, `Temporal` over `Date`).
 
-**Files**
-- `src/utils/diff.ts` (new)
-- `src/utils/index.ts` (add barrel export for `renderUnifiedDiff`, `DIFF_LINE_CAP`)
-- `tests/utils/diff.test.ts` (new, mirrors `tests/utils/convert-to-skill.test.ts`)
+**Output**: When `hasI18n` is true, both `implementer.md` and `ui-designer.md` render the `## Internationalization` section. When `hasI18n` is false, neither file references it. Test asserts both presence (with i18n lib) and absence (without).
 
-**Input**
-Existing dependency `diff@^7` (`createTwoFilesPatch`) and `chalk@^5`. Existing `src/installer/diff-files.ts` already uses `createTwoFilesPatch` — confirm before adding a second caller.
+**Notes**:
+- Conditional include syntax: `<% if (hasI18n) { -%>\n<%- include('../partials/i18n.md.ejs') %>\n<% } -%>` — mirror the `<% if (isBackend) {` pattern already in `implementer.md.ejs` line 29.
+- DRY: the partial is the single source of truth — do not inline the rules into either agent template.
+- The partial must NOT hardcode a specific library; the rules apply regardless of whether the project uses `i18next`, `next-intl`, etc. (matches PRD §2.13 wording).
+- Test fixture must use `makeStackConfig({ stack: { ..., i18nLibrary: 'i18next' } })` — extend `tests/generator/fixtures.ts` with the new field default `null` so existing tests are unaffected.
+- File budget: partial ≤ 30 lines (snippet is 14 lines).
+- `[PARALLEL]` with Tasks 4, 5, 6 — they touch disjoint files.
 
-**Output**
-Pure function `renderUnifiedDiff({ path, before, after, lineCap? })` returning an ANSI-colored unified-diff string. Green for `+`, red for `-`, dim for hunk headers. Cap at `DIFF_LINE_CAP = 80` lines with footer `… (N more)`. Empty string (not a no-op throw) when `before === after`. File stays under 40 lines per PRD. Module constant `DIFF_LINE_CAP` is UPPER_SNAKE_CASE.
+### Task 3 - TCR workflow command [LOGIC]
+**Files**:
+- `src/templates/commands/workflow-tcr.md.ejs` (new)
+- `src/schema/stack-config.ts` (modify — add `selectedCommands.workflowTcr: z.boolean().default(false)`)
+- `src/prompt/default-config.ts` (modify — set `selectedCommands.workflowTcr: false`)
+- `src/prompt/prompt-flow.ts` (modify — propagate `workflowTcr: selectedCommands.includes('workflowTcr')`)
+- `src/prompt/questions.ts` (modify — add `{ name: '/workflow-tcr — TCR (test && commit || revert)', value: 'workflowTcr', checked: false }` to the `askCommandSelection` choices array)
+- `src/generator/generate-commands.ts` (modify — append `{ key: 'workflowTcr', templateFile: 'commands/workflow-tcr.md.ejs', outputName: 'workflow-tcr.md' }` to `COMMAND_DEFINITIONS`)
+- `tests/generator/fixtures.ts` (modify — add `workflowTcr: false` to the default `selectedCommands` block)
+- `tests/generator/epic-8-tcr.test.ts` (new)
 
-**Notes**
-- DRY: export a `computeUnifiedPatch(before, after, path)` sub-function that `src/installer/diff-files.ts` can also consume in a follow-up (not required by this epic but the shape must not block it). Do not import chalk inside `computeUnifiedPatch` — keep color logic separate so `diff-files.ts` can adopt the plain-text path.
-- Type safety: explicit `RenderDiffInput` interface exported; no `any`; `lineCap?: number` optional with default constant.
-- 200-line cap: file must stay under 40 lines per PRD acceptance — enforce.
-- Jest: cover (a) cap truncation with `… (N more)` footer, (b) no-diff edge case returns `''`, (c) ANSI codes present when color enabled, (d) multi-hunk output.
+**Input**: TCR semantics from Thoughtworks Radar Vol 33 (Trial): on every change, run the test command; on green, auto-commit; on red, hard-revert. The command must reference `commands.test`, `mainBranch`, and respect the existing "NEVER commit or push unless user-invoked" rule by being explicitly invoked (the slash command itself is the user's opt-in). Mirror the structural shape of `src/templates/commands/workflow-fix.md.ejs`: frontmatter, instructions, verification rules, git-rules footer.
 
-### Task 3 - E7.T3 Markdown-aware merge `[LOGIC][TEST]`
+**Output**: When `selectedCommands.workflowTcr` is true and `targets.claudeCode` is true, `.claude/commands/workflow-tcr.md` is emitted; same for `.codex/prompts/workflow-tcr.md` when `targets.codexCli` is true. Default config keeps the command off so existing users' regenerations are unchanged.
 
-**Files**
-- `src/generator/merge-markdown.ts` (new)
-- `src/generator/index.ts` (export `mergeMarkdown`)
-- `tests/generator/merge-markdown.test.ts` (new; PRD says `tests/merge-markdown.test.ts` but project convention is `tests/generator/*.test.ts` — colocate there)
-- `package.json` (add `remark`, `remark-parse`, `remark-stringify`, `unified`, `mdast-util-*` types as needed — only if tree-walking mdast directly)
+**Notes**:
+- DRY: do NOT duplicate command-emit logic — reuse `COMMAND_DEFINITIONS` only.
+- The TCR command must explicitly note the destructive nature of `git reset --hard` and require the user to be on a dedicated TCR branch (never `mainBranch`). The repo-wide deny list already blocks `git reset --hard` in `.claude/settings.local.json` (per Epic 9 work) — flag this conflict in the command body so users know they must invoke TCR with explicit per-tool approval, not via the auto-allowlist.
+- The command body must be ≤ 200 lines.
+- Use `<%= commands.test %>` and `<%= mainBranch %>` for parametrisation; never hardcode `pnpm test` or `main`.
+- Test asserts: file emitted only when flag true; references `<%= commands.test %>` resolved value; contains "test && commit || revert"; warns about `mainBranch`; not emitted by default.
 
-**Input**
-T1's interface is stable. AGENTS.md template already uses `<!-- agents-workflows:managed-start -->` / `-end -->` block markers — decide whether Epic 7 keeps block markers or shifts to per-heading `<!-- agents-workflows:managed -->` tags as PRD 1743 specifies. Plan per PRD: per-heading managed tag.
+### Task 4 - OSCAL continuous-compliance template [SCHEMA] [PARALLEL]
+**Files**:
+- `src/templates/governance/COMPLIANCE.md.ejs` (new)
+- `src/templates/governance/oscal-component.json.ejs` (new — minimal OSCAL 1.1.2 component-definition skeleton)
+- `src/generator/generate-root-config.ts` (modify — extend the existing `if (config.governance.enabled)` block to also render and push `docs/COMPLIANCE.md` and `docs/oscal/component-definition.json`)
+- `tests/generator/epic-8-oscal.test.ts` (new)
 
-**Output**
-`mergeMarkdown({ existing, incoming })` returns a merged Markdown string. Parse both with `remark`. Key by top-level heading text (`#`, `##`). Rules:
-- User heading with no managed tag → user body wins (preserved verbatim).
-- Heading whose preceding HTML comment contains `agents-workflows:managed` → generator body wins.
-- New managed headings not present in existing → appended at end of document.
-- Idempotent on unchanged input (running twice = same output).
+**Input**: NIST OSCAL 1.1.2 component-definition format (the smallest valid OSCAL artifact). The Markdown wrapper (`COMPLIANCE.md`) explains: what OSCAL is, why continuous compliance matters (Radar v33 Adopt), how the JSON sidecar maps repo controls (deny list, secret scanning, signing, SBOM, branch protection) to a control catalog (NIST 800-53 Rev 5 baseline references). The JSON file must validate as well-formed JSON and contain a `component-definition.uuid`, `metadata.title`, `metadata.last-modified`, `metadata.version`, `metadata.oscal-version`, and one `components` entry.
 
-**Notes**
-- DRY: if the existing AGENTS.md template's block-marker pattern is retained elsewhere, document the two-marker systems coexist; do not duplicate parsing logic between template rendering and merge.
-- Type safety: use `mdast` types from `@types/mdast`; no `any` on AST nodes; define a local `MarkdownSection` interface (heading text + node range).
-- 200-line cap: if AST walk grows, extract `find-managed-sections.ts` helper — Rule of Three before extracting.
-- Install check: verify `remark`, `remark-parse`, `remark-stringify`, `unified` are deps; if absent, add them in this task's deliverable and note version pins (`remark@^15`, `unified@^11`).
-- Jest: four cases per PRD — (a) idempotency on unchanged input, (b) user's custom non-managed heading preserved, (c) new managed heading appended, (d) managed-tagged heading overwritten by generator body. Plus edge cases: empty input, missing top-level heading, heading-only doc.
+**Output**: When `governance.enabled` is true, `docs/COMPLIANCE.md` and `docs/oscal/component-definition.json` are emitted alongside the existing `docs/GOVERNANCE.md` and `docs/SUPPLY_CHAIN.md`. When `governance.enabled` is false, neither file appears.
 
-### Task 4 - E7.T4 JSON-aware merge `[LOGIC][TEST]` `[PARALLEL]`
+**Notes**:
+- DRY: route through the existing `governance.enabled` gate — do NOT add a new top-level config flag. Mirror the parallel `Promise.all` pattern in `generate-root-config.ts` lines 31–40.
+- Use a fixed placeholder UUID literal (e.g. `00000000-0000-0000-0000-000000000000`) and document it as "regenerate per project" in the Markdown wrapper. Generating a real UUID requires `crypto.randomUUID()` and would make the output non-deterministic — out of scope for this NICE task.
+- Tone/structure mirrors `src/templates/governance/SUPPLY_CHAIN.md.ejs` (single H1, partial includes if needed). Keep `COMPLIANCE.md.ejs` ≤ 80 lines and `oscal-component.json.ejs` ≤ 50 lines.
+- Test asserts: file emitted only when `governance.enabled` true; JSON parses via `JSON.parse`; contains required OSCAL keys; off by default.
+- `[PARALLEL]` with Tasks 2, 5, 6.
 
-**Files**
-- `src/generator/merge-json.ts` (new)
-- `src/generator/index.ts` (export `mergeJson`)
-- `tests/generator/merge-json.test.ts` (new; PRD says `tests/merge-json.test.ts` — colocate under `tests/generator/` per project convention)
+### Task 5 - Continuous profiling note inside observability partial [LOGIC] [PARALLEL]
+**Files**:
+- `src/templates/partials/observability.md.ejs` (modify — replace the single-line `NICE: continuous profiling (Pyroscope / Parca / OTel eBPF receiver).` with an expanded 4–6 line block)
+- `tests/generator/epic-8-observability.test.ts` (new)
 
-**Input**
-T1 interface stable. Target files: `.claude/settings.local.json` (has `permissions.allow[]`, `permissions.deny[]`, `hooks{}`) and any Codex config JSON.
+**Input**: Expand the existing one-line NICE entry into actionable guidance: name eBPF as the low-overhead production-safe profiler; cite Pyroscope / Parca / Polar Signals as concrete OSS implementations; mention the OpenTelemetry profiles signal (now stable in OTel spec, 2025); call out CPU-flame-graph + heap as the two profile types worth shipping; warn that profiling sample rates need a budget (default 100 Hz) and PII-safe stack symbolisation.
 
-**Output**
-`mergeJson({ existing, incoming })` → merged JSON string (stable key order, 2-space indent). Rules:
-- Objects: deep-merge key-by-key. User wins on scalar conflicts unless the key is listed in a `MANAGED_JSON_KEYS` constant (start empty, documented extension point).
-- Arrays of primitives: union, de-duplicated, sorted for deterministic diffs.
-- Arrays of objects: concatenate unique-by-JSON-stringify (conservative; covers hook entries).
-- Stable key order via `Object.keys(...).sort()` when serializing.
+**Output**: The observability partial now includes a substantive continuous-profiling subsection. All agents that include `observability.md.ejs` (currently `implementer.md.ejs`) automatically pick up the change. No new EJS variables introduced.
 
-**Notes**
-- DRY: `MANAGED_JSON_KEYS` lives in `src/generator/merge-json.ts` as UPPER_SNAKE_CASE const; if T3 grows an equivalent `MANAGED_MD_TAG` pattern, both constants live in their respective merge modules (no cross-module coupling).
-- Type safety: accept `Record<string, unknown>` / `unknown[]` — explicit recursive function signatures, no `any`. Export a `JsonValue` discriminated type if one doesn't already exist (grep `src/schema/` first).
-- 200-line cap: if deep-merge + de-dup grow past ~120 lines, extract `union-arrays.ts` helper.
-- Jest: (a) user-added allow entry preserved on re-run with new generator deny rules applied, (b) stable key order across runs (snapshot-safe), (c) nested object deep-merge, (d) scalar conflict with user winning, (e) idempotency.
+**Notes**:
+- DRY: extend the existing single line — do NOT add a new partial. The expansion belongs inside `observability.md.ejs` because `implementer.md.ejs` already includes that partial.
+- Keep total `observability.md.ejs` ≤ 40 lines after the change (currently 18).
+- Test asserts: `implementer.md` content contains "eBPF", "OpenTelemetry profiles", at least one of "Pyroscope" / "Parca" / "Polar Signals", and the "100 Hz" sample-rate guidance literal — proving the expansion landed via the partial chain.
+- `[PARALLEL]` with Tasks 2, 4, 6.
 
-### Task 5 - E7.T5 CLI flags `--yes`, `--no-prompt`, `--merge-strategy` `[API][LOGIC][TEST]`
+### Task 6 - Stacked PR tooling note in git-rules partial [LOGIC] [PARALLEL]
+**Files**:
+- `src/templates/partials/git-rules.md.ejs` (modify — expand the existing "PR Size Cap" bullet that already mentions `Graphite / ghstack / git-town` into a 3-line block with concrete invocation examples)
+- `tests/generator/epic-8-git-rules.test.ts` (new)
 
-**Files**
-- `src/cli/index.ts` (extend existing `commander` setup; do NOT create a new parser — `init` already has `-y, --yes`, keep that and add `--no-prompt`, `--merge-strategy`)
-- `src/cli/init-command.ts` (thread new options into `writeFileSafe` session state)
-- `src/cli/update-command.ts` (thread new options into `writeFileSafe` session state)
-- `src/generator/write-file.ts` (expose `configureWriteSession({ override, noPrompt })` setter consumed by CLI)
-- `tests/cli/flags.test.ts` (new; mirrors `tests/cli/list-command.test.ts` style)
+**Input**: The current bullet at line 31 of `git-rules.md.ejs` reads: `PRs ≤ 400 LOC changed. If larger, split using stacked PRs (Graphite / ghstack / git-town).` Expand into: (a) when to stack (one logical change per PR, dependent stack ≤ 5), (b) the canonical commands (`gt create` / `ghstack` / `git town hack`), (c) merge order (bottom-up, never rebase a stack from an old base).
 
-**Input**
-T1 complete — `writeFileSafe` has a module-level session state.
+**Output**: `git-rules.md.ejs` retains its existing "PR Size Cap" heading but the body is expanded. All consumers of the partial (AGENTS.md, CLAUDE.md, architect.md) automatically pick up the change via existing includes — no other files modified.
 
-**Output**
-- `--yes` → session `stickyAll = true` (answer overwrite-all, non-interactive).
-- `--no-prompt` → session `stickySkip = true` (answer skip-all, non-interactive).
-- `--merge-strategy=<keep|overwrite|merge>` → sets `override` strategy (keep = skip, overwrite = write, merge = run merge callback; fall back to overwrite if no merge available).
-- Flags validate mutually: `--yes` + `--no-prompt` → exit non-zero with clear message. `--merge-strategy` must accept exactly the three values (zod enum or commander `choices`).
-- `agents-workflows --help` documents each flag.
-- Exit codes: 0 on success, non-zero on validation error.
+**Notes**:
+- DRY: do NOT create a new `stacked-pr.md.ejs` partial. The mention is small enough to belong with `git-rules.md.ejs`. PRD §E8.T5 explicitly says "in git-rules".
+- Keep `git-rules.md.ejs` ≤ 60 lines after the change (currently 41).
+- Test asserts: `AGENTS.md` content contains "stacked PRs", "Graphite" or "gt create", and "merge bottom-up" or equivalent literal.
+- `[PARALLEL]` with Tasks 2, 4, 5.
 
-**Notes**
-- DRY: do NOT add a second CLI parser — extend the existing `commander` Command chain in `src/cli/index.ts`. The existing `init` already has `-y, --yes`; reuse that flag and add the new two to both `init` and `update` sub-commands (same option set, consider a helper `applySafetyFlags(command: Command)` to avoid copy-paste — extract only if Rule of Three triggers across `init` + `update` + any future subcommand).
-- Type safety: add a `SafetyFlags` interface in `src/cli/types.ts` or colocate in `src/cli/safety-flags.ts`; typed via zod enum for `merge-strategy`.
-- 200-line cap: `init-command.ts` is 167 lines today — adding flag plumbing risks overflow. Extract flag plumbing into a helper if `init-command.ts` crosses 190.
-- Jest: assert each flag short-circuits the prompt (spy on `@inquirer/prompts` — must not be called), assert `--yes` + `--no-prompt` exits non-zero, assert `--merge-strategy=keep` skips, `=overwrite` writes, `=merge` invokes merge callback and falls back when none provided.
+### Task 7 - Aggregate Epic 8 integration test and snapshot refresh [TEST]
+**Files**:
+- `tests/generator/epic-8-integration.test.ts` (new)
+- `tests/generator/fixtures.ts` (modify — add `i18nLibrary: null` to default stack and `workflowTcr: false` to default selectedCommands so existing tests remain green)
+- `tests/detector/__snapshots__/detect-ai-agents.test.ts.snap` (regenerate ONLY if `pnpm test` reports it as broken — do not blanket-refresh)
 
-### Task 6 - E7.T6 README + AGENTS.md tooling note `[LOGIC]` `[PARALLEL]`
+**Input**: A single end-to-end test that exercises the full Epic 8 surface: (a) renders with `i18nLibrary: 'i18next'` + `workflowTcr: true` + `governance.enabled: true` and asserts every Epic 8 artifact is present; (b) renders with all defaults and asserts none are present; (c) regression-checks that no pre-Epic-8 file path disappears.
 
-**Files**
-- `README.md` (new section "Re-running on an existing project" — add after "Quick start")
-- `src/templates/config/AGENTS.md.ejs` (insert one-liner under the existing `## Tooling / hooks` section, line 135)
+**Output**: Single integration test that fails loudly if any Epic 8 task regresses. Existing tests in `tests/generator/generate-all.test.ts` and `tests/detector/detect-stack.test.ts` continue to pass.
 
-**Input**
-Epic 7 surface area understood (the 5 prompt answers, the 3 flags, Markdown/JSON merge behavior + unsupported-format fallback).
-
-**Output**
-- README section explains: the 5 prompt answers (`[y]/[n]/[a]/[s]/[m]`), the 3 CLI flags (`--yes`, `--no-prompt`, `--merge-strategy`), which formats support structured merge (Markdown, JSON) vs yes/no fallback (everything else).
-- AGENTS.md template gets a one-liner: "`agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default."
-
-**Notes**
-- DRY: the one-liner sources its wording from the README section — do not drift. If the same sentence appears again in a third doc later, extract to a shared partial (`src/templates/partials/no-destructive-writes.md.ejs`); not yet warranted (Rule of Three).
-- No code changes — docs + template only. Can run in parallel with T1–T5.
-- Verify the rendered AGENTS.md (via `pnpm test` on `tests/generator/epic-5-agents-md.test.ts`) still passes — check for snapshot diffs.
-
-## Risks and rollback
-
-- **Risk**: `remark` ecosystem on Node 20 ESM — the project uses `--experimental-vm-modules`. Verify `remark@^15` resolves cleanly before merging T3. Rollback: if remark integration stalls, degrade T3 to regex-based heading split with a TODO; keep the merge interface stable so a later swap is local.
-- **Risk**: `@inquirer/prompts` ESM mocking in Jest is fragile. Rollback: if mocks misbehave, inject the prompt fn via options (`writeFileSafe({ ..., promptFn })`) and default-bind to `@inquirer/prompts` at module top — preserves test-ability without `unstable_mockModule`.
-- **Risk**: `src/cli/init-command.ts` at 167 lines is close to the 200-cap; adding flag plumbing may trip it. Rollback: extract `apply-safety-flags.ts` helper under `src/cli/` before edits land.
-- **Risk**: Existing `tests/installer/write-files.test.ts` relies on `confirmMarkdownOverwrite` / `confirmOverwrite` options. Rollback path: keep those options as adapter shims over `writeFileSafe` for one release, deprecation-comment them, migrate the test.
-- **Rollback**: every task lives on the feature branch; revert individual commits per task if regressions appear. Do not squash until the full loop passes.
-
-## Out of scope (non-goals)
-
-- Binary-file merge (out — PRD: "unsupported formats fall back to yes/no/all/skip").
-- Three-way merge with upstream template history (out — no tracked "last-generated" snapshot yet).
-- TOML / YAML structured merge (out — only Markdown + JSON per PRD).
-- Conflict markers inside files — merge either succeeds cleanly or falls back to overwrite/skip.
-- Undo / redo UI beyond the existing `src/installer/backup.ts` backup-on-failure flow.
+**Notes**:
+- DRY: reuse `makeStackConfig`, `findFile`, `getContent` from `tests/generator/fixtures.ts` — do not redeclare helpers.
+- Do NOT duplicate the per-task assertions from Tasks 2/3/4/5/6 — this aggregate test is a smoke matrix, not an exhaustive re-test.
+- File budget: ≤ 100 lines.
+- Run `pnpm test` once locally after Task 7 lands to confirm full suite is green before invoking the review loop.
 
 ## Post-implementation checklist
 
 - [ ] `pnpm check-types` - zero errors
 - [ ] `pnpm test` - all suites pass
 - [ ] `pnpm lint` - zero warnings
-- [ ] Manual idempotency smoke test: run `pnpm dev init` in a scratch repo, hand-edit `CLAUDE.md` and `.claude/settings.local.json`, run `pnpm dev init` again — confirm hand-edits preserved, diff preview shown, each prompt answer behaves per PRD
 - [ ] Run `code-reviewer` agent on all modified files - all critical and warning findings fixed
-- [ ] Run `security-reviewer` agent in parallel - all critical and warning findings fixed
-- [ ] DRY scan complete - no duplicated code across modified files (especially `diff-files.ts` vs `diff.ts`, `write-files.ts` vs `write-file.ts`)
-- [ ] No `any` types introduced; all new functions have explicit parameter and return types
-- [ ] All new files under 200 lines; `diff.ts` under 40 lines
-
-## Summary
-
-| Task | Tag | Files | Parallelizable |
-|---|---|---|---|
-| T1 `writeFileSafe` + refactor writes | `[LOGIC][TEST]` | `src/generator/write-file.ts`, `src/generator/write-file-prompt.ts`, `src/generator/index.ts`, `src/installer/write-files.ts`, `src/cli/init-command.ts`, `src/cli/update-command.ts`, `tests/generator/write-file.test.ts` | No (depends on T2) |
-| T2 Colored unified-diff helper | `[LOGIC][TEST]` | `src/utils/diff.ts`, `src/utils/index.ts`, `tests/utils/diff.test.ts` | Yes |
-| T3 Markdown-aware merge | `[LOGIC][TEST]` | `src/generator/merge-markdown.ts`, `src/generator/index.ts`, `tests/generator/merge-markdown.test.ts`, `package.json` | Yes (after T1 interface frozen) |
-| T4 JSON-aware merge | `[LOGIC][TEST]` | `src/generator/merge-json.ts`, `src/generator/index.ts`, `tests/generator/merge-json.test.ts` | Yes (after T1 interface frozen) |
-| T5 CLI flags `--yes`/`--no-prompt`/`--merge-strategy` | `[API][LOGIC][TEST]` | `src/cli/index.ts`, `src/cli/init-command.ts`, `src/cli/update-command.ts`, `src/generator/write-file.ts`, `tests/cli/flags.test.ts` | No (depends on T1) |
-| T6 README + AGENTS.md tooling note | `[LOGIC]` | `README.md`, `src/templates/config/AGENTS.md.ejs` | Yes |
+- [ ] Run `security-reviewer` agent in parallel with `code-reviewer` (TCR command and OSCAL artifact ship security-relevant content)
+- [ ] DRY scan complete - no duplicated code across modified files
+- [ ] Verified no agent template exceeds the 200-line cap after the new conditional includes
+- [ ] Verified `i18n.md.ejs` does NOT render when `hasI18n` is false (negative test passes)
+- [ ] Verified `workflow-tcr.md` does NOT render when `selectedCommands.workflowTcr` is false (default-off behavior preserved)
+- [ ] Verified `docs/COMPLIANCE.md` and `docs/oscal/component-definition.json` only render when `governance.enabled` is true
+- [ ] Run `/external-review` and address every CodeRabbit finding via `/workflow-fix`
 
 ## External errors
 
-_(none)_
+CodeRabbit external review (2026-04-23) surfaced 10 findings outside the Epic 8 changeset — recorded here, not fixed in this branch:
+- `.github/workflows/ci.yml`: missing `pnpm lint` CI step (pre-existing infra).
+- `src/templates/partials/architect-fail-safe.md.ejs`: CRLF line endings (pre-existing).
+- `src/templates/agents/test-writer.md.ejs`: doc says tests live in separate `tests/` dir; project convention is colocated (pre-existing template — both Claude and Codex outputs reflect this).
+- `tests/generator/epic-1-safety.test.ts`: implicit-typed `find` callbacks (Epic 1).
+- `src/templates/partials/stack-context.md.ejs`: unguarded `stackItems.forEach` (pre-existing).
+- `src/prompt/detected-ai-flags.ts`: implicit `candidate` parameter type (pre-existing).
+- `src/templates/agents/ui-designer.md.ejs`: references `README.md` as canonical-source rather than `PRD.md` (pre-existing — Epic 8 only added an i18n include here).
+- `src/templates/partials/testing-patterns.md.ejs`: unguarded `<%= testsDir %>` and `<%= conventions.maxFileLength %>` (pre-existing).
+- `.claude/scratchpad/review-task-epic5.md` (×2): scratchpad artifacts, not shipped product code.
+
+## Summary
+
+| # | Title | Type | Parallel | Files (count) |
+|---|---|---|---|---|
+| 1 | Detect i18n library | LOGIC + SCHEMA | no | 10 |
+| 2 | i18n partial and conditional includes | UI | yes | 4 |
+| 3 | TCR workflow command | LOGIC | no | 8 |
+| 4 | OSCAL continuous-compliance template | SCHEMA | yes | 4 |
+| 5 | Continuous profiling note inside observability partial | LOGIC | yes | 2 |
+| 6 | Stacked PR tooling note in git-rules partial | LOGIC | yes | 2 |
+| 7 | Aggregate Epic 8 integration test and snapshot refresh | TEST | no | 3 |

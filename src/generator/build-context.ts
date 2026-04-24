@@ -10,6 +10,18 @@ import {
   supportsReactTsStack,
 } from '../constants/frameworks.js';
 
+/**
+ * Constructs a GeneratorContext object from the provided StackConfig.
+ *
+ * The returned context includes direct passthrough values from the config (project, stack,
+ * tooling, paths, commands, conventions, detectedAiAgents, monorepo, etc.), computed template
+ * flags (for example: isReact, isFrontend, isMobile, isBackend, isTypescript, hasI18n,
+ * hasReactTsSenior), a human-readable `stackItems` list, paths for components/utils/tests,
+ * review/permission/deny lists and pre/post tool hooks, agent feature flags, and test tooling info.
+ *
+ * @param config - The stack/project/tooling configuration used to derive the generator context
+ * @returns A GeneratorContext populated with configuration values and derived helper flags/lists
+ */
 export function buildContext(config: StackConfig): GeneratorContext {
   const isReact = isReactFramework(config.stack.framework);
   const isFrontend = isFrontendFramework(config.stack.framework);
@@ -52,11 +64,19 @@ export function buildContext(config: StackConfig): GeneratorContext {
     hasE2eTester: config.agents.e2eTester,
     hasSecurityReviewer: config.agents.securityReviewer,
     hasReactTsSenior,
+    hasI18n: Boolean(config.stack.i18nLibrary),
+    i18nLibrary: config.stack.i18nLibrary,
     testFramework: config.tooling.testFramework,
     testsDir: config.paths.testsDir,
   };
 }
 
+/**
+ * Build a human-readable list of stack and tooling components from the provided configuration for use in templates.
+ *
+ * @param config - The project configuration containing `stack` and `tooling` details
+ * @returns An ordered array of short, display-ready strings describing the language/runtime, framework, selected libraries, and tooling (e.g., "TypeScript (node)", "React", "Jest (testing)", "ESLint (linter)")
+ */
 function buildStackItems(config: StackConfig): string[] {
   const items: string[] = [];
   const { stack, tooling } = config;
@@ -68,6 +88,7 @@ function buildStackItems(config: StackConfig): string[] {
   if (stack.stateManagement) items.push(capitalize(stack.stateManagement));
   if (stack.database) items.push(capitalize(stack.database));
   if (stack.auth) items.push(capitalize(stack.auth));
+  // i18nLibrary intentionally not summarised here — surfaced via hasI18n template flag instead.
   if (tooling.testFramework) items.push(`${capitalize(tooling.testFramework)} (testing)`);
   if (tooling.testLibrary) items.push(capitalize(tooling.testLibrary));
   if (tooling.linter) items.push(`${capitalize(tooling.linter)} (linter)`);

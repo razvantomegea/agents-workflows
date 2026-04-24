@@ -14,4 +14,7 @@
   budget drives release cadence.
 - Low-cardinality labels on metrics. No user IDs, request IDs, or session
   tokens in label values.
-- NICE: continuous profiling (Pyroscope / Parca / OTel eBPF receiver).
+- NICE: continuous profiling via eBPF (low-overhead, production-safe). OSS:
+  Pyroscope, Parca, Polar Signals — export via the OpenTelemetry profiles signal
+  (development/alpha — not yet for critical production paths). Ship CPU flame graphs +
+  heap profiles. Default 100 Hz sample rate; budget any increase. PII-safe symbolisation.

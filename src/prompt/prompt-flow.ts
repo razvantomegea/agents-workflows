@@ -25,6 +25,15 @@ interface PromptFlowOptions {
   yes?: boolean;
 }
 
+/**
+ * Builds a StackConfig by either creating defaults or interactively collecting project and tooling choices.
+ *
+ * @param detected - Detected stack and environment metadata used to seed defaults and detection-only fields (for example i18n).
+ * @param projectRoot - Filesystem path to the project root; used to read package.json for existing scripts and metadata.
+ * @param options - Optional flow modifiers.
+ * @param options.yes - When true, bypasses interactive prompts and returns a default configuration derived from detections and package.json.
+ * @returns A fully populated StackConfig containing project identity, stack definition (including detection-only i18n), tooling, resolved commands, paths, conventions, agent selections, selected workflow commands, targets, governance settings, detected AI agent flags, and monorepo (null when not applicable).
+ */
 export async function runPromptFlow(
   detected: DetectedStack,
   projectRoot: string,
@@ -74,6 +83,8 @@ export async function runPromptFlow(
       stateManagement: stack.stateManagement,
       database: stack.database,
       auth: null,
+      // i18n is detection-only — no interactive override question (mirrors auth detection but auth is also user-promptable elsewhere).
+      i18nLibrary: detected.i18n.value,
     },
     tooling: {
       packageManager: tooling.packageManager,
@@ -120,6 +131,7 @@ export async function runPromptFlow(
       workflowFix: selectedCommands.includes('workflowFix'),
       externalReview: selectedCommands.includes('externalReview'),
       workflowLonghorizon: selectedCommands.includes('workflowLonghorizon'),
+      workflowTcr: selectedCommands.includes('workflowTcr'),
     },
     targets,
     governance,

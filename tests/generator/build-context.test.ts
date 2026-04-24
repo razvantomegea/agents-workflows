@@ -113,6 +113,22 @@ describe('buildContext', () => {
     expect(ctx.mainBranch).toBe('trunk');
   });
 
+  it('sets hasI18n false when i18nLibrary is null', () => {
+    const ctx = buildContext(makeConfig());
+    expect(ctx.hasI18n).toBe(false);
+    expect(ctx.i18nLibrary).toBeNull();
+  });
+
+  it('sets hasI18n true and surfaces i18nLibrary when set', () => {
+    const base = makeConfig();
+    const ctx = buildContext({
+      ...base,
+      stack: { ...base.stack, i18nLibrary: 'i18next' },
+    });
+    expect(ctx.hasI18n).toBe(true);
+    expect(ctx.i18nLibrary).toBe('i18next');
+  });
+
   it('passes detectedAiAgents through unchanged', () => {
     const ctx = buildContext(makeConfig({
       detectedAiAgents: {

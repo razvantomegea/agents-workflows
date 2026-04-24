@@ -1,4 +1,5 @@
 import { generateAll } from '../../src/generator/index.js';
+import type { GeneratedFile } from '../../src/generator/types.js';
 import { makeStackConfig } from './fixtures.js';
 
 const AGENTS_WITH_UNTRUSTED = [
@@ -26,12 +27,12 @@ describe('Epic 1 safety partials', () => {
   it('wires context-budget into AGENTS.md and CLAUDE.md only', async () => {
     const files = await generateAll(makeStackConfig());
 
-    const agentsMd = files.find((file) => file.path === 'AGENTS.md');
-    const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
+    const agentsMd = files.find((file: GeneratedFile) => file.path === 'AGENTS.md');
+    const claudeMd = files.find((file: GeneratedFile) => file.path === 'CLAUDE.md');
     expect(agentsMd?.content).toContain('Load only files, symbols, and recent decisions');
     expect(claudeMd?.content).toContain('Load only files, symbols, and recent decisions');
 
-    const agentFiles = files.filter((file) => file.path.startsWith('.claude/agents/'));
+    const agentFiles = files.filter((file: GeneratedFile) => file.path.startsWith('.claude/agents/'));
     for (const agentFile of agentFiles) {
       expect(agentFile.content).not.toContain('Load only files, symbols, and recent decisions');
     }
@@ -41,12 +42,12 @@ describe('Epic 1 safety partials', () => {
     const files = await generateAll(makeStackConfig());
 
     for (const agentName of AGENTS_WITH_UNTRUSTED) {
-      const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
+      const agentFile = files.find((file: GeneratedFile) => file.path === `.claude/agents/${agentName}.md`);
       expect(agentFile?.content).toContain('<untrusted_content_protocol>');
     }
 
     for (const agentName of AGENTS_WITHOUT_UNTRUSTED) {
-      const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
+      const agentFile = files.find((file: GeneratedFile) => file.path === `.claude/agents/${agentName}.md`);
       expect(agentFile?.content).not.toContain('<untrusted_content_protocol>');
     }
   });
@@ -55,12 +56,12 @@ describe('Epic 1 safety partials', () => {
     const files = await generateAll(makeStackConfig());
 
     for (const agentName of ALL_AGENTS) {
-      const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
+      const agentFile = files.find((file: GeneratedFile) => file.path === `.claude/agents/${agentName}.md`);
       expect(agentFile?.content).toContain('<fail_safe>');
     }
 
-    const architectFile = files.find((file) => file.path === '.claude/agents/architect.md');
-    const implementerFile = files.find((file) => file.path === '.claude/agents/implementer.md');
+    const architectFile = files.find((file: GeneratedFile) => file.path === '.claude/agents/architect.md');
+    const implementerFile = files.find((file: GeneratedFile) => file.path === '.claude/agents/implementer.md');
     expect(architectFile?.content).toContain('materially change the plan');
     expect(architectFile?.content).toContain('Do not accumulate failed plan attempts');
     expect(architectFile?.content).not.toContain('Task-related edits are allowed');
@@ -71,13 +72,13 @@ describe('Epic 1 safety partials', () => {
     const files = await generateAll(makeStackConfig());
 
     for (const agentName of AGENTS_WITH_TOOL_USE) {
-      const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
+      const agentFile = files.find((file: GeneratedFile) => file.path === `.claude/agents/${agentName}.md`);
       expect(agentFile?.content).toContain('<tool_use_discipline>');
       expect(agentFile?.content).toContain('issue them as parallel tool');
     }
 
     for (const agentName of AGENTS_WITHOUT_TOOL_USE) {
-      const agentFile = files.find((file) => file.path === `.claude/agents/${agentName}.md`);
+      const agentFile = files.find((file: GeneratedFile) => file.path === `.claude/agents/${agentName}.md`);
       expect(agentFile?.content).not.toContain('<tool_use_discipline>');
       expect(agentFile?.content).not.toContain('issue them as parallel tool');
     }
@@ -85,7 +86,7 @@ describe('Epic 1 safety partials', () => {
 
   it('includes Dangerous operations section in rendered AGENTS.md', async () => {
     const files = await generateAll(makeStackConfig());
-    const agentsMd = files.find((file) => file.path === 'AGENTS.md');
+    const agentsMd = files.find((file: GeneratedFile) => file.path === 'AGENTS.md');
     expect(agentsMd).toBeDefined();
     expect(agentsMd?.content).toContain('## Dangerous operations');
     expect(agentsMd?.content).toContain('rm -rf');
@@ -94,7 +95,7 @@ describe('Epic 1 safety partials', () => {
 
   it('renders .claude/settings.local.json with deny list and PostToolUse hook', async () => {
     const files = await generateAll(makeStackConfig());
-    const settings = files.find((file) => file.path === '.claude/settings.local.json');
+    const settings = files.find((file: GeneratedFile) => file.path === '.claude/settings.local.json');
     expect(settings).toBeDefined();
     const parsed = JSON.parse(settings!.content) as {
       permissions: { allow: string[]; deny: string[] };
@@ -130,7 +131,7 @@ describe('Epic 1 safety partials', () => {
 
   it('emits .codex/config.toml with Codex-native safety defaults', async () => {
     const files = await generateAll(makeStackConfig());
-    const codexConfig = files.find((file) => file.path === '.codex/config.toml');
+    const codexConfig = files.find((file: GeneratedFile) => file.path === '.codex/config.toml');
 
     expect(codexConfig).toBeDefined();
     const toml = codexConfig!.content;
@@ -146,7 +147,7 @@ describe('Epic 1 safety partials', () => {
     const config = makeStackConfig();
     config.targets.codexCli = false;
     const files = await generateAll(config);
-    const paths = files.map((file) => file.path);
+    const paths = files.map((file: GeneratedFile) => file.path);
     expect(paths).not.toContain('.codex/config.toml');
   });
 });

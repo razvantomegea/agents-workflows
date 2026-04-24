@@ -8,7 +8,7 @@
 4. **VSCode + GitHub Copilot** — `.github/copilot-instructions.md` (repo-wide) and `.github/prompts/*.prompt.md` (prompt files / custom agents). Copilot also reads repo-root `AGENTS.md` natively, so it is a zero-config peer target for that file.
 5. **Windsurf** — `.windsurf/rules/*.md` with activation metadata (Always On / Manual / Model Decision / Glob) and `.windsurf/workflows/*.md` (Cascade slash commands). Legacy `.windsurfrules` is **not** emitted.
 
-Agents generated (shared across all targets): 8 agents (`architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `e2e-tester`, `reviewer`, `ui-designer`) plus the optional `security-reviewer` and `react-ts-senior`. Workflow commands (shared): `/workflow-plan`, `/workflow-fix`, `/external-review`. Repo-root universal surface: `AGENTS.md` (consumed natively by Copilot, Windsurf, Gemini CLI, Aider, Continue) and `CLAUDE.md` (consumed by Claude Code; other tools follow the `AGENTS.md` pointer).
+Agents generated (shared across all targets): 8 agents (`architect`, `implementer`, `code-reviewer`, `code-optimizer`, `test-writer`, `e2e-tester`, `reviewer`, `ui-designer`) plus the optional `security-reviewer` and `react-ts-senior` (the latter is deprecated — Epic 13 replaces it with stack-aware `implementer` variants; see §Epic 13 below). Workflow commands (shared): `/workflow-plan`, `/workflow-fix`, `/external-review`. Repo-root universal surface: `AGENTS.md` (consumed natively by Copilot, Windsurf, Gemini CLI, Aider, Continue) and `CLAUDE.md` (consumed by Claude Code; other tools follow the `AGENTS.md` pointer).
 
 The orchestration is identical across all five targets: architect → `PLAN.md` (≤8 tasks) → implementer per task → code-reviewer after each task → code-optimizer after all tasks → reviewer runs a 5-step quality gate (review → fix → type-check → test → lint/format).
 
@@ -1715,7 +1715,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 7 — CLI Generator Safe File Handling [MUST]
+## Epic 7 — CLI Generator Safe File Handling [MUST] [DONE 2026-04-23]
+
+**Landed on** `feature/epic-7-safe-file-handling`.
 
 **Goal.** `agents-workflows` never silently overwrites a user's existing files. When generated output would replace an existing file (e.g. `AGENTS.md`, `CLAUDE.md`, `.claude/settings.local.json`, any agent `.md`, any command `.md`), the CLI prompts before writing and offers a merge path where safe. Applies the §1.4 destructive-operation philosophy to the tool itself — a re-run of `init` must be data-preserving by default so users never lose hand-edited project rules.
 
@@ -1728,44 +1730,46 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - Markdown and JSON files support structured merge; unsupported formats fall back to yes/no/all/skip.
 - `pnpm test` covers each prompt answer, both merge strategies, re-run idempotency, and flag behavior.
 
-### E7.T1 — Shared `writeFileSafe` helper with prompt [§1.4 philosophy] — M
+### E7.T1 — Shared `writeFileSafe` helper with prompt [§1.4 philosophy] — M — [DONE]
 - **Files**: `src/generator/write-file.ts` (new); refactor every `fs.write*` call in `src/generator/` to use it.
 - **Change**: `writeFileSafe({ path, content, merge? })` returns `{ status: "written" | "skipped" | "merged" }`. Uses `@inquirer/prompts` for the 5-choice menu. Module-level state tracks sticky `all` / `skip-all` answers for the session.
 - **Done when**: no direct `writeFile` / `writeFileSync` remains under `src/generator/`; Jest covers each answer path.
 
-### E7.T2 — Colored unified-diff preview — S
+### E7.T2 — Colored unified-diff preview — S — [DONE]
 - **Files**: `src/utils/diff.ts` (new); consumed by `write-file.ts`.
 - **Change**: Pure function returning an ANSI-colored unified diff, capped at 80 lines with `… (N more)` footer. File <40 lines total.
 - **Done when**: Jest covers cap + no-diff edge case; re-running `init` over a changed project prints the preview before prompting.
 
-### E7.T3 — Markdown-aware merge [AGENTS.md / CLAUDE.md / agent prompts] — M
+### E7.T3 — Markdown-aware merge [AGENTS.md / CLAUDE.md / agent prompts] — M — [DONE]
 - **Files**: `src/generator/merge-markdown.ts` (new), `tests/merge-markdown.test.ts` (new).
 - **Change**: Parse with `remark`. Merge by top-level heading — user body wins unless the heading is tagged `<!-- agents-workflows:managed -->`, in which case generator wins. New managed headings append at the bottom. Must be idempotent on unchanged inputs.
 - **Done when**: Jest proves (a) idempotency, (b) user's custom headings preserved, (c) new managed headings appended, (d) managed-tagged headings overwritten.
 
-### E7.T4 — JSON-aware merge [settings.local.json, codex config] — S
+### E7.T4 — JSON-aware merge [settings.local.json, codex config] — S — [DONE]
 - **Files**: `src/generator/merge-json.ts` (new), `tests/merge-json.test.ts` (new).
 - **Change**: Deep-merge: arrays union by value (allow/deny lists), objects merge key-by-key with user winning on non-managed conflicts. Stable key order for diff-friendliness.
 - **Done when**: re-running on a settings file with user-added allow entries preserves them while still applying new generator deny rules.
 
-### E7.T5 — CLI flags `--yes`, `--no-prompt`, `--merge-strategy` — S
+### E7.T5 — CLI flags `--yes`, `--no-prompt`, `--merge-strategy` — S — [DONE]
 - **Files**: `src/cli.ts`, `src/generator/write-file.ts`.
 - **Change**: `--yes` answers overwrite-all, `--no-prompt` answers skip-all, `--merge-strategy=<keep|overwrite|merge>` sets the default action; interactive otherwise. Flags are exit-code-safe for CI.
 - **Done when**: `agents-workflows --help` documents each flag; CI matrix asserts each flag short-circuits the prompt correctly.
 
-### E7.T6 — README + AGENTS.md tooling note — S
+### E7.T6 — README + AGENTS.md tooling note — S — [DONE]
 - **Files**: `README.md` (new section "Re-running on an existing project"), `src/templates/config/AGENTS.md.ejs` (one-liner under Tooling).
 - **Done when**: README explains the five prompt answers + flags + merge limitations; rendered AGENTS.md notes the CLI's no-destructive-writes invariant.
 
 ---
 
-## Epic 8 — Situational Enhancements [NICE]
+## Epic 8 — Situational Enhancements [NICE] [DONE 2026-04-23]
 
-- **E8.T1** — i18n partial [§2.13] — S — `src/templates/partials/i18n.md.ejs`; include in `ui-designer.md.ejs`, `implementer.md.ejs` when i18n library detected.
-- **E8.T2** — TCR workflow command (Trial from Radar v33) — M.
-- **E8.T3** — OSCAL continuous-compliance template — L.
-- **E8.T4** — Continuous profiling note inside observability partial — S.
-- **E8.T5** — Stacked PR tooling (Graphite/ghstack) mention in git-rules — S.
+**Landed on** `feature/epic-8-situational-enhancements`.
+
+- **E8.T1** — i18n partial [§2.13] — S — `src/templates/partials/i18n.md.ejs`; include in `ui-designer.md.ejs`, `implementer.md.ejs` when i18n library detected. — [DONE]
+- **E8.T2** — TCR workflow command (Trial from Radar v33) — M. — [DONE]
+- **E8.T3** — OSCAL continuous-compliance template — L. — [DONE]
+- **E8.T4** — Continuous profiling note inside observability partial — S. — [DONE]
+- **E8.T5** — Stacked PR tooling (Graphite/ghstack) mention in git-rules — S. — [DONE]
 
 ---
 
@@ -2467,6 +2471,81 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 ---
 
+## Epic 15 — Core Logic Function Documentation [SHOULD]
+
+**Goal.** Add TSDoc/JSDoc docstrings to every **core logic function** exported from `src/` so each function declares its contract — purpose, parameters, return value, thrown errors, and observable side effects — per §2.14 ("Public/exported symbols get docstrings with contract"). Out of scope: type-only re-exports, barrel files, EJS templates, test fixtures, and the local-only sub-helpers that already have self-documenting names and no behavior worth narrating.
+
+**Rationale.** The repository ships a generator CLI whose modules (`src/cli/`, `src/detector/`, `src/generator/`, `src/installer/`, `src/prompt/`, `src/schema/`, `src/utils/`) compose into the user-visible `init`/`update`/`list` commands. Today most exported functions carry only signature + name; readers (and downstream agents reading PRD.md + source) must infer contract from usage. Commit `7f93eaf` added docstrings only to the Epic 8 surface area; the rest of the codebase remains undocumented. Codifying this as an explicit epic (a) closes the §2.14 gap repository-wide, (b) gives `code-reviewer` a checkable rule ("exported symbol → docstring with contract"), and (c) lowers the cost of future refactors by making intent locally visible.
+
+**Definition of "core logic function".**
+
+- **In scope**: every `export`ed function or method declared in `src/**/*.ts` whose body contains real behavior (file I/O, parsing, transformation, prompting, rendering, dispatch, mutation, or non-trivial control flow). Includes top-level helpers used across modules (e.g. `writeFileSafe`, `renderTemplate`, `detectStack`, `generateAll`, `runInitCommand`, `mergeJson`, `renderUnifiedDiff`).
+- **Out of scope**: `export type` / `export interface` / `export const` enums; barrel re-exports in `index.ts`; one-line passthroughs; `.ejs` templates; `tests/**`; generated artifacts under `dist/` or `coverage/`.
+- **Tie-breaker**: if removing the function would change observable behavior of the CLI, it is core logic. If it only reshapes a value already understood by its type signature, it is not.
+
+**Acceptance.**
+
+- Every in-scope function carries a TSDoc block with: a one-line summary; an `@param` for each parameter (object-parameter shapes documented field-by-field); `@returns` describing the resolved value (and the meaning of the discriminator for union returns); `@throws` for any error path the function can surface (including async rejections it does not catch); a `@remarks` line when the function has observable side effects (filesystem writes, process exit, stdout/stderr, mutation of shared session state).
+- `pnpm check-types`, `pnpm lint`, and `pnpm test` are green. No behavior changes, no signature changes, no new runtime imports.
+- A new lint-style guard (E15.T8) detects exported functions in `src/` lacking a leading docstring and fails CI; the guard's allowlist (out-of-scope categories above) is documented in the script header.
+- `code-reviewer.md.ejs` checklist gains a "Exported function carries TSDoc contract per §2.14" bullet so future PRs do not regress.
+
+### E15.T1 — Inventory and gap report [§2.14] — S
+
+- **Files**: new `scripts/audit-docstrings.ts`.
+- **Change**: Add a one-shot Node script that walks `src/**/*.ts`, parses each file with `typescript`'s compiler API (already a transitive dep via `tsx`), and prints a CSV of `(file, exportName, kind, hasDocstring, lineCount)` for every `export function` / `export const fn = (...) =>` / `export class { method }`. Skip files matching the out-of-scope rules above. Keep the script under 200 lines.
+- **Done when**: `pnpm tsx scripts/audit-docstrings.ts > docs/docstring-audit.csv` produces a deterministic, sorted report; the CSV is committed alongside the script and updated whenever the inventory shifts.
+
+### E15.T2 — Document `src/utils/` [§2.14] — S
+
+- **Files**: [src/utils/convert-to-skill.ts](src/utils/convert-to-skill.ts), [src/utils/diff.ts](src/utils/diff.ts), [src/utils/file-exists.ts](src/utils/file-exists.ts), [src/utils/logger.ts](src/utils/logger.ts), [src/utils/read-package-json.ts](src/utils/read-package-json.ts), [src/utils/read-pyproject-toml.ts](src/utils/read-pyproject-toml.ts), [src/utils/template-renderer.ts](src/utils/template-renderer.ts).
+- **Change**: Add TSDoc to every exported function. For `renderTemplate`, document the EJS root, the JSON/TOML helper injection, the trim+collapse-newlines post-processing, and the synchronous-EJS contract. For `renderUnifiedDiff`, document the empty-string return when inputs match. For `logger`, document level routing to stdout vs stderr.
+- **Done when**: `pnpm tsx scripts/audit-docstrings.ts` reports zero gaps under `src/utils/`.
+
+### E15.T3 — Document `src/detector/` [§2.14] — S
+
+- **Files**: every `src/detector/detect-*.ts` plus [src/detector/dependency-detector.ts](src/detector/dependency-detector.ts) and [src/detector/detect-stack.ts](src/detector/detect-stack.ts).
+- **Change**: Each `detectX` function gets a TSDoc block stating which files it inspects, the precedence rules it applies (e.g. `package.json` over `pnpm-workspace.yaml`), the fallback returned when nothing is detected, and any I/O it performs. `detectStack` documents that it composes the per-domain detectors and does not throw on partial detection.
+- **Done when**: audit reports zero gaps under `src/detector/`; no detector silently swallows an error path that is not mentioned in `@throws` or `@remarks`.
+
+### E15.T4 — Document `src/generator/` [§2.14] — M
+
+- **Files**: [src/generator/build-context.ts](src/generator/build-context.ts), [src/generator/generate-agents.ts](src/generator/generate-agents.ts), [src/generator/generate-commands.ts](src/generator/generate-commands.ts), [src/generator/generate-root-config.ts](src/generator/generate-root-config.ts), [src/generator/generate-scripts.ts](src/generator/generate-scripts.ts), [src/generator/index.ts](src/generator/index.ts), [src/generator/merge-json.ts](src/generator/merge-json.ts), [src/generator/merge-markdown-sections.ts](src/generator/merge-markdown-sections.ts), [src/generator/merge-markdown.ts](src/generator/merge-markdown.ts), [src/generator/permissions.ts](src/generator/permissions.ts), [src/generator/review-checklist-rules.ts](src/generator/review-checklist-rules.ts), [src/generator/write-file.ts](src/generator/write-file.ts).
+- **Change**: For every exported generator (`generateAll`, `generateAgents`, `generateCommands`, etc.) document inputs (the `StackConfig` slice consumed), the artifact set returned, and whether emission is gated by a flag. For `writeFileSafe`, document the four-status return, the merge-strategy precedence (sticky → override → prompt), and that it mutates module-level session state via `configureWriteSession`. For `mergeJson` / `mergeMarkdown*`, document conflict-resolution rules.
+- **Done when**: audit reports zero gaps under `src/generator/`; `writeFileSafe`'s docstring explicitly names every `WriteFileStatus` value and the conditions producing it.
+
+### E15.T5 — Document `src/installer/` and `src/schema/` [§2.14] — S
+
+- **Files**: [src/installer/backup.ts](src/installer/backup.ts), [src/installer/diff-files.ts](src/installer/diff-files.ts), [src/installer/index.ts](src/installer/index.ts), [src/installer/write-files.ts](src/installer/write-files.ts), [src/schema/index.ts](src/schema/index.ts), [src/schema/manifest.ts](src/schema/manifest.ts), [src/schema/stack-config.ts](src/schema/stack-config.ts).
+- **Change**: Installer functions document the on-disk side effects (backup directory naming, idempotency of re-runs). Schema functions document the parse-vs-validate contract: which throw on invalid input, which return a discriminated `Result`-style union, which apply defaults.
+- **Done when**: audit reports zero gaps under both directories.
+
+### E15.T6 — Document `src/cli/` and `src/prompt/` [§2.14] — M
+
+- **Files**: every `src/cli/*-command.ts` and `src/cli/*-session.ts`; [src/prompt/index.ts](src/prompt/index.ts), [src/prompt/prompt-flow.ts](src/prompt/prompt-flow.ts), [src/prompt/questions.ts](src/prompt/questions.ts), [src/prompt/questions-governance.ts](src/prompt/questions-governance.ts), [src/prompt/install-scope.ts](src/prompt/install-scope.ts), [src/prompt/detected-ai-flags.ts](src/prompt/detected-ai-flags.ts), [src/prompt/commands.ts](src/prompt/commands.ts), [src/prompt/default-config.ts](src/prompt/default-config.ts), [src/prompt/defaults.ts](src/prompt/defaults.ts).
+- **Change**: Each `runXCommand` documents the CLI flags it consumes, the exit-code contract (`process.exitCode` mutations vs `throw`), and the side effects on the working directory. Prompt flows document interactive vs non-interactive branches and which questions are skipped under `--yes`.
+- **Done when**: audit reports zero gaps under both directories.
+
+### E15.T7 — `code-reviewer` checklist line [§2.14] — S
+
+- **Files**: `src/templates/agents/code-reviewer.md.ejs` (or the partial that already enumerates §2.14 rules — locate via `rg "§2.14"`).
+- **Change**: Add one bullet under the existing review checklist: `Every exported function in src/ carries a TSDoc block with @param/@returns/@throws and a side-effects @remarks where applicable (§2.14, Epic 15).` Do not duplicate the rule elsewhere; reference it from the implementer template instead.
+- **Done when**: re-rendered `code-reviewer.md` contains the new bullet exactly once; snapshot test updated.
+
+### E15.T8 — CI guard for missing docstrings [§2.14] — S
+
+- **Files**: new `scripts/check-docstrings.ts`, `package.json` (script entry), `.github/workflows/ci.yml` (or the equivalent CI config — locate via `rg "pnpm test" .github`).
+- **Change**: Promote the audit script (E15.T1) to a check mode that exits non-zero when any in-scope export under `src/` lacks a docstring. Add `pnpm check-docs` and run it after `pnpm lint` in CI. The script header documents the out-of-scope allowlist verbatim from this epic.
+- **Done when**: `pnpm check-docs` passes locally and in CI; deleting a docstring in any in-scope file makes the script fail with a precise `file:line export-name` error.
+
+### E15.T9 — Snapshot / unit tests [§2.14] — S
+
+- **Files**: new `tests/scripts/check-docstrings.test.ts`.
+- **Change**: Unit-test the audit/check script against three fixtures: (a) a file with a documented export → pass; (b) a file with an undocumented export → fail with the expected error string; (c) a file containing only out-of-scope exports (types, barrel re-exports) → pass. Keep fixtures inline as string constants; do not write to disk.
+- **Done when**: `pnpm test` includes the new suite and is green; coverage of the script's rule branches is ≥90%.
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -2481,6 +2560,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 | 8 | Polyglot monorepo support | Epic 12 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
 | 9 | Stack-aware senior agents | Epic 13 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
 | 10 | Workspace refinement prompt | Epic 14 (depends on Epic 7 safe-writes + Epic 13 agent set) |
+| 11 | Core logic docstrings | Epic 15 (depends on the current src/ surface — no other epic blocks it) |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 5-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.
