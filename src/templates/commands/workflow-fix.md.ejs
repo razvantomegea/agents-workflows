@@ -21,6 +21,14 @@ Fix all QA issues listed in QA.md on the current feature branch.
    - Use the `implementer` sub-agent to apply the fix.
 <% } -%>
    - Mark the issue as done in `QA.md` with `[x]`.
+
+   **Model selection when both Claude and GPT are available**
+
+   - TypeScript / React / React Native / Three.js fixes — implementer: **GPT-5.x** (Codex / Copilot Agent). Reviewer + `/external-review`: **Claude**.
+   - Python / infra / correctness-sensitive fixes — implementer: **Claude**. Reviewer + `/external-review`: **GPT-5.x**.
+   - UI/UX design thinking / planning (flows, IA, UX heuristics, a11y, design-system decisions) MUST run on **Claude Opus** (adaptive thinking on) via the `ui-designer` sub-agent, BEFORE GPT-5.x writes the component code. Two-phase UI exception per PRD §1.7.1.
+   - Writer and reviewer MUST be different families (Claude ↔ GPT-5.x). See PRD §1.7.1 for the full rationale.
+
 6. Run the mandatory review loop on all modified files:
 <% if (hasSecurityReviewer) { -%>
    1. Run `code-reviewer` and `security-reviewer` in parallel on all modified files

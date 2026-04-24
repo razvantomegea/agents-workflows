@@ -57,6 +57,30 @@ describe('Epic 16 — Claude + GPT cross-model routing', () => {
       expect(content).toContain('opposite model family');
       expect(content).toContain('PRD §1.7.1');
     });
+
+    it('AGENTS.md names Claude Opus for the ui-designer role', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('**Claude Opus**');
+      expect(content).toContain('MUST run before `implementer` on any UI/UX task');
+    });
+
+    it('AGENTS.md documents the UI/UX two-phase exception', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('UI/UX two-phase exception');
+      expect(content).toContain('Phase A — design thinking / planning');
+      expect(content).toContain('Phase B — UI implementation');
+      expect(content).toContain('Claude Opus');
+      expect(content).toContain('adaptive thinking on');
+    });
+
+    it('workflow-plan.md and workflow-fix.md mention Claude Opus for UI thinking', () => {
+      const plan = getCommandContent(files, 'workflow-plan');
+      const fix = getCommandContent(files, 'workflow-fix');
+      expect(plan).toContain('Claude Opus');
+      expect(plan).toContain('UI/UX design thinking');
+      expect(fix).toContain('Claude Opus');
+      expect(fix).toContain('UI/UX design thinking');
+    });
   });
 
   describe('Python backend workspace', () => {
@@ -79,10 +103,10 @@ describe('Epic 16 — Claude + GPT cross-model routing', () => {
       );
     });
 
-    it('AGENTS.md renders the Python/backend stack-aware block', () => {
+    it('AGENTS.md renders the Claude-primary stack-aware block', () => {
       const content = getRootFileContent(files, 'AGENTS.md');
       expect(content).toContain('### Stack-aware writer/reviewer defaults');
-      expect(content).toContain('non-TypeScript backend');
+      expect(content).toContain('Claude leads on correctness');
       expect(content).toContain('Implementer: **Claude**');
       expect(content).toContain('Reviewer + `/external-review`: **GPT-5.x**');
       expect(content).not.toContain('TypeScript / React front-end');
@@ -93,6 +117,95 @@ describe('Epic 16 — Claude + GPT cross-model routing', () => {
       expect(content).toContain('Claude');
       expect(content).toContain('GPT-5.x');
       expect(content).toContain(WRITER_REVIEWER_RULE);
+    });
+  });
+
+  describe('Cross-stack primary/secondary map', () => {
+    let files: GeneratedFile[];
+
+    beforeAll(async () => {
+      files = await generateAll(makeStackConfig());
+    });
+
+    it('AGENTS.md renders the cross-stack map header and every row', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('### Cross-stack primary / secondary map');
+      expect(content).toContain('Plain JS / TS');
+      expect(content).toContain('React / Next.js / React Native / Remix');
+      expect(content).toContain('Three.js / WebGL');
+      expect(content).toContain('Vue / Svelte / Solid / Angular');
+      expect(content).toContain('Python (FastAPI / Django / Flask / data)');
+      expect(content).toContain('C++ / systems / low-level');
+      expect(content).toContain('Java (Spring, enterprise OO)');
+      expect(content).toContain('C# / .NET');
+      expect(content).toContain('Go (services, CLIs, concurrency)');
+      expect(content).toContain('Rust (ownership, lifetimes, refactors)');
+      expect(content).toContain('PHP (Laravel, Symfony)');
+      expect(content).toContain('Ruby / Rails');
+      expect(content).toContain('Swift / iOS (SwiftUI, UIKit)');
+      expect(content).toContain('Kotlin / Android');
+    });
+
+    it('AGENTS.md flags C++ as compiler-arbitrated (no authoritative family)', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('neither family is authoritative');
+      expect(content).toContain('compiler, sanitizers, and tests');
+    });
+  });
+
+  describe('Rust workspace (Claude primary)', () => {
+    let files: GeneratedFile[];
+
+    beforeAll(async () => {
+      files = await generateAll(
+        makeStackConfig({
+          stack: {
+            language: 'rust',
+            runtime: 'rust',
+            framework: 'axum',
+            uiLibrary: null,
+            stateManagement: null,
+            database: 'postgres',
+            auth: null,
+            i18nLibrary: null,
+          },
+        }),
+      );
+    });
+
+    it('AGENTS.md routes Rust workspaces to Claude as implementer', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('Claude leads on correctness');
+      expect(content).toContain('Implementer: **Claude**');
+      expect(content).not.toContain('GPT-5.x leads on rapid implementation');
+    });
+  });
+
+  describe('Go workspace (GPT-5.x primary)', () => {
+    let files: GeneratedFile[];
+
+    beforeAll(async () => {
+      files = await generateAll(
+        makeStackConfig({
+          stack: {
+            language: 'go',
+            runtime: 'go',
+            framework: 'gin',
+            uiLibrary: null,
+            stateManagement: null,
+            database: 'postgres',
+            auth: null,
+            i18nLibrary: null,
+          },
+        }),
+      );
+    });
+
+    it('AGENTS.md routes Go workspaces to GPT-5.x as implementer', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('GPT-5.x leads on rapid implementation');
+      expect(content).toContain('Implementer: **GPT-5.x**');
+      expect(content).not.toContain('Claude leads on correctness');
     });
   });
 });

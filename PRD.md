@@ -275,28 +275,76 @@ than papering over them.
 
 **Paste-ready model-routing block:**
 ```
-## Model routing (verify current model IDs in vendor docs)
-| Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
-|----------------|-------------------------------|------------------|--------------------------|
-| architect      | Opus-class (thinking on)      | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
-| implementer    | Sonnet-class / Codex-class    | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
-| code-reviewer  | Same family as implementer    | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
-| reviewer       | DIFFERENT family from implementer | high         | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
-| external-review| DIFFERENT family, fresh context   | high         | CodeRabbit CLI (mandatory default) · terminal override (allowlisted) · Cursor BugBot · Copilot PR review agent |
-| code-optimizer | Sonnet-class                  | medium           | same as implementer |
-| test-writer    | Sonnet-class                  | medium           | same as implementer |
-| e2e-tester     | Sonnet-class                  | medium           | same as implementer |
-| ui-designer    | Sonnet-class                  | medium           | same as implementer |
+## Model routing (Claude + GPT defaults; verify current model IDs in vendor docs)
 
-Rule: never let the writer be its own final reviewer. A fresh-context
-session with a different model family is the cheapest diversity gain
-available. This rule applies identically across Claude Code, Codex CLI,
-Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
-picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
-Copilot Agent on GPT-5, or vice versa).
+| Role           | Preferred model family                         | Backup model family                        | Reasoning effort | Per-tool invocation hint |
+|----------------|------------------------------------------------|--------------------------------------------|------------------|--------------------------|
+| architect      | Claude (Opus / latest Sonnet, thinking on)     | GPT-5.x (high-reasoning mode)              | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
+| implementer    | TS/React/Three.js: GPT-5.x (Codex) · Python/infra: Claude | Opposite family of the writer       | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
+| code-reviewer  | Same FAMILY as implementer                     | —                                          | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
+| reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x) | —                                    | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
+| external-review| DIFFERENT FAMILY, fresh context (Claude ↔ GPT-5.x)   | —                                    | high             | CodeRabbit CLI (mandatory default) · terminal override (allowlisted) · Cursor BugBot · Copilot PR review agent |
+| code-optimizer | Same family as implementer                     | Opposite family for risky refactors        | medium           | same as implementer |
+| test-writer    | Claude (test strategy)                         | GPT-5.x (boilerplate test code)            | medium           | same as implementer |
+| e2e-tester     | Claude                                         | GPT-5.x                                    | medium           | same as implementer |
+| ui-designer    | **Claude Opus** (UX thinking / a11y / design-system decisions; adaptive thinking on) | GPT-5.x (UI code from approved design) | high             | same as implementer — MUST run before `implementer` on any UI/UX task |
+
+Rule: never let the writer be its own final reviewer. The `reviewer`
+role MUST run on a different model FAMILY than the implementer —
+Claude ↔ GPT-5.x is the cheapest diversity gain available. This rule
+applies identically across Claude Code, Codex CLI, Cursor,
+VSCode+Copilot, and Windsurf — pick whichever tool's model picker
+yields the family swap (e.g., Cursor Agent on Claude Sonnet + Copilot
+Agent on GPT-5.x, or vice versa).
 ```
 
 **External-review mandate.** CodeRabbit CLI is the mandatory default external reviewer across Windows (WSL Ubuntu), Linux, and macOS. Alternative CLIs remain available only via the terminal-override allowlist documented in `external-review.md`; they require explicit opt-in per invocation. `/external-review` must run at the end of `/workflow-plan` as the final cross-model gate — after the reviewer loop and lint have passed — and any critical or warning findings in `QA.md` block workflow completion until resolved by `/workflow-fix`.
+
+## 1.7.1 Claude + GPT pairing (stack-aware defaults)
+
+**Rule.** When both Claude Code and OpenAI Codex / GPT-5.x are available, the cross-model swap in §1.7 is resolved by stack rather than left to the operator. Claude is preferred where deep reasoning, global architecture, and test strategy dominate; GPT-5.x is preferred where fast, UI-heavy implementation and JavaScript/TypeScript ergonomics dominate.
+
+**Verdict.** §1.7 already mandates a writer/reviewer family swap but does not encode **which** family should be writer vs reviewer for a given stack — so two contributors can both comply with §1.7 and still pick opposite defaults. This subsection closes that ambiguity without adding new agents or commands.
+
+**Priority.** [SHOULD].
+
+**Where to add.** Rendered into `AGENTS.md` (below the routing table) and referenced verbatim from the `workflow-plan`, `workflow-fix`, and `external-review` command templates.
+
+**Stack-aware defaults.**
+
+The table below names a **Primary** (default writer / implementer) and a **Secondary** (reviewer + cross-check + alternative implementer) family for each mainstream stack. The rule is simple: the primary writes, the secondary runs the 5-step `reviewer` gate (§1.6) and `/external-review`, and the two MUST be different families.
+
+| Stack / language                               | Primary (implementer)    | Secondary (reviewer + cross-check) | Notes |
+|------------------------------------------------|--------------------------|------------------------------------|-------|
+| Plain JavaScript / TypeScript (libs, CLIs, Node backends incl. Express / Fastify / tRPC / NestJS / Hono) | **GPT-5.x** | **Claude**                         | GPT-5.x leads on TS ergonomics and rapid prototyping; Claude leads on architecture, complex types, large refactors, test strategy. |
+| React / Next.js / React Native / Remix         | **GPT-5.x**              | **Claude**                         | GPT-5.x owns components, hooks, styling, Tailwind. Claude owns component architecture, data flow, prop contracts, and tricky logic review. |
+| Three.js / WebGL / canvas / shaders            | **GPT-5.x**              | **Claude**                         | GPT-5.x is in its element for scenes, animations, and shader code. Claude reviews math / geometry (camera rigs, transforms) and performance. |
+| Vue / Svelte / Solid / Angular                 | **GPT-5.x**              | **Claude**                         | GPT-5.x writes templates and state glue; Claude reviews state-management strategy and test design. |
+| Python (FastAPI, Django, Flask, data pipelines, algorithms) | **Claude**    | **GPT-5.x**                        | Claude owns serious modules, correctness-sensitive logic, and refactors. GPT-5.x handles quick scripts, FastAPI/Flask glue, and edge-case review. |
+| C++ / systems / low-level (including MQL-style trading) | **Tie** (impl. drafts: GPT-5.x · refactors + concurrency reasoning: Claude) | Opposite family of the writer | Neither model is authoritative. Every change MUST be validated by the compiler, sanitizers, and tests (§1.13). |
+| Java (Spring, enterprise OO backends)          | **Claude**               | **GPT-5.x**                        | Claude excels on large OO codebases, refactors, and complex business logic. GPT-5.x generates boilerplate (controllers, DTOs, basic services) and reviews edge cases. |
+| C# / .NET (ASP.NET Core, LINQ-heavy)           | **GPT-5.x**              | **Claude**                         | GPT-5.x is stronger on ecosystem coverage and ASP.NET glue. Claude reasons about complex domain models, async/await, and large refactors. |
+| Go (services, CLIs, idiomatic concurrency)     | **GPT-5.x**              | **Claude**                         | GPT-5.x writes idiomatic Go and concurrency patterns. Claude reviews API design and tricky locking analysis. |
+| Rust (ownership / lifetimes / cross-module refactors) | **Claude**        | **GPT-5.x**                        | Claude leads on lifetimes and cross-module refactors. GPT-5.x drafts quickly but the compiler — and Claude — catch ownership issues. |
+| PHP (Laravel, Symfony)                         | **GPT-5.x**              | **Claude**                         | GPT-5.x cranks out routes / controllers / views. Claude improves structure, validation, and test strategy. |
+| Ruby / Rails                                   | **Claude**               | **GPT-5.x**                        | Claude fits opinionated Rails conventions and refactors. GPT-5.x generates controllers / models / migrations fast. |
+| Swift / iOS (SwiftUI, UIKit)                   | **GPT-5.x**              | **Claude**                         | GPT-5.x has more coverage for modern iOS patterns. Claude drives design refactors, architecture, and test planning. |
+| Kotlin / Android (coroutines, flows)           | **GPT-5.x**              | **Claude**                         | GPT-5.x handles inline Android patterns. Claude reviews domain models and coroutines/flows reasoning. |
+
+**Routing rule.** Writer and reviewer MUST be different families. The minimal rule that covers the whole table:
+
+- **Web / TS / JS / UI / Three.js / Vue / Svelte / Solid / Angular / Go / C# / PHP / Swift / Kotlin** → writer: **GPT-5.x** · reviewer + `/external-review`: **Claude**.
+- **Python / Ruby / Java / Rust** → writer: **Claude** · reviewer + `/external-review`: **GPT-5.x**.
+- **C++ / low-level / polyglot monorepos** → pick the implementer per change, keep the reviewer opposite, and let `pnpm test` / compiler / sanitizers be the contract (§1.3 fail-safe, §1.13 TDD).
+
+**UI/UX exception (two-phase).** UI work has two phases that resolve to different Claude models:
+
+- **Phase A — design thinking / planning** (user flows, IA, UX heuristics, accessibility strategy, design-system decisions, critique): **Claude Opus** with adaptive thinking enabled. Opus's strategic reasoning and "thought-partner" behaviour beat GPT-5.x on open-ended design questions, and Opus 4.7 specifically has stronger design instincts than 4.6.
+- **Phase B — UI implementation** (React / Tailwind / SwiftUI code, Three.js scenes, component plumbing): **GPT-5.x (Codex)** for idiomatic, ecosystem-heavy output, taking Opus's approved design notes as input.
+
+This is why the `ui-designer` role MUST run on Claude Opus and MUST precede the `implementer` on any UI/UX task — the PRD's workflow templates already enforce the ordering in `/workflow-plan` Phase 3 and `/workflow-fix` step 5.
+
+These are defaults, not hard rules. A project MAY override the pairing in its own `AGENTS.md` if it has evidence a different division of labor works better for its stack or team — but the writer/reviewer family split from §1.7 remains non-negotiable.
 
 ## 1.8 Long-horizon harness (initializer + coder + progress.txt + feature_list.json)
 
@@ -2548,6 +2596,72 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 ---
 
+## Epic 16 — Cross-Model Claude + GPT Workflow Routing [SHOULD]
+
+**Goal.** Make the §1.7 cross-model rule first-class by naming **Claude** and **GPT-5.x** explicitly — rather than abstract "families" — in the emitted `AGENTS.md` routing table and in the `workflow-plan`, `workflow-fix`, and `external-review` command templates. The split is **stack-aware** (§1.7.1): TS/React/Three.js prefers GPT-5.x as implementer with Claude as reviewer; Python/infra prefers Claude as implementer with GPT-5.x as reviewer; C++ defers to the compiler + tests. No new agents, generators, or CLI flags are introduced.
+
+**Rationale.** §1.7 already mandates a writer/reviewer family swap, but the emitted templates describe the swap in abstract terms ("Opus-class", "Sonnet-class / Codex-class") that do not tell a two-CLI operator which family to put on each role for their stack. Two contributors can comply with §1.7 and still pick opposite defaults. The `/workflow-plan`, `/workflow-fix`, and `/external-review` commands currently route by **agent role only**, not by **family × stack**. Codifying the Claude ↔ GPT-5.x pairing into the templates (a) removes the ambiguity, (b) lets `reviewer` and `/external-review` enforce the opposite-family rule mechanically, and (c) keeps the orchestrator portable across tool combinations (Claude Code + Codex, Cursor + Copilot, Windsurf alt-model).
+
+**Acceptance.**
+
+- PRD §1.7 routing table names **Claude** and **GPT-5.x** in the Preferred / Backup columns; the "different FAMILY for reviewer" rule stays verbatim (already landed in E16.T1).
+- PRD §1.7.1 exists as a stack-aware defaults subsection (TS/React/Three.js, Python, C++) with an explicit writer/reviewer pairing per stack (already landed in E16.T2). No existing §1.7 content is removed.
+- `src/templates/config/AGENTS.md.ejs` routing table matches the PRD §1.7 schema (Claude / GPT-5.x naming; writer-vs-reviewer rule preserved) and is followed by a "Stack-aware writer/reviewer defaults" block that dispatches on `stack.language` (Claude-primary: Python, Ruby, Rust, Java · GPT-primary: TS, JS, Go, C#/.NET, PHP, Swift, Kotlin) plus the existing `isReact` / `isFrontend` / `isTypescript` context flags from `src/generator/build-context.ts`. No new context flag is introduced. A "Cross-stack primary / secondary map" table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) renders on every fixture as an always-on reference.
+- `src/templates/commands/workflow-plan.md.ejs`, `workflow-fix.md.ejs`, and `external-review.md.ejs` each include a short **Model selection when both Claude and GPT are available** block naming Claude for architect / reviewer by default, GPT-5.x for TS/React implementation, and the opposite-family rule for the reviewer and `/external-review` passes.
+- Generator tests under `tests/generator/` pin the new strings so regressions trip CI: each rendered template contains both `Claude` and `GPT-5.x`, the "different FAMILY" rule is preserved verbatim, the stack-aware block renders the correct branch for a TS/React fixture, a Claude-primary fixture (Python / Rust), and a GPT-primary fixture (Go), and the cross-stack map row headers are all present.
+- `pnpm check-types`, `pnpm lint`, and `pnpm test` are green; the reviewer 5-step gate (§1.6) passes on the Epic 16 branch.
+- Non-goals (this epic): no vendor model-ID constants in TypeScript code; no new generator, CLI flag, or schema field; no changes to sub-agent permissions (§1.9 / Epic 9) or non-interactive posture (Epic 10); no rewrite of §1.7 — only the routing table inside it changes.
+
+### E16.T1 — PRD §1.7 routing table rewrite [§1.7] — S
+
+- **Files**: [PRD.md](PRD.md) (§1.7 "Paste-ready model-routing block", lines ~277–297 pre-epic).
+- **Change**: Replace the routing-table code block with a Claude/GPT-5.x-named variant. Add two columns (**Preferred model family**, **Backup model family**) keyed to the Claude ↔ GPT-5.x rotation. Preserve the "never let the writer be its own final reviewer" rule verbatim and the cross-tool list (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf). Do not remove any existing column, row, or rule.
+- **Done when**: grep of §1.7 shows `Claude` and `GPT-5.x` present, `Opus-class` and `Sonnet-class / Codex-class` removed, and the writer/reviewer rule unchanged character-for-character except for the Claude ↔ GPT-5.x example swap.
+
+### E16.T2 — PRD §1.7.1 Claude + GPT pairing subsection [§1.7] — S
+
+- **Files**: [PRD.md](PRD.md) (new subsection inserted between §1.7 and §1.8).
+- **Change**: Add §1.7.1 with the stack-aware defaults for TS/React/Three.js, Python, and C++. Each stack gets an explicit writer / reviewer / `/external-review` family. Cross-reference §1.3 (fail-safe), §1.6 (5-step reviewer gate), §1.13 (TDD discipline). Keep the subsection under 40 lines.
+- **Done when**: grep of PRD.md returns exactly one `## 1.7.1 Claude + GPT pairing` heading immediately before `## 1.8`; each stack names a writer family and an opposite reviewer family; §1.3 / §1.6 / §1.13 are each cited at least once.
+
+### E16.T3 — `AGENTS.md.ejs` routing update [§1.7] — M
+
+- **Files**: [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
+- **Change**: Replace the current **Model routing** table with the Claude/GPT-5.x-named version (E16.T1 schema). Preserve the trailing "never let the writer be its own final reviewer" paragraph. Append a **Stack-aware writer/reviewer defaults** block that dispatches on `stack.language` using two small in-template allow-lists — Claude-primary (`python`, `ruby`, `rust`, `java`) and GPT-primary (`typescript`, `javascript`, `go`, `csharp` / `c#`, `php`, `swift`, `kotlin`) — combined with the existing `isReact` / `isTypescript` / `isFrontend` flags from `buildContext()`. TS/React fixtures hit a dedicated branch first so UI-heavy workspaces still get the Three.js-flavored guidance. Finally, append a **Cross-stack primary / secondary map** table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) so non-detected workspaces still get explicit guidance. Keep the template under 200 lines.
+- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present; template stays ≤ 200 lines.
+
+### E16.T4 — `workflow-plan.md.ejs` model-selection note [§1.7] — S
+
+- **Files**: [src/templates/commands/workflow-plan.md.ejs](src/templates/commands/workflow-plan.md.ejs).
+- **Change**: After the Phase 2 architect step (existing "Print the plan summary table for the user." line), append a short **Model selection when both Claude and GPT are available** block. State: Claude for `/workflow-plan` architect + final reviewer when GPT-5.x implemented the diff; GPT-5.x as the implementer in Phase 3 for TS/React/Three.js tasks after the plan is approved; reviewer / `/external-review` always on the opposite family. No changes to phase ordering, no new phase added.
+- **Done when**: the rendered `workflow-plan.md` contains the `Model selection when both Claude and GPT are available` heading exactly once, mentions Claude and GPT-5.x each at least once, and the existing Phase 2 / Phase 3 / Phase 4 numbering is unchanged.
+
+### E16.T5 — `workflow-fix.md.ejs` model-selection note [§1.7] — S
+
+- **Files**: [src/templates/commands/workflow-fix.md.ejs](src/templates/commands/workflow-fix.md.ejs).
+- **Change**: After the implementer-routing bullet in step 5 (existing "Use the `implementer` sub-agent" lines), insert a short **Model selection when both Claude and GPT are available** block. State: TS/React fixes → GPT-5.x implementer + Claude reviewer; Python / infra fixes → Claude implementer + GPT-5.x reviewer. Advisory only — do not change the existing review loop or external-failure policy.
+- **Done when**: the rendered `workflow-fix.md` contains the new block exactly once, preserves all existing step numbers, and the `code-reviewer` / `security-reviewer` routing in step 6 is unchanged.
+
+### E16.T6 — `external-review.md.ejs` opposite-family reminder [§1.7] — S
+
+- **Files**: [src/templates/commands/external-review.md.ejs](src/templates/commands/external-review.md.ejs).
+- **Change**: Inside the existing **Cross-model requirement** section (below the current "family parity between the writer and the final reviewer is forbidden" sentence), append one sentence: `When you trigger a manual override, choose the opposite model family (Claude ↔ GPT-5.x) from the one that wrote most of the diff — this maximizes the chance the reviewer catches mistakes the writer family tends to miss.` No change to the terminal-override allowlist or Step-1..Step-4 structure.
+- **Done when**: grep of the rendered `external-review.md` returns the new sentence exactly once; the allowlisted-command list, metacharacter policy, and QA.md template are byte-identical to pre-epic.
+
+### E16.T7 — Generator snapshot tests [§1.7] — S
+
+- **Files**: new [tests/generator/epic-16-cross-model-routing.test.ts](tests/generator/epic-16-cross-model-routing.test.ts) covering AGENTS.md and the three workflow command templates. Reuses the existing `getRootFileContent` / `getCommandContent` helpers from `epic-3-review-depth.helpers.ts` and the `makeStackConfig` fixture factory. No new fixture files.
+- **Change**: Assert across four fixtures — TypeScript/React (default), Python backend, Rust backend, Go backend — that (a) the rendered `AGENTS.md`, `workflow-plan.md`, `workflow-fix.md`, and `external-review.md` each contain both `Claude` and `GPT-5.x`; (b) the `never let the writer be its own final reviewer` rule is present verbatim in `AGENTS.md`; (c) TS/React fixtures hit the TS branch (`Implementer: **GPT-5.x**` with Three.js note), Python / Rust fixtures hit the Claude-primary branch (`Claude leads on correctness`), and Go fixtures hit the GPT-primary branch (`GPT-5.x leads on rapid implementation`); (d) `workflow-plan.md` and `workflow-fix.md` each contain the new `Model selection when both Claude and GPT are available` heading exactly once; (e) the **Cross-stack primary / secondary map** table renders every row header on the default fixture; (f) the C++ row's compiler-arbitrated caveat is present.
+- **Done when**: `pnpm test` is green; temporarily reverting the template changes causes the new assertions to fail (proves they pin the behavior).
+
+### E16.T8 — Delivery-plan row [§1.7] — S
+
+- **Files**: [PRD.md](PRD.md) (Delivery plan table at the end of Part 6).
+- **Change**: Insert a new row in the delivery-plan table: `| 12 | Cross-model Claude + GPT routing | Epic 16 (depends on Epic 3 review-depth templates + Epic 7 safe-writes) |`. Renumber later sprints only if the insert collides; otherwise append at the end above the "Backlog" row.
+- **Done when**: the delivery-plan table renders with Epic 16 called out, the per-epic exit-gate paragraph beneath the table is unchanged, and no earlier sprint number shifts.
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -2563,6 +2677,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 | 9 | Stack-aware senior agents | Epic 13 (depends on Epic 1/2 partials + Epic 7 safe-writes) |
 | 10 | Workspace refinement prompt | Epic 14 (depends on Epic 7 safe-writes + Epic 13 agent set) |
 | 11 | Core logic docstrings | Epic 15 (depends on the current src/ surface — no other epic blocks it) |
+| 12 | Cross-model Claude + GPT routing | Epic 16 (depends on Epic 3 review-depth templates + Epic 7 safe-writes) |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 5-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.

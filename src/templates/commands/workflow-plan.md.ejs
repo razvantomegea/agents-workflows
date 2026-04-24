@@ -40,6 +40,16 @@ Use the `architect` sub-agent for this phase. Pass it the user's request and rel
    - An `## External errors` section at the end (can start empty)
 5. Print the plan summary table for the user.
 
+### Model selection when both Claude and GPT are available
+
+When both Claude Code and OpenAI Codex / GPT-5.x are on the operator's machine, apply these defaults — they resolve the §1.7 cross-model rule without ambiguity:
+
+- **Claude** runs the `architect` in Phase 2, the final `reviewer` gate in Phase 3, and `/external-review` in Phase 4 whenever GPT-5.x implemented the diff.
+- **GPT-5.x** (Codex / Copilot Agent on GPT-5.x) runs the `implementer` in Phase 3 for TypeScript / React / React Native / Three.js tasks after the plan is approved.
+- **Python / infra / correctness-sensitive work** inverts the pairing: Claude implements, GPT-5.x runs `reviewer` + `/external-review`.
+- **UI/UX design thinking / planning** (flows, IA, UX heuristics, a11y, design-system decisions) MUST run on **Claude Opus** (adaptive thinking on) via the `ui-designer` sub-agent, BEFORE GPT-5.x writes the component code. This is the two-phase UI exception in PRD §1.7.1.
+- Writer and reviewer MUST be different families (Claude ↔ GPT-5.x). See PRD §1.7.1 for the full rationale.
+
 ### Phase 3 — Execute all tasks
 
 After writing the plan, **immediately execute every task** in order:

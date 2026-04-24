@@ -71,6 +71,9 @@ After every implementation session, run the following loop before considering th
 2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
 3. **Re-run type-check** — `<%= commands.typeCheck || 'N/A' %>`. Fix any new errors.
 4. **Re-run tests** — `<%= commands.test %>`. All suites must pass.
+<% if (commands.lint) { -%>
+5. **Re-run lint** — `<%= commands.lint %>`. Must complete with zero warnings.
+<% } -%>
 
 This loop is mandatory.
 
