@@ -27,6 +27,7 @@ Fix all QA issues listed in QA.md on the current feature branch.
    - TypeScript / React / React Native / Three.js fixes — implementer: **GPT-5.x** (Codex / Copilot Agent). Reviewer + `/external-review`: **Claude**.
    - Python / infra / correctness-sensitive fixes — implementer: **Claude**. Reviewer + `/external-review`: **GPT-5.x**.
    - UI/UX design thinking / planning (flows, IA, UX heuristics, a11y, design-system decisions) MUST run on **Claude Opus** (adaptive thinking on) via the `ui-designer` sub-agent, BEFORE GPT-5.x writes the component code. Two-phase UI exception per PRD §1.7.1.
+   - **How to invoke the other family (PRD §1.7.2):** with the Codex Plugin for Claude Code installed, run `/codex:review` for the opposite-family review pass from Claude, or `/codex:delegate <fix>` to hand a fix to GPT-5.x. From inside a Codex session, shell out via `claude -p "<prompt>"` to get a Claude review. Subprocess fallback allowlist (`Bash(codex exec:*)`, `Bash(claude -p:*)`) lives in the generated `.claude/settings.json`.
    - Writer and reviewer MUST be different families (Claude ↔ GPT-5.x). See PRD §1.7.1 for the full rationale.
 
 6. Run the mandatory review loop on all modified files:

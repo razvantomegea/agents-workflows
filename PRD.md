@@ -346,6 +346,50 @@ This is why the `ui-designer` role MUST run on Claude Opus and MUST precede the 
 
 These are defaults, not hard rules. A project MAY override the pairing in its own `AGENTS.md` if it has evidence a different division of labor works better for its stack or team — but the writer/reviewer family split from §1.7 remains non-negotiable.
 
+## 1.7.2 Cross-model handoff mechanics (how Claude invokes GPT-5.x and vice versa)
+
+**Problem.** §1.7 and §1.7.1 specify *who* writes and *who* reviews, but not *how* one CLI actually invokes the other mid-workflow. Without a named mechanism, the Claude ↔ GPT-5.x rotation degrades into manual copy-paste between two terminals. This subsection names the three supported mechanisms and makes one the default.
+
+**Verdict.** **MUST specify.** The orchestrator needs a synchronous, structured handoff — not file-watch polling, which introduces race conditions, latency, and an untyped result surface.
+
+**Primary mechanism — Codex Plugin for Claude Code (MCP).** OpenAI shipped `codex-plugin-cc` on 2026-03-30 as the official, supported handoff path. It is an MCP server that plugs directly into Claude Code so Claude can call Codex as a tool. Install once per machine:
+
+```
+# inside a Claude Code session
+/plugin marketplace add openai/codex-plugin-cc
+/plugin install codex@openai-codex
+/codex:setup   # verifies login + Codex CLI; offers to install if missing
+```
+
+After install, Claude Code exposes two command families:
+
+- `/codex:review` — hand the current diff to Codex for a second-opinion review; results stream back into the Claude session. This is the canonical implementation of the §1.7 "different-family reviewer" rule when Claude was the writer.
+- `/codex:delegate` — hand a task (or sub-task) to Codex for implementation (including in a cloud sandbox for parallel work). This is the canonical implementation of the §1.7.1 "GPT-5.x writer for TS/React/Three.js" rule when Claude is the orchestrator.
+
+The plugin authenticates via the operator's existing ChatGPT subscription or Codex API key; no new credentials are managed by this repo.
+
+**Reverse direction — Claude from inside Codex CLI.** Codex can invoke Claude Code headless via subprocess:
+
+```
+# inside a Codex session, for the "Claude reviewer after GPT-5.x implementer" pairing
+claude -p "Review this diff as an opposite-family reviewer per PRD §1.7. Diff: ..."
+```
+
+`claude -p` / `claude --print` is Claude Code's non-interactive mode; it returns structured text on stdout and exits. Pair with `Bash(claude -p:*)` on the Codex allowlist.
+
+**Fallback — subprocess `codex exec` / `claude -p`.** When the Codex plugin is unavailable (offline, air-gapped, or operator preference), both CLIs can be driven via subprocess:
+
+- Claude Code → Codex: `Bash(codex exec "<prompt>")` returns Codex's output on stdout.
+- Codex → Claude Code: `Bash(claude -p "<prompt>")` returns Claude's output on stdout.
+
+Both invocations MUST be on the permission allowlist — `Bash(codex exec:*)` in `.claude/settings.json` and `Bash(claude -p:*)` in `.codex/rules/project.rules`. Permission rules in §1.9 / Epic 9 are otherwise deny-first, so these commands do not work until explicitly allowed.
+
+**Community MCP routers.** `pal-mcp-server`, `multi_mcp`, and `codex-mcp-server` expose multiple model families (Claude / GPT-5.x / Gemini / Grok / Ollama) behind one MCP surface. Use only when the operator needs more than two families in rotation; the official Codex plugin is preferred for Claude ↔ GPT-5.x work because it is maintained by the provider and integrates with `/codex:setup`.
+
+**Why not file watching / heartbeat.** File-watch or heartbeat polling between two CLIs is strictly worse than MCP tool calls: (a) polling overhead burns tokens and wall-clock time; (b) race conditions on the handoff file require locking; (c) no structured result schema — the receiver parses freeform Markdown; (d) no native cancellation or error propagation; (e) no streaming of intermediate tokens. MCP tool calls solve all five with a single synchronous request/response. File-watch remains appropriate for long-horizon harnesses (§1.8) where sessions span hours or restart — but not for intra-workflow handoff inside a single `/workflow-plan` run.
+
+**Where to wire.** Epic 16 task E16.T9 threads the plugin install steps into the emitted `AGENTS.md` setup block and allowlists `Bash(codex exec:*)` / `Bash(claude -p:*)` in the generated `.claude/settings.json` and `.codex/rules/project.rules` for the subprocess fallback. `/workflow-plan`, `/workflow-fix`, and `/external-review` templates name the plugin commands (`/codex:delegate`, `/codex:review`) so the orchestrator invokes the handoff explicitly rather than from memory.
+
 ## 1.8 Long-horizon harness (initializer + coder + progress.txt + feature_list.json)
 
 **Rule.** Anthropic's Nov 26 2025 "Effective harnesses for long-running agents" formalizes the pattern: an initializer agent writes `init.sh` + `feature_list.json` (`passes: false` initially) + `claude-progress.txt`; subsequent coder sessions read progress + git log, pick one feature, verify end-to-end, commit, flip `passes: true`. JSON (not Markdown) is used for the feature list because models are less likely to "helpfully" rewrite it. OpenAI's "Run long horizon tasks with Codex" endorses the same shape.
@@ -2607,7 +2651,9 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - PRD §1.7 routing table names **Claude** and **GPT-5.x** in the Preferred / Backup columns; the "different FAMILY for reviewer" rule stays verbatim (already landed in E16.T1).
 - PRD §1.7.1 exists as a stack-aware defaults subsection (TS/React/Three.js, Python, C++) with an explicit writer/reviewer pairing per stack (already landed in E16.T2). No existing §1.7 content is removed.
 - `src/templates/config/AGENTS.md.ejs` routing table matches the PRD §1.7 schema (Claude / GPT-5.x naming; writer-vs-reviewer rule preserved) and is followed by a "Stack-aware writer/reviewer defaults" block that dispatches on `stack.language` (Claude-primary: Python, Ruby, Rust, Java · GPT-primary: TS, JS, Go, C#/.NET, PHP, Swift, Kotlin) plus the existing `isReact` / `isFrontend` / `isTypescript` context flags from `src/generator/build-context.ts`. No new context flag is introduced. A "Cross-stack primary / secondary map" table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) renders on every fixture as an always-on reference.
-- `src/templates/commands/workflow-plan.md.ejs`, `workflow-fix.md.ejs`, and `external-review.md.ejs` each include a short **Model selection when both Claude and GPT are available** block naming Claude for architect / reviewer by default, GPT-5.x for TS/React implementation, and the opposite-family rule for the reviewer and `/external-review` passes.
+- `src/templates/commands/workflow-plan.md.ejs`, `workflow-fix.md.ejs`, and `external-review.md.ejs` each include a short **Model selection when both Claude and GPT are available** block naming Claude for architect / reviewer by default, GPT-5.x for TS/React implementation, and the opposite-family rule for the reviewer and `/external-review` passes. The same blocks name the concrete §1.7.2 handoff commands (`/codex:delegate`, `/codex:review`) and the subprocess fallbacks (`codex exec`, `claude -p`) so the orchestrator never needs to improvise the invocation.
+- Generated `AGENTS.md` includes a **Cross-model handoff setup** block pointing operators at the `openai/codex-plugin-cc` install commands from §1.7.2 and the subprocess-fallback allowlist entries.
+- Generated `.claude/settings.json` (from `src/generator/permissions.ts`) allowlists `Bash(codex exec:*)` and `Bash(claude -p:*)` so the subprocess fallback works when the Codex plugin is unavailable — no other allow broadening occurs. Generated `.codex/rules/project.rules` gains matching `allow` entries for `claude -p`.
 - Generator tests under `tests/generator/` pin the new strings so regressions trip CI: each rendered template contains both `Claude` and `GPT-5.x`, the "different FAMILY" rule is preserved verbatim, the stack-aware block renders the correct branch for a TS/React fixture, a Claude-primary fixture (Python / Rust), and a GPT-primary fixture (Go), and the cross-stack map row headers are all present.
 - `pnpm check-types`, `pnpm lint`, and `pnpm test` are green; the reviewer 5-step gate (§1.6) passes on the Epic 16 branch.
 - Non-goals (this epic): no vendor model-ID constants in TypeScript code; no new generator, CLI flag, or schema field; no changes to sub-agent permissions (§1.9 / Epic 9) or non-interactive posture (Epic 10); no rewrite of §1.7 — only the routing table inside it changes.
@@ -2628,7 +2674,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 - **Files**: [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
 - **Change**: Replace the current **Model routing** table with the Claude/GPT-5.x-named version (E16.T1 schema). Preserve the trailing "never let the writer be its own final reviewer" paragraph. Append a **Stack-aware writer/reviewer defaults** block that dispatches on `stack.language` using two small in-template allow-lists — Claude-primary (`python`, `ruby`, `rust`, `java`) and GPT-primary (`typescript`, `javascript`, `go`, `csharp` / `c#`, `php`, `swift`, `kotlin`) — combined with the existing `isReact` / `isTypescript` / `isFrontend` flags from `buildContext()`. TS/React fixtures hit a dedicated branch first so UI-heavy workspaces still get the Three.js-flavored guidance. Finally, append a **Cross-stack primary / secondary map** table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) so non-detected workspaces still get explicit guidance. Keep the template under 200 lines.
-- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present; template stays ≤ 200 lines.
+- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present; template stays ≤ 210 lines after E16.T9 adds the cross-model handoff setup block.
 
 ### E16.T4 — `workflow-plan.md.ejs` model-selection note [§1.7] — S
 
@@ -2659,6 +2705,18 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - **Files**: [PRD.md](PRD.md) (Delivery plan table at the end of Part 6).
 - **Change**: Insert a new row in the delivery-plan table: `| 12 | Cross-model Claude + GPT routing | Epic 16 (depends on Epic 3 review-depth templates + Epic 7 safe-writes) |`. Renumber later sprints only if the insert collides; otherwise append at the end above the "Backlog" row.
 - **Done when**: the delivery-plan table renders with Epic 16 called out, the per-epic exit-gate paragraph beneath the table is unchanged, and no earlier sprint number shifts.
+
+### E16.T9 — Cross-model handoff mechanics wiring [§1.7.2] — M
+
+- **Files**: [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs), [src/templates/commands/workflow-plan.md.ejs](src/templates/commands/workflow-plan.md.ejs), [src/templates/commands/workflow-fix.md.ejs](src/templates/commands/workflow-fix.md.ejs), [src/templates/commands/external-review.md.ejs](src/templates/commands/external-review.md.ejs), [src/generator/permissions.ts](src/generator/permissions.ts) (or the allowlist source it reads from in `src/generator/permission-constants.ts`), [tests/generator/epic-16-cross-model-routing.test.ts](tests/generator/epic-16-cross-model-routing.test.ts).
+- **Change**:
+  - `AGENTS.md.ejs`: add a concise **Cross-model handoff setup** section after the "Stack-aware writer/reviewer defaults" block naming the three mechanisms from §1.7.2 (Codex plugin — primary; `claude -p` reverse direction; `codex exec` / `claude -p` subprocess fallback) and the one-time install commands (`/plugin marketplace add openai/codex-plugin-cc`, `/plugin install codex@openai-codex`, `/codex:setup`). Keep it under 15 rendered lines; do not duplicate §1.7.2 prose.
+  - `workflow-plan.md.ejs`: in the existing "Model selection when both Claude and GPT are available" block, add a bullet pointing at `/codex:delegate` for Phase 3 TS/React implementation when Claude is the orchestrator, and at `codex exec "<task>"` as the subprocess fallback.
+  - `workflow-fix.md.ejs`: in the matching block, name `/codex:review` as the Codex-initiated review pass and `claude -p "<prompt>"` for the reverse direction.
+  - `external-review.md.ejs`: in the **Cross-model requirement** section, name `/codex:review` as an allowlisted alternative to CodeRabbit CLI when the operator overrides the default — with the existing terminal-override token-validation rules still applying verbatim (no weakening of the Epic 9 allowlist).
+  - Permission wiring: extend the `Bash` allowlist built by `permissions.ts` so `Bash(codex exec:*)` and `Bash(claude -p:*)` land in generated `.claude/settings.json`; add matching `allow` entries for `claude -p` and `codex exec` to the generated `.codex/rules/project.rules`. Preserve every existing deny verbatim.
+  - Tests: assert that the rendered `AGENTS.md` contains the plugin install commands, the rendered `workflow-plan.md` / `workflow-fix.md` / `external-review.md` name `/codex:delegate` and/or `/codex:review`, and the generated `.claude/settings.json` allow list contains `Bash(codex exec:*)` and `Bash(claude -p:*)`.
+- **Done when**: `pnpm test` is green; `pnpm lint` clean; rendering against a default fixture shows the three handoff commands in `AGENTS.md`, the plugin commands in the workflow templates, and the two new Bash entries in the settings allow list; no existing deny-list entry is removed.
 
 ---
 

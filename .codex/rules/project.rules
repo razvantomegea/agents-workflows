@@ -158,3 +158,16 @@ prefix_rule(
   decision = "allow",
   justification = "Local / read-only git (symmetric with Claude LOCAL_GIT_ALLOWS)",
 )
+
+# --- Allow: Cross-model handoff subprocess fallback (§1.7.2) --------------
+# Lets Codex invoke Claude Code headless (`claude -p` / `claude --print`) when
+# the official Codex plugin for Claude Code (`codex-plugin-cc`) is unavailable.
+# The plugin itself uses MCP and needs no prefix_rule entry. Claude's side of
+# this rotation (`codex exec`) is allowlisted in .claude/settings.json via
+# CROSS_MODEL_HANDOFF_ALLOWS in src/generator/permission-constants.ts.
+
+prefix_rule(
+  pattern = ["claude", ["-p", "--print"]],
+  decision = "allow",
+  justification = "Cross-model handoff: Codex → Claude Code headless invocation (PRD §1.7.2)",
+)

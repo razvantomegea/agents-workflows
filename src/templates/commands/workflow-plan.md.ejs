@@ -48,6 +48,7 @@ When both Claude Code and OpenAI Codex / GPT-5.x are on the operator's machine, 
 - **GPT-5.x** (Codex / Copilot Agent on GPT-5.x) runs the `implementer` in Phase 3 for TypeScript / React / React Native / Three.js tasks after the plan is approved.
 - **Python / infra / correctness-sensitive work** inverts the pairing: Claude implements, GPT-5.x runs `reviewer` + `/external-review`.
 - **UI/UX design thinking / planning** (flows, IA, UX heuristics, a11y, design-system decisions) MUST run on **Claude Opus** (adaptive thinking on) via the `ui-designer` sub-agent, BEFORE GPT-5.x writes the component code. This is the two-phase UI exception in PRD §1.7.1.
+- **How to invoke the other family (PRD §1.7.2):** when the Codex Plugin for Claude Code is installed, use `/codex:delegate <task>` to hand Phase 3 TS/React implementation to GPT-5.x and `/codex:review` to hand the Phase 3 diff to GPT-5.x for a second-opinion review. If the plugin is unavailable, the subprocess fallback is `Bash(codex exec "<task>")` from Claude Code and `claude -p "<prompt>"` from inside Codex — both are allowlisted per §1.7.2. Never use file-watch polling for this handoff.
 - Writer and reviewer MUST be different families (Claude ↔ GPT-5.x). See PRD §1.7.1 for the full rationale.
 
 ### Phase 3 — Execute all tasks

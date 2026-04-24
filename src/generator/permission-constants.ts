@@ -181,3 +181,15 @@ export const TOOLCHAIN_ALLOWS: readonly string[] = [
   'Bash(eslint:*)',
   'Bash(prettier:*)',
 ];
+
+/**
+ * Cross-model handoff allow entries (§1.7.2): lets Claude Code invoke Codex in
+ * headless mode (`codex exec`) and lets Codex invoke Claude Code in headless
+ * mode (`claude -p`) as the subprocess fallback when the official Codex plugin
+ * for Claude Code (`codex-plugin-cc`) is unavailable. The plugin itself uses
+ * MCP, which does not require any Bash allowlist entry.
+ */
+export const CROSS_MODEL_HANDOFF_ALLOWS: readonly string[] = [
+  'Bash(codex exec:*)',
+  'Bash(claude -p:*)',
+];

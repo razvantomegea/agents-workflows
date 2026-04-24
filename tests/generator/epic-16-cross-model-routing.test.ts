@@ -81,6 +81,53 @@ describe('Epic 16 — Claude + GPT cross-model routing', () => {
       expect(fix).toContain('Claude Opus');
       expect(fix).toContain('UI/UX design thinking');
     });
+
+    it('AGENTS.md documents the cross-model handoff setup with plugin install commands', () => {
+      const content = getRootFileContent(files, 'AGENTS.md');
+      expect(content).toContain('### Cross-model handoff setup');
+      expect(content).toContain('/plugin marketplace add openai/codex-plugin-cc');
+      expect(content).toContain('/plugin install codex@openai-codex');
+      expect(content).toContain('/codex:setup');
+      expect(content).toContain('/codex:delegate');
+      expect(content).toContain('/codex:review');
+      expect(content).toContain('NOT driven by file watching');
+    });
+
+    it('workflow-plan.md names the Codex plugin handoff commands', () => {
+      const content = getCommandContent(files, 'workflow-plan');
+      expect(content).toContain('/codex:delegate');
+      expect(content).toContain('/codex:review');
+      expect(content).toContain('codex exec');
+      expect(content).toContain('claude -p');
+      expect(content).toContain('PRD §1.7.2');
+      expect(content).toContain('Never use file-watch polling');
+    });
+
+    it('workflow-fix.md names the Codex plugin handoff commands', () => {
+      const content = getCommandContent(files, 'workflow-fix');
+      expect(content).toContain('/codex:review');
+      expect(content).toContain('/codex:delegate');
+      expect(content).toContain('claude -p');
+      expect(content).toContain('PRD §1.7.2');
+    });
+
+    it('external-review.md names /codex:review as an allowlisted alternative', () => {
+      const content = getCommandContent(files, 'external-review');
+      expect(content).toContain('/codex:review');
+      expect(content).toContain('Codex Plugin for Claude Code');
+      expect(content).toContain('PRD §1.7.2');
+      expect(content).toContain('strictly inferior to the MCP handoff');
+      // CodeRabbit must remain the default; plugin supplements, not replaces.
+      // EJS template hard-wraps this sentence, so match by substring on "remains the mandatory default".
+      expect(content).toContain('remains the mandatory default');
+      expect(content).toContain('supplements it');
+    });
+
+    it('.claude/settings.json allowlists the cross-model subprocess fallback', () => {
+      const settings = getRootFileContent(files, '.claude/settings.json');
+      expect(settings).toContain('Bash(codex exec:*)');
+      expect(settings).toContain('Bash(claude -p:*)');
+    });
   });
 
   describe('Python backend workspace', () => {
