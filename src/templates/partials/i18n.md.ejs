@@ -1,0 +1,15 @@
+## Internationalization
+- UTF-8 end-to-end; normalize to NFC at ingress.
+- Never concatenate translated strings. Use placeholders via ICU
+  MessageFormat (or MF2 tech preview).
+- Locale-aware formatting via platform `Intl.*` / ICU. Never hand-format
+  dates, numbers, currency.
+- Resolve locale from `Accept-Language` with fallback chain; allow
+  user override.
+- CSS logical properties (`margin-inline-start`, `padding-block-end`)
+  for RTL readiness. Set `<html dir lang>` correctly.
+- Pluralization: CLDR plural categories (zero/one/two/few/many/other).
+  Never `count === 1 ? a : b`.
+- Select patterns for gendered phrases. Never hardcode gender.
+- New JS code: prefer `Temporal` (via polyfill until full Safari
+  support). Deprecate `Date` for new business logic.

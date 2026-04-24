@@ -61,6 +61,19 @@ describe('stackConfigSchema command validation', () => {
     expect(parsed.project.mainBranch).toBe('main');
   });
 
+  it('coerces missing workflowTcr to false', () => {
+    const cfg = makeStackConfig();
+    const legacyConfig: Partial<typeof cfg> = {
+      ...cfg,
+      selectedCommands: { ...cfg.selectedCommands },
+    };
+    delete legacyConfig.selectedCommands?.workflowTcr;
+
+    const parsed = stackConfigSchema.parse(legacyConfig);
+
+    expect(parsed.selectedCommands.workflowTcr).toBe(false);
+  });
+
   it('rejects mainBranch containing shell metacharacters', () => {
     const cfg = makeStackConfig({
       project: { ...makeStackConfig().project, mainBranch: 'main; curl evil' },

@@ -13,6 +13,7 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
   { key: 'workflowFix', templateFile: 'commands/workflow-fix.md.ejs', outputName: 'workflow-fix.md' },
   { key: 'externalReview', templateFile: 'commands/external-review.md.ejs', outputName: 'external-review.md' },
   { key: 'workflowLonghorizon', templateFile: 'commands/workflow-longhorizon.md.ejs', outputName: 'workflow-longhorizon.md' },
+  { key: 'workflowTcr', templateFile: 'commands/workflow-tcr.md.ejs', outputName: 'workflow-tcr.md' },
 ];
 
 export async function generateCommands(

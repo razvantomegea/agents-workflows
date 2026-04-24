@@ -42,6 +42,7 @@ export function createDefaultConfig(
       stateManagement: detected.stateManagement.value,
       database: detected.database.value,
       auth: detected.auth.value,
+      i18nLibrary: detected.i18n.value,
     },
     tooling: {
       packageManager,
@@ -88,6 +89,7 @@ export function createDefaultConfig(
       workflowFix: true,
       externalReview: false,
       workflowLonghorizon: false,
+      workflowTcr: false,
     },
     targets,
     governance: { enabled: false },

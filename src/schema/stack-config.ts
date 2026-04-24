@@ -35,6 +35,7 @@ export const stackConfigSchema = z.object({
     stateManagement: z.string().nullable().default(null),
     database: z.string().nullable().default(null),
     auth: z.string().nullable().default(null),
+    i18nLibrary: z.string().nullable().default(null),
   }),
 
   tooling: z.object({
@@ -94,6 +95,7 @@ export const stackConfigSchema = z.object({
     workflowFix: z.boolean().default(true),
     externalReview: z.boolean().default(false),
     workflowLonghorizon: z.boolean().default(false),
+    workflowTcr: z.boolean().default(false),
   }),
 
   targets: z.object({

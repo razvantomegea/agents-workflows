@@ -23,6 +23,7 @@ function makeDetectedStack(): DetectedStack {
     stateManagement: { value: 'zustand', confidence: 0.9 },
     database: { value: 'prisma', confidence: 0.95 },
     auth: { value: 'nextauth', confidence: 0.95 },
+    i18n: emptyDetection,
     testFramework: { value: 'vitest', confidence: 0.95 },
     testLibrary: emptyDetection,
     e2eFramework: emptyDetection,
@@ -222,6 +223,12 @@ describe('createDefaultConfig', () => {
     const config = createDefaultConfig(makeDetectedStack());
 
     expect(config.selectedCommands.workflowLonghorizon).toBe(false);
+  });
+
+  it('defaults selectedCommands.workflowTcr to false', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.selectedCommands.workflowTcr).toBe(false);
   });
 });
 

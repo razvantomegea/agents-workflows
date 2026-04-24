@@ -52,6 +52,8 @@ export function buildContext(config: StackConfig): GeneratorContext {
     hasE2eTester: config.agents.e2eTester,
     hasSecurityReviewer: config.agents.securityReviewer,
     hasReactTsSenior,
+    hasI18n: Boolean(config.stack.i18nLibrary),
+    i18nLibrary: config.stack.i18nLibrary,
     testFramework: config.tooling.testFramework,
     testsDir: config.paths.testsDir,
   };
@@ -68,6 +70,7 @@ function buildStackItems(config: StackConfig): string[] {
   if (stack.stateManagement) items.push(capitalize(stack.stateManagement));
   if (stack.database) items.push(capitalize(stack.database));
   if (stack.auth) items.push(capitalize(stack.auth));
+  // i18nLibrary intentionally not summarised here — surfaced via hasI18n template flag instead.
   if (tooling.testFramework) items.push(`${capitalize(tooling.testFramework)} (testing)`);
   if (tooling.testLibrary) items.push(capitalize(tooling.testLibrary));
   if (tooling.linter) items.push(`${capitalize(tooling.linter)} (linter)`);

@@ -8,7 +8,7 @@ describe('Epic 5 T1 — workflow-longhorizon: enabled (claudeCode only)', () => 
   beforeAll(async () => {
     files = await generateAll(
       makeStackConfig({
-        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: true, workflowLonghorizon: true },
+        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: true, workflowLonghorizon: true, workflowTcr: false },
         targets: { claudeCode: true, codexCli: false },
       }),
     );
@@ -78,7 +78,7 @@ describe('Epic 5 T1 — workflow-longhorizon: enabled with codexCli target', () 
   beforeAll(async () => {
     files = await generateAll(
       makeStackConfig({
-        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false, workflowLonghorizon: true },
+        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false, workflowLonghorizon: true, workflowTcr: false },
         targets: { claudeCode: true, codexCli: true },
       }),
     );
@@ -99,7 +99,7 @@ describe('Epic 5 T1 — workflow-longhorizon: disabled', () => {
   beforeAll(async () => {
     files = await generateAll(
       makeStackConfig({
-        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false, workflowLonghorizon: false },
+        selectedCommands: { workflowPlan: true, workflowFix: true, externalReview: false, workflowLonghorizon: false, workflowTcr: false },
         targets: { claudeCode: true, codexCli: true },
       }),
     );

@@ -74,6 +74,8 @@ export async function runPromptFlow(
       stateManagement: stack.stateManagement,
       database: stack.database,
       auth: null,
+      // i18n is detection-only — no interactive override question (mirrors auth detection but auth is also user-promptable elsewhere).
+      i18nLibrary: detected.i18n.value,
     },
     tooling: {
       packageManager: tooling.packageManager,
@@ -120,6 +122,7 @@ export async function runPromptFlow(
       workflowFix: selectedCommands.includes('workflowFix'),
       externalReview: selectedCommands.includes('externalReview'),
       workflowLonghorizon: selectedCommands.includes('workflowLonghorizon'),
+      workflowTcr: selectedCommands.includes('workflowTcr'),
     },
     targets,
     governance,

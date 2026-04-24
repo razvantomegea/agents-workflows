@@ -8,6 +8,7 @@ import { detectLinter, detectFormatter } from './detect-linter.js';
 import { detectPackageManager } from './detect-package-manager.js';
 import { detectE2e } from './detect-e2e.js';
 import { detectAuth } from './detect-auth.js';
+import { detectI18n } from './detect-i18n.js';
 import { detectAiAgents } from './detect-ai-agents.js';
 import { detectDocsFile } from './detect-docs-file.js';
 import { detectMonorepo } from './detect-monorepo.js';
@@ -27,6 +28,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     packageManager,
     e2eFramework,
     auth,
+    i18n,
     aiAgents,
     docsFile,
   ] = await Promise.all([
@@ -42,6 +44,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectPackageManager(projectRoot),
     detectE2e(projectRoot),
     detectAuth(projectRoot),
+    detectI18n(projectRoot),
     detectAiAgents(),
     detectDocsFile(projectRoot),
   ]);
@@ -57,6 +60,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     stateManagement,
     database,
     auth,
+    i18n,
     testFramework,
     testLibrary,
     e2eFramework,

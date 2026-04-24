@@ -1,0 +1,49 @@
+{
+  "component-definition": {
+    "uuid": "00000000-0000-0000-0000-000000000000",
+    "metadata": {
+      "title": <%- jsonString(project.name + " Component Definition") %>,
+      "last-modified": "1970-01-01T00:00:00Z",
+      "version": "0.1.0",
+      "oscal-version": "1.2.1",
+      "remarks": "Placeholder UUID — regenerate per project via crypto.randomUUID() before submitting to an auditor or GRC tool."
+    },
+    "components": [
+      {
+        "uuid": "00000000-0000-0000-0001-000000000000",
+        "type": "software",
+        "title": <%- jsonString(project.name + " repository") %>,
+        "description": <%- jsonString(project.description) %>,
+        "control-implementations": [
+          {
+            "uuid": "00000000-0000-0000-0002-000000000000",
+            "source": "https://doi.org/10.6028/NIST.SP.800-53r5",
+            "description": "NIST SP 800-53 Rev 5 controls implemented at the repository level.",
+            "implemented-requirements": [
+              {
+                "uuid": "00000000-0000-0000-0003-000000000001",
+                "control-id": "sa-12",
+                "description": "Dependency deny list and SBOM generation protect against supply-chain compromise."
+              },
+              {
+                "uuid": "00000000-0000-0000-0003-000000000002",
+                "control-id": "si-12",
+                "description": "Secret scanning (GitHub Advanced Security / gitleaks) prevents credential leakage."
+              },
+              {
+                "uuid": "00000000-0000-0000-0003-000000000003",
+                "control-id": "cm-9",
+                "description": "Commit signing (GPG / SSH sigstore) enforces configuration management integrity."
+              },
+              {
+                "uuid": "00000000-0000-0000-0003-000000000004",
+                "control-id": "cm-3",
+                "description": "Branch protection with required reviews and status checks controls configuration change."
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

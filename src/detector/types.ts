@@ -38,6 +38,7 @@ export interface DetectedStack {
   stateManagement: Detection;
   database: Detection;
   auth: Detection;
+  i18n: Detection;
   testFramework: Detection;
   testLibrary: Detection;
   e2eFramework: Detection;
