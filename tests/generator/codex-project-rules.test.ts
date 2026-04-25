@@ -96,4 +96,14 @@ describe('codex-project-rules.ejs - safety invariants', () => {
     );
     expect(content).not.toContain('pattern = [["python", "python3", "pip"]]');
   });
+
+  it('does not allow pip install without explicit approval', () => {
+    expect(content).not.toContain('"install", "list", "show", "freeze"');
+    expect(content).not.toMatch(/pattern\s*=\s*\[\["pip"\],\s*\[[^\]]*"install"/);
+  });
+
+  it('does not allow opaque cross-model subprocess handoffs', () => {
+    expect(content).not.toContain('"claude", ["-p", "--print"]');
+    expect(content).not.toContain('codex exec');
+  });
 });

@@ -96,6 +96,12 @@ describe('buildPermissions', () => {
     expect(perms).not.toContain('Bash(node:*)');
     expect(perms).not.toContain('Bash(npx:*)');
   });
+
+  it('does not auto-allow opaque cross-model subprocess handoffs', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).not.toContain('Bash(codex exec:*)');
+    expect(perms).not.toContain('Bash(claude -p:*)');
+  });
 });
 
 describe('buildDenyList', () => {

@@ -3,7 +3,6 @@ import type { PostToolUseHook, PreToolUseHook } from './types.js';
 import {
   ALLOWED_DOMAINS,
   BASH_DENY_COMMAND_PATTERNS,
-  CROSS_MODEL_HANDOFF_ALLOWS,
   DENY_PATTERNS,
   escapeRegexLiteral,
   EXPECTED_ALLOWED_DOMAINS_COUNT,
@@ -15,7 +14,6 @@ import {
 export {
   ALLOWED_DOMAINS,
   BASH_DENY_COMMAND_PATTERNS,
-  CROSS_MODEL_HANDOFF_ALLOWS,
   PRE_TOOL_USE_PATTERN_EXTRAS,
   DENY_PATTERNS,
   escapeRegexLiteral,
@@ -65,15 +63,6 @@ export function buildPermissions(input: PermissionsInput): string[] {
     const command = match ? match[1] : null;
     const isHighRiskRuntime = command === 'node' || command === 'npx';
     if (command && !isHighRiskRuntime && !isCoveredByGlob(command, prefix) && !perms.includes(entry)) {
-      perms.push(entry);
-    }
-  }
-
-  // Cross-model handoff (§1.7.2): allow Claude↔Codex subprocess fallback
-  // when the Codex plugin for Claude Code is unavailable. Plugin itself
-  // uses MCP and needs no Bash allow entry.
-  for (const entry of CROSS_MODEL_HANDOFF_ALLOWS) {
-    if (!perms.includes(entry)) {
       perms.push(entry);
     }
   }
