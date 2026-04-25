@@ -1,64 +1,51 @@
 ## Git Rules
 
 - **NEVER commit or push** during the workflow. The user decides when to commit.
-- The only exception: merging `<%= mainBranch %>` into the feature branch to resolve conflicts — you may commit the
-    merge resolution and push.
-    - All work stays local on the feature branch until the user explicitly asks to commit or create a PR.
+- The only exception: merging `<%= mainBranch %>` into the feature branch to resolve conflicts — you may commit the merge resolution and push.
+- All work stays local on the feature branch until the user explicitly asks to commit or create a PR.
 
-    ## Branch Convention
+## Branch Convention
 
-    Every plan starts on a dedicated branch from `<%= mainBranch %>`. Include the branch name at the top of PLAN.md.
+Every plan starts on a dedicated branch from `<%= mainBranch %>`. Include the branch name at the top of PLAN.md.
 
-        - **Features**: `feature/<short-kebab-name>`
-            - **Bug fixes**: `fix/<short-kebab-name>`
-                - **Epics**: `feature/epic-<N>-<short-name>`
-                        - **Agents** may commit only when the user explicitly asks for a commit in the current session;
-                        commits must stay on a feature branch (never `<%= mainBranch %>`), and any resulting PR is
-                            labeled `agent-authored` and requires human review before merge.
+- **Features**: `feature/<short-kebab-name>`
+- **Bug fixes**: `fix/<short-kebab-name>`
+- **Epics**: `feature/epic-<N>-<short-name>`
+- **Agents** may commit only when the user explicitly asks for a commit in the current session; commits must stay on a feature branch (never `<%= mainBranch %>`), and any resulting PR is labeled `agent-authored` and requires human review before merge.
 
-                            ### Conventional Commits 1.0
+### Conventional Commits 1.0
 
-                            Format: `type(scope): subject`. Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`,
-                            `perf`, `test`, `build`, `ci`, `chore`, `revert`.
+Format: `type(scope): subject`. Allowed types: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
 
-                            - Breaking changes: append `!` after type/scope (`feat!: ...`) or add `BREAKING CHANGE:`
-                            footer.
-                            - Subject ≤ 72 chars, imperative mood, no trailing period. Body explains *why*.
+- Breaking changes: append `!` after type/scope (`feat!: ...`) or add `BREAKING CHANGE:` footer.
+- Subject ≤ 72 chars, imperative mood, no trailing period. Body explains *why*.
 
-                            ### Trunk-Based Development
+### Trunk-Based Development
 
-                            - `<%= mainBranch %>` is protected; feature branches are short-lived (<24h typical). -
-                                    Rebase or squash-merge to maintain linear history. No long-lived branches — use
-                                    feature flags for in-flight work instead. - Every commit on `<%=mainBranch %>` must
-                                    build and pass tests (atomic, bisectable).
+- `<%= mainBranch %>` is protected; feature branches are short-lived (<24h typical).
+- Rebase or squash-merge to maintain linear history. No long-lived branches — use feature flags for in-flight work instead.
+- Every commit on `<%= mainBranch %>` must build and pass tests (atomic, bisectable).
 
-                                    ### PR Size Cap
+### PR Size Cap
 
-                                    - PRs ≤ 400 LOC changed. If larger, split into a stacked PR chain (one logical
-                                    change per PR; stack depth ≤ 5).
+- PRs ≤ 400 LOC changed. If larger, split into a stacked PR chain (one logical change per PR; stack depth ≤ 5).
 
-                                    **Stacked PR tooling — canonical commands:**
+**Stacked PR tooling — canonical commands:**
 
-                                    | Tool | Create stack entry | Push / sync |
-                                    |------|--------------------|-------------|
-                                    | Graphite | `gt create -m "feat: …"` | `gt submit` |
-                                    | ghstack | `ghstack` (no extra sub-command) | `ghstack` |
-                                    | git-town | `git town hack <branch>` | `git town sync --stack` |
+| Tool | Create stack entry | Push / sync |
+|------|--------------------|-------------|
+| Graphite | `gt create -m "feat: …"` | `gt submit` |
+| ghstack | `ghstack` (no extra sub-command) | `ghstack` |
+| git-town | `git town hack <branch>` | `git town sync --stack` |
 
-                                        **Merge order:** always merge bottom-up (base PR first). Never rebase an
-                                        in-flight stack onto a stale base — sync with `gt sync` / `ghstack` / `git town
-                                        sync --stack` instead.
+**Merge order:** always merge bottom-up (base PR first). Never rebase an in-flight stack onto a stale base — sync with `gt sync` / `ghstack` / `git town sync --stack` instead.
 
-                                        ### Commit Signing
+### Commit Signing
 
-                                        - All commits must be signed. Sigstore gitsign (keyless OIDC) is preferred for
-                                        new setups; GPG or SSH keys are acceptable alternatives where key infrastructure
-                                        already exists.
+- All commits must be signed. Sigstore gitsign (keyless OIDC) is preferred for new setups; GPG or SSH keys are acceptable alternatives where key infrastructure already exists.
 
-                                        ### Pre-Commit Hooks
+### Pre-Commit Hooks
 
-                                        - Secret scanning (gitleaks or trufflehog) is a mandatory blocking pre-commit
-                                        hook on every commit. Lint and format hooks run alongside.
-                                        - Use lefthook / husky / pre-commit.com as the runner.
-                                        - Hook budget: < 10s total. Push slower checks (full test suite, type-check) to
-                                            CI.
+- Secret scanning (gitleaks or trufflehog) is a mandatory blocking pre-commit hook on every commit. Lint and format hooks run alongside.
+- Use lefthook / husky / pre-commit.com as the runner.
+- Hook budget: < 10s total. Push slower checks (full test suite, type-check) to CI.
