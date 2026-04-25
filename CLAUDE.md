@@ -13,15 +13,11 @@ This file provides guidance to Claude Code when working with code in this reposi
 - Oxlint (linter)
 - pnpm (package manager)
 
-
 ## Primary Documentation
 
 - The canonical source of project intent lives in `PRD.md`.
 - Read `PRD.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
 - When `PRD.md` and code disagree, flag the mismatch in your output instead of silently picking one.
-
-
-
 
 ## Context budget
 
@@ -32,7 +28,6 @@ This file provides guidance to Claude Code when working with code in this reposi
 - Do not paste docs here — link them. Skills hold task-specific knowledge.
 - When context reaches ~50% full, write a NOTES.md summary and /clear.
 - For nested packages, a closer AGENTS.md wins over an outer one.
-
 
 ## Session hygiene
 
@@ -45,7 +40,6 @@ This file provides guidance to Claude Code when working with code in this reposi
 - Never try to force determinism through temperature or seed; make
   the test suite the contract.
 
-
 ## Memory discipline
 
 - `/clear` between unrelated tasks. Always.
@@ -56,7 +50,6 @@ This file provides guidance to Claude Code when working with code in this reposi
   or write NOTES.md and `/clear`.
 - Two-strike rule: if the agent is corrected twice on the same issue,
   `/clear` and re-prompt with what you learned.
-
 
 ## Sub-agent Routing
 
@@ -73,7 +66,6 @@ This file provides guidance to Claude Code when working with code in this reposi
 Use sub-agents with independent, single, simple tasks as much as possible.
 
 **Sub-agent deny-bypass caveat.** Claude sub-agents spawned via the `Task` tool do not enforce `permissions.deny` (tracked upstream: [#25000](https://github.com/anthropics/claude-code/issues/25000), [#43142](https://github.com/anthropics/claude-code/issues/43142)). Do not route destructive operations (`git push`, `rm -rf`, `git reset --hard`) through sub-agents — keep them on the main agent where hooks and denies apply. Always review `git diff` and the session transcript before committing; the deny list is defense-in-depth only.
-
 
 ## Planning Workflow
 
@@ -93,6 +85,7 @@ After every implementation session, run the following loop before considering th
 2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
 3. **Re-run type-check** — `pnpm check-types`. Fix any new errors.
 4. **Re-run tests** — `pnpm test`. All suites must pass.
+5. **Re-run lint** — `pnpm lint`. Must complete with zero warnings.
 
 This loop is mandatory.
 
@@ -108,13 +101,11 @@ This loop is mandatory.
 - Avoid hardcoded styling — use theme variables or design tokens.
 - Keep files under 200 lines.
 
-
 ## File Organization
 
 - Keep business logic in `src/utils/` and hooks — keep UI components thin.
 - One public component/helper per file.
 - Use folder-based module organization with colocated tests and `index.ts` barrel exports.
-
 
 ## DRY and Reusability
 
@@ -134,6 +125,6 @@ DRY and reusability are critical principles — enforced without exception:
 
 ## Shared agent policy
 
-The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. `~/.codex/rules/default.rules` accumulates approved prompts across sessions — prune it quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
+The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. Codex per-user approvals accumulate in `~/.codex/rules/default.rules` on Unix and `%USERPROFILE%\.codex\rules\default.rules` on Windows - prune them quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
 
 <!-- agents-workflows:managed-end -->

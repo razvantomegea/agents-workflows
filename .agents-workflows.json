@@ -1,6 +1,6 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-24T14:45:40.153Z",
+  "generatedAt": "2026-04-25T11:33:15.673Z",
   "stackConfigHash": "a78301c2a27ad02a",
   "config": {
     "project": {
@@ -120,6 +120,7 @@
     ".codex/config.toml",
     ".codex/rules/project.rules",
     "AGENTS.md",
+    "AGENTS-DEPLOYMENT.md",
     "docs/decisions/0001-adr-template.md",
     ".claude/scripts/cursor-task.sh",
     ".claude/scripts/run-parallel.sh",

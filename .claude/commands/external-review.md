@@ -117,7 +117,6 @@ cr review --agent --base main --config CLAUDE.md
 - https://cli.coderabbit.ai/install.sh
 - https://formulae.brew.sh/cask/coderabbit
 
-
 Capture the full output. If the command fails, report the error and abort.
 
 ## Step 3 - Format QA.md
@@ -206,6 +205,19 @@ The external review tool **must** run on a different model family than the imple
 code-reviewer used for the diff. Family parity between the writer and the final reviewer is
 forbidden. See Section 1.7 of the project PRD for the full model-routing rationale.
 
+When you trigger a manual override, choose the opposite model family (**Claude ↔ GPT-5.x**)
+from the one that wrote most of the diff - this maximizes the chance the reviewer catches
+mistakes the writer family tends to miss. See PRD §1.7.1 for stack-aware writer/reviewer
+defaults.
+
+When the Codex Plugin for Claude Code is installed (PRD §1.7.2), `/codex:review` is an
+allowlisted conditional supplement, not a general override of the CodeRabbit CLI default:
+use `/codex:review` only when Claude authored the diff and an opposite-family GPT-5.x
+review is required. Otherwise CodeRabbit remains the mandatory default; the plugin supplements it only in that Claude-authored-diff case. `/codex:review`
+streams review output back into the Claude session via MCP and follows the same QA.md
+write rules in Step 3. Never replace CodeRabbit with MCP handoffs, and never use a
+file-watch / heartbeat loop between two CLIs for this review path; it is always strictly inferior to the MCP handoff.
+
 ## AI-authored code (Thoughtworks Radar v33 — "Hold" on AI complacency)
 
 <ai_complacency_guard>
@@ -217,7 +229,6 @@ When reviewing AI-generated code, verify explicitly:
 - A human read and understood every line before approval.
 - Never auto-merge on AI approval alone.
 </ai_complacency_guard>
-
 
 ## Rules
 

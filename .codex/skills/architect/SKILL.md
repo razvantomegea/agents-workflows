@@ -248,9 +248,9 @@ Format: `type(scope): subject`. Allowed types: `feat`, `fix`, `docs`, `style`, `
 |------|--------------------|-------------|
 | Graphite | `gt create -m "feat: …"` | `gt submit` |
 | ghstack | `ghstack` (no extra sub-command) | `ghstack` |
-| git-town | `git town hack <branch>` | `git town sync --stack` |
+| git-town | `git town hack <branch>` | `git town sync` |
 
-**Merge order:** always merge bottom-up (base PR first). Never rebase an in-flight stack onto a stale base — sync with `gt sync` / `ghstack` / `git town sync --stack` instead.
+**Merge order:** always merge bottom-up (base PR first). Never rebase an in-flight stack onto a stale base — sync with `gt sync` / `ghstack` / `git town sync` instead.
 
 ### Commit Signing
 
