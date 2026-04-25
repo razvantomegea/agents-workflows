@@ -1,0 +1,62 @@
+<%# condense {boolean} — when true emits the compact comment-block form for TOML headers; when false/absent emits full markdown disclosure -%>
+<% if (typeof condense !== 'undefined' && condense) { -%>
+# Known risks (PRD §1.9.1):
+# 1. Claude sub-agent deny-bypass (Anthropic #25000, #43142)
+# 2. Codex Windows sandbox instability (OpenAI #15850)
+# 3. PowerShell wrapper prefix_rule bypass (OpenAI #13502)
+# 4. Claude bypassPermissions unreliability (Anthropic #34923)
+# 5. Network exfiltration surface (mitigated by E9.T11 + E9.T13)
+<% } else { -%>
+## Semi-autonomous non-interactive mode — security disclosure
+
+### What non-interactive mode does
+
+- Codex runs with `approval_policy = "never"`.
+- Claude runs with `defaultMode = "bypassPermissions"`.
+- Approval prompts are skipped.
+
+### What it does NOT relax
+
+- Deny rules in `.claude/settings.json` and forbid rules in `.codex/rules/project.rules`
+  still block destructive/forbidden commands.
+- The `workspace-write` sandbox still applies (subject to PRD §1.9.1 item 10.2 on Windows).
+
+### Known risks (PRD §1.9.1)
+
+1. **Claude sub-agent deny-bypass.** `Task` tool sub-agents ignore `permissions.deny`
+   (Anthropic #25000, #43142). Do not route destructive ops through sub-agents.
+
+2. **Codex Windows sandbox instability.** Workspace-write is unstable on Windows
+   (OpenAI #15850 + dupes). Rules are the primary guard there, not the sandbox.
+
+3. **PowerShell wrapper prefix_rule bypass.** `pwsh -Command` / `cmd /c` body is
+   opaque to prefix_rule (OpenAI #13502). Mitigated by E9.T12 forbid rules.
+
+4. **Claude `bypassPermissions` unreliability.** Settings-based flip is often ignored
+   (#34923 + dupes). Fails safe today — prompts rather than silent bypass.
+
+5. **Network exfiltration surface.** `network_access = true` plus prompt injection via
+   README / issue body / sourcemap can exfiltrate secrets via `curl` / `iwr`.
+   Mitigated by E9.T11 denies and E9.T13 `allowedDomains`; residual via `node -e`
+   raw sockets.
+
+### Recommendation — isolation environments
+
+Run the agent in an isolated environment when non-interactive mode is enabled:
+
+- devcontainer / Dev Containers / GitHub Codespaces
+- Docker / Podman container
+- Local VM (UTM / Parallels / Hyper-V / WSL2) or cloud VM / VPS
+- Clean dedicated workstation (no personal files, SSH keys, or browser profiles)
+
+### If you run on your primary OS
+
+A prompt-injected agent can read `~/.ssh/*`, `~/.aws/credentials`,
+`~/.config/gh/hosts.yml`, browser profile cookies, Windows `%APPDATA%`, etc.
+Workspace-write only restricts WRITES, not reads.
+
+### Manual review is still required
+
+Always run `git diff` and review changes before committing. The deny list is
+defense-in-depth only — especially for sub-agent calls.
+<% } -%>

@@ -1,5 +1,5 @@
 import type { DetectedStack } from '../detector/types.js';
-import type { StackConfig } from '../schema/stack-config.js';
+import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
 import { readPackageJson } from '../utils/index.js';
 import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
 import { createDefaultConfig } from './default-config.js';
@@ -13,6 +13,7 @@ import {
   askCommandSelection,
   askTargets,
   askGovernance,
+  askNonInteractiveMode,
 } from './questions.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
@@ -21,8 +22,11 @@ export { createDefaultConfig } from './default-config.js';
 export { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 export { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 
-interface PromptFlowOptions {
+export interface PromptFlowOptions {
   yes?: boolean;
+  nonInteractive?: boolean;
+  isolation?: IsolationChoice;
+  acceptRisks?: boolean;
 }
 
 /**
@@ -57,6 +61,12 @@ export async function runPromptFlow(
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
   const governance = await askGovernance();
+  const security = await askNonInteractiveMode({
+    yes: options.yes,
+    nonInteractive: options.nonInteractive,
+    isolation: options.isolation,
+    acceptRisks: options.acceptRisks,
+  });
 
   const commands = resolveCommands(
     tooling.packageManager,
@@ -137,5 +147,6 @@ export async function runPromptFlow(
     governance,
     detectedAiAgents: toDetectedAiAgentFlags(detected),
     monorepo: null,
+    security,
   };
 }

@@ -1,3 +1,5 @@
+import type { SecurityConfig } from '../schema/stack-config.js';
+
 export interface PromptAnswers {
   projectName: string;
   projectDescription: string;
@@ -25,4 +27,5 @@ export interface PromptAnswers {
   selectedCommands: string[];
   claudeCode: boolean;
   codexCli: boolean;
+  security: SecurityConfig;
 }

@@ -2006,7 +2006,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST]
+## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST] [DONE 2026-04-25]
+
+**Landed on** `feature/epic-10-non-interactive-mode`.
 
 **Goal.** Make both Claude Code and Codex run workflow sessions headlessly **when the user explicitly opts in** (via `agents-workflows init` / `update`), while keeping deny/forbid policy and workspace sandbox boundaries fully active. Non-interactive is an informed-consent choice, not a default. These sessions are **developer-assisted runs on feature branches**; this epic does not claim or require suitability for unattended CI automation.
 

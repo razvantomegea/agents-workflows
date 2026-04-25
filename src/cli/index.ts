@@ -4,9 +4,10 @@ import { Command, Option } from 'commander';
 import { initCommand } from './init-command.js';
 import { updateCommand } from './update-command.js';
 import { listCommand } from './list-command.js';
-import { stackConfigSchema, type StackConfig } from '../schema/stack-config.js';
+import { stackConfigSchema, ISOLATION_CHOICES, type StackConfig } from '../schema/stack-config.js';
 import { handleSafetyErrors } from './safety-flags.js';
 import type { MergeStrategy } from '../generator/index.js';
+import type { IsolationChoice } from '../schema/stack-config.js';
 
 export function createCli(): Command {
   const program = new Command();
@@ -27,13 +28,31 @@ export function createCli(): Command {
       new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
         .choices(['keep', 'overwrite', 'merge']),
     )
-    .action(async (options: { dir: string; config?: string; yes: boolean; prompt: boolean; mergeStrategy?: MergeStrategy }) => {
+    .option('--non-interactive', 'Enable non-interactive (headless) mode — requires --isolation')
+    .addOption(
+      new Option('--isolation <env>', 'Isolation environment for non-interactive mode')
+        .choices([...ISOLATION_CHOICES]),
+    )
+    .option('--accept-risks', 'Accept host-OS risks when --isolation=host-os is used')
+    .action(async (options: {
+      dir: string;
+      config?: string;
+      yes: boolean;
+      prompt: boolean;
+      mergeStrategy?: MergeStrategy;
+      nonInteractive?: boolean;
+      isolation?: IsolationChoice;
+      acceptRisks?: boolean;
+    }) => {
       await handleSafetyErrors(async () => {
         await initCommand(options.dir, {
           config: options.config ? await readConfigFile(options.config, options.dir) : undefined,
           yes: options.yes,
           noPrompt: !options.prompt,
           mergeStrategy: options.mergeStrategy,
+          nonInteractive: options.nonInteractive,
+          isolation: options.isolation,
+          acceptRisks: options.acceptRisks,
         });
       });
     });
@@ -48,12 +67,29 @@ export function createCli(): Command {
       new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
         .choices(['keep', 'overwrite', 'merge']),
     )
-    .action(async (options: { dir: string; yes: boolean; prompt: boolean; mergeStrategy?: MergeStrategy }) => {
+    .option('--non-interactive', 'Enable non-interactive (headless) mode — requires --isolation')
+    .addOption(
+      new Option('--isolation <env>', 'Isolation environment for non-interactive mode')
+        .choices([...ISOLATION_CHOICES]),
+    )
+    .option('--accept-risks', 'Accept host-OS risks when --isolation=host-os is used')
+    .action(async (options: {
+      dir: string;
+      yes: boolean;
+      prompt: boolean;
+      mergeStrategy?: MergeStrategy;
+      nonInteractive?: boolean;
+      isolation?: IsolationChoice;
+      acceptRisks?: boolean;
+    }) => {
       await handleSafetyErrors(async () => {
         await updateCommand(options.dir, {
           yes: options.yes,
           noPrompt: !options.prompt,
           mergeStrategy: options.mergeStrategy,
+          nonInteractive: options.nonInteractive,
+          isolation: options.isolation,
+          acceptRisks: options.acceptRisks,
         });
       });
     });
