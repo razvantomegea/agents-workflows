@@ -182,7 +182,7 @@ npx agents-workflows init --yes
 
 ### Top-level layout
 
-```
+```text
 agents-workflows/
 ├── src/                        TypeScript source (CLI, detectors, generators, templates)
 ├── tests/                      Jest test suite mirroring src/

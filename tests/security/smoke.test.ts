@@ -26,7 +26,9 @@ function expectCodexForbiddenToken(token: string, source: string): void {
     const body = match[1];
     if (body.includes('decision = "forbidden"')) forbiddenBlocks.push(body);
   }
-  const matched = forbiddenBlocks.some((body: string) => body.includes(token));
+  const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const exactTokenRe = new RegExp(`(^|[^A-Za-z0-9_.-])${escapedToken}([^A-Za-z0-9_.-]|$)`);
+  const matched = forbiddenBlocks.some((body: string) => exactTokenRe.test(body));
   expect(matched).toBe(true);
 }
 
@@ -37,7 +39,14 @@ function alternationMatches(cmd: string, alternation: string): boolean {
   if (/\[\[:[a-z]+:\]\]/.test(jsPattern)) {
     throw new Error(`Unhandled POSIX character class in guard alternation: ${jsPattern}`);
   }
-  return new RegExp(jsPattern).test(cmd);
+  const lowerCommand = cmd.toLowerCase();
+  const normalizedCommand = lowerCommand
+    .replaceAll('${ifs}', ' ')
+    .replaceAll('$ifs', ' ')
+    .replace(/\\([A-Za-z0-9_.-])/g, '$1')
+    .replaceAll(/['"]/g, '')
+    .replaceAll(/\s+/g, ' ');
+  return new RegExp(jsPattern).test(`${lowerCommand}\n${normalizedCommand}`);
 }
 
 let denyList: readonly string[] = [];

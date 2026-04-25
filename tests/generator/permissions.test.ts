@@ -70,12 +70,17 @@ describe('buildPermissions', () => {
     expect(perms).not.toContain('Bash(git:*)');
   });
 
-  it('emits all 9 LOCAL_GIT_ALLOWS entries for a pnpm stack', () => {
+  it('emits only read-only LOCAL_GIT_ALLOWS entries for a pnpm stack', () => {
     const perms = buildPermissions(PNPM_INPUT);
-    expect(LOCAL_GIT_ALLOWS).toHaveLength(9);
+    expect(LOCAL_GIT_ALLOWS).toHaveLength(4);
     for (const entry of LOCAL_GIT_ALLOWS) {
       expect(perms).toContain(entry);
     }
+    expect(perms).not.toContain('Bash(git add:*)');
+    expect(perms).not.toContain('Bash(git checkout:*)');
+    expect(perms).not.toContain('Bash(git switch:*)');
+    expect(perms).not.toContain('Bash(git stash:*)');
+    expect(perms).not.toContain('Bash(git pull:*)');
   });
 
   it('emits all 4 TOOLCHAIN_ALLOWS entries for a pnpm stack', () => {

@@ -89,11 +89,17 @@ export function buildDenyList(): string[] {
 // {"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"..."}}
 // Exit 2 = block with refusal message; exit 0 = allow.
 
+// Anchor each literal pattern at shell token boundaries so separators/operators
+// cannot hide destructive commands after a benign command.
+const SHELL_TOKEN_BOUNDARY = '[[:space:]]|;|\\||&|\\(|\\)|<|>|\\|\\||&&';
+
 // Anchor each literal pattern at command/word boundaries so short aliases
 // (e.g. `irm`, `iwr`) cannot substring-match inside benign words like
-// `firmware` or `confirm`.
+// `firmware` or `confirm`. Bundled short flags after destructive literals
+// (e.g. `rm -rfv`) are treated as part of the same unsafe token.
 function anchorLiteralPattern(value: string): string {
-  return `(^|[[:space:]])${escapeRegexLiteral(value)}([[:space:]]|$)`;
+  const bundledShortFlags = /-[A-Za-z]+$/.test(value) ? '[A-Za-z]*' : '';
+  return `(^|${SHELL_TOKEN_BOUNDARY})${escapeRegexLiteral(value.toLowerCase())}${bundledShortFlags}(${SHELL_TOKEN_BOUNDARY}|$)`;
 }
 
 const PATTERNS_ALTERNATION = [
@@ -113,9 +119,11 @@ const PRE_TOOL_USE_GUARD = [
   '  cmd=$(printf \'%s\' "$input" | awk \'BEGIN { in_cmd = 0; escaped = 0; out = "" } { for (i = 1; i <= length($0); i++) { ch = substr($0, i, 1); if (!in_cmd) { buffer = buffer ch; if (buffer ~ /"tool_input"[[:space:]]*:[[:space:]]*\\{[^}]*"command"[[:space:]]*:[[:space:]]*"$/) { in_cmd = 1; buffer = "" } else if (length(buffer) > 256) { buffer = substr(buffer, length(buffer) - 255) } } else { if (escaped) { out = out ch; escaped = 0 } else if (ch == "\\\\") { escaped = 1 } else if (ch == "\\"") { print out; exit } else { out = out ch } } } } END { if (!in_cmd) print "" }\')',
   'fi',
   'cmd=$(printf \'%s\' "$cmd" | tr -s \'[:space:]\' \' \')',
+  'cmd=$(printf \'%s\' "$cmd" | tr \'[:upper:]\' \'[:lower:]\')',
+  'normalized_cmd=$(printf \'%s\' "$cmd" | sed \'s/${ifs}/ /g; s/\\$ifs/ /g; s/\\\\\\([[:alnum:]_.-]\\)/\\1/g\' | tr -d "\'\\"" | tr -s \'[:space:]\' \' \')',
   '[ -z "$cmd" ] && exit 0',
   'patterns=' + JSON.stringify(PATTERNS_ALTERNATION),
-  'if printf \'%s\' "$cmd" | grep -qE "$patterns"; then',
+  'if printf \'%s\\n%s\' "$cmd" "$normalized_cmd" | grep -qE "$patterns"; then',
   '  printf \'%s\\n\' "Blocked: destructive command matched guard pattern." >&2',
   '  exit 2',
   'fi',

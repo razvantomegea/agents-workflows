@@ -53,7 +53,7 @@ describe('Epic 5 — PreToolUse hook shape in settings.json', () => {
     expect(command).toContain('rm -rf');
     expect(command).toContain('git push --force');
     expect(command).toContain('git reset --hard');
-    expect(command).toContain('git branch -D');
+    expect(command).toContain('git branch -d');
   });
 
   it('PostToolUse hook from Epic 1 remains intact with pnpm lint --fix command', () => {

@@ -37,6 +37,7 @@ export const DESTRUCTIVE_BASH_PATTERNS: readonly string[] = [
   'git push -f',
   'git push --force-with-lease',
   'git reset --hard',
+  'git reset --merge',
   'git clean -fd',
   'git clean -f',
   'git branch -D',
@@ -67,18 +68,10 @@ export const PRE_TOOL_USE_PATTERN_EXTRAS: readonly string[] = [
  * both block every `<runtime> <eval-flag>` combination explicitly.
  */
 const RAW_INTERPRETER_PATTERNS: readonly string[] = [
-  'pwsh -Command',
-  'pwsh -c',
-  'pwsh -EncodedCommand',
-  'pwsh.exe -Command',
-  'pwsh.exe -c',
-  'pwsh.exe -EncodedCommand',
-  'powershell -Command',
-  'powershell -c',
-  'powershell -EncodedCommand',
-  'powershell.exe -Command',
-  'powershell.exe -c',
-  'powershell.exe -EncodedCommand',
+  'pwsh',
+  'pwsh.exe',
+  'powershell',
+  'powershell.exe',
   'cmd /c',
   'cmd /k',
   'cmd.exe /c',
@@ -155,21 +148,15 @@ export const DENY_PATTERNS: readonly string[] = [
 ];
 
 /**
- * Local git subcommand allow entries: read-only inspection (status/diff/log/branch),
- * local-state mutations (add/checkout/switch/stash), and `pull` (fetch-and-merge
- * from the configured remote; does not push). Broad `Bash(git:*)` is intentionally
- * excluded; `push`, `commit`, `rm`, `reset --hard`, `clean -f`, `branch -D` stay denied.
+ * Local git subcommand allow entries: read-only inspection only.
+ * Broad `Bash(git:*)` is intentionally excluded; mutating git operations stay denied
+ * or require explicit approval in the current session.
  */
 export const LOCAL_GIT_ALLOWS: readonly string[] = [
   'Bash(git status:*)',
   'Bash(git diff:*)',
   'Bash(git log:*)',
   'Bash(git branch:*)',
-  'Bash(git add:*)',
-  'Bash(git checkout:*)',
-  'Bash(git switch:*)',
-  'Bash(git stash:*)',
-  'Bash(git pull:*)',
 ];
 
 /**

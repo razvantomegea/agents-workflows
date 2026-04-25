@@ -53,11 +53,11 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | implementer    | TS/React/Three.js: GPT-5.x (Codex) · Python/infra: Claude   | Opposite family of the writer             | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
 | code-reviewer  | Same FAMILY as implementer                                  | —                                         | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
 | reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x)        | —                                         | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
-| external-review| DIFFERENT FAMILY, fresh context (Claude ↔ GPT-5.x)          | —                                         | high             | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent |
+| external-review| CodeRabbit CLI mandatory default; different-family reviewer for exception/fallbacks | Cursor BugBot / Copilot PR review only when CodeRabbit is unavailable | high | CodeRabbit CLI first � `/codex:review` only for Claude-authored diffs � Cursor BugBot / Copilot PR review fallback |
 | code-optimizer | Same family as implementer                                  | Opposite family for risky refactors       | medium           | same as implementer |
 | test-writer    | Claude (test strategy)                                      | GPT-5.x (boilerplate test code)           | medium           | same as implementer |
 | e2e-tester     | Claude                                                      | GPT-5.x                                   | medium           | same as implementer |
-| ui-designer    | **Claude Opus** (UX thinking / a11y / design-system; adaptive thinking on) | GPT-5.x (UI code from approved design) | high           | MUST run before `implementer` on any UI/UX task |
+| ui-designer    | **Claude Opus** (UX thinking / a11y / design-system; adaptive thinking on) | - | high           | MUST run before `implementer` on any UI/UX task |
 
 Rule: never let the writer be its own final reviewer. The `reviewer`
 role MUST run on a different model FAMILY than the implementer —
@@ -198,6 +198,8 @@ Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key
 
 <%- include('../partials/tooling.md.ejs') %>
 
-<%- include('../partials/deployment.md.ejs') %>
+## Deployment Rules
+
+See `AGENTS-DEPLOYMENT.md` for deployment checklist and rules.
 
 <!-- agents-workflows:managed-end -->

@@ -37,6 +37,9 @@ export async function generateRootConfig(
   const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);
   files.push({ path: 'AGENTS.md', content: agentsMd });
 
+  const agentsDeploymentMd = await renderTemplate('config/AGENTS-DEPLOYMENT.md.ejs', context);
+  files.push({ path: 'AGENTS-DEPLOYMENT.md', content: agentsDeploymentMd });
+
   const adrTemplate = await renderTemplate('docs/decisions/0001-adr-template.md.ejs', context);
   files.push({ path: 'docs/decisions/0001-adr-template.md', content: adrTemplate });
 

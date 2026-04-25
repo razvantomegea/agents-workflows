@@ -354,7 +354,7 @@ These are defaults, not hard rules. A project MAY override the pairing in its ow
 
 **Primary mechanism — Codex Plugin for Claude Code (MCP).** OpenAI shipped `codex-plugin-cc` on 2026-03-30 as the official, supported handoff path. It is an MCP server that plugs directly into Claude Code so Claude can call Codex as a tool. Install once per machine:
 
-```
+```sh
 # inside a Claude Code session
 /plugin marketplace add openai/codex-plugin-cc
 /plugin install codex@openai-codex
@@ -370,7 +370,7 @@ The plugin authenticates via the operator's existing ChatGPT subscription or Cod
 
 **Reverse direction — Claude from inside Codex CLI.** Codex can invoke Claude Code headless via subprocess:
 
-```
+```sh
 # inside a Codex session, for the "Claude reviewer after GPT-5.x implementer" pairing
 claude -p "Review this diff as an opposite-family reviewer per PRD §1.7. Diff: ..."
 ```
@@ -1890,13 +1890,13 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ### E9.T2 — `.claude/settings.json` shared policy [§1.9] — M
 - **Files**: `.claude/settings.json` (new, tracked).
-- **Change**: Create shared settings with (a) `"defaultMode": "default"`, (b) `permissions.deny` = consolidated list from E9.T1, (c) `permissions.allow` scoped to explicit subcommands only — never `Bash(git:*)` or other broad prefixes. Allow list must cover pnpm/node/npx/tsc/jest/eslint/prettier, read-only and local git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`, `pull`), and filesystem-scoped `Edit(./**)`, `Write(./**)`, `Read(./**)`, plus `WebSearch`. (d) Preserve the existing `hooks.PostToolUse` `pnpm lint --fix` block verbatim. Next.js / Nuxt / Django projects where `pnpm lint --fix` rewrites pages or emits side-effects may narrow the `matcher` to `Edit|MultiEdit|Write` on explicit app subpaths; never widen to untargeted globs.
+- **Change**: Create shared settings with (a) `"defaultMode": "default"`, (b) `permissions.deny` = consolidated list from E9.T1, (c) `permissions.allow` scoped to explicit subcommands only — never `Bash(git:*)` or other broad prefixes. Allow list must cover pnpm/node/npx/tsc/jest/eslint/prettier, read-only git subcommands (`status`, `diff`, `log`, `branch`), and filesystem-scoped `Edit(./**)`, `Write(./**)`, `Read(./**)`, plus `WebSearch`. Workflow/template behavior must match this PRD allowlist; commands that mutate the working tree, including `git stash`, stay out of generated auto-allow rules. (d) Preserve the existing `hooks.PostToolUse` `pnpm lint --fix` block verbatim. Next.js / Nuxt / Django projects where `pnpm lint --fix` rewrites pages or emits side-effects may narrow the `matcher` to `Edit|MultiEdit|Write` on explicit app subpaths; never widen to untargeted globs.
 - **Sandbox block (REQUIRED).** Emit `"sandbox": { "mode": "workspace-write", "autoAllowBashIfSandboxed": true }` in `.claude/settings.json`. `allowedDomains` populates under E9.T13 after schema verification (`api.github.com`, `registry.npmjs.org`, `nodejs.org`, `raw.githubusercontent.com`, etc.). If the Claude Code schema renames a key, the implementing PR updates the block in-place — do not drop the protection. Windows is subject to §1.9.1 item 10.2 (workspace-write instability); permission/forbid rules remain the primary guard there.
 - **Done when**: JSON parses; diff review confirms every existing deny is present in the new shared file; no allow entry is broader than what `settings.local.json` currently grants; the `sandbox` block is present and non-empty.
 
 ### E9.T3 — `.codex/config.toml` committed + `project.rules` [§1.9] — M
 - **Files**: `.codex/config.toml` (tracked, unchanged content from current local state), `.codex/rules/project.rules` (new).
-- **Change**: Keep `approval_policy = "on-request"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules covering the Unix-family surface: `git push`, `git commit` (including `git commit --amend`), `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh`, `curl | bash`, `wget | sh`, `wget | bash`. Add `allow` rules for vetted Node/TS/Python entrypoints plus read-only git subcommands (`status`, `diff`, `log`, `branch`, `add`, `checkout`, `switch`, `stash`). No broad `["git"]` prefix allows. No `curl` / `wget` allow. Non-interactive enablement (`approval_policy = "never"`) is handled by Epic 10 as an opt-in and depends on E9.T10–E9.T15.
+- **Change**: Keep `approval_policy = "on-request"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. Add `project.rules` with `forbidden` rules covering the Unix-family surface: `git push`, `git commit` (including `git commit --amend`), `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh`, `curl | bash`, `wget | sh`, `wget | bash`. Add `allow` rules for vetted Node/TS/Python entrypoints plus read-only git subcommands (`status`, `diff`, `log`, `branch`). No broad `["git"]` prefix allows. No `curl` / `wget` allow. Non-interactive enablement (`approval_policy = "never"`) is handled by Epic 10 as an opt-in and depends on E9.T10–E9.T15.
 - **Done when**: `codex execpolicy check --rules .codex/rules/project.rules` exits 0; no match/not_match rule conflicts; Codex posture is unchanged or stricter vs. current; every publish/infra/destructive item in the list above matches a forbid rule.
 
 ### E9.T4 — `.gitignore` surgical un-ignore [§1.9] — S

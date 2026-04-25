@@ -100,9 +100,9 @@ prefix_rule(
 # cannot match inside. Use `pwsh -File <script.ps1>` for auditable scripts.
 
 prefix_rule(
-  pattern = [["pwsh", "pwsh.exe", "powershell", "powershell.exe"], ["-Command", "-c", "-EncodedCommand"]],
+  pattern = [["pwsh", "pwsh.exe", "powershell", "powershell.exe"]],
   decision = "forbidden",
-  justification = "Script-body is opaque to prefix_rule; use -File <script.ps1> for auditable scripts.",
+  justification = "PowerShell wrappers can hide eval flags after benign options; use an auditable direct script command instead.",
 )
 
 prefix_rule(
@@ -114,13 +114,13 @@ prefix_rule(
 # --- Allow: Node/TS toolchain (explicit safe entrypoints only) -------------
 
 prefix_rule(
-  pattern = [["pnpm", "npm", "yarn"], ["test", "lint", "check-types", "build", "install", "add", "remove", "up"]],
+  pattern = [["pnpm", "npm", "yarn"], ["test", "lint", "check-types", "build"]],
   decision = "allow",
-  justification = "Package-manager operations scoped to vetted subcommands",
+  justification = "Package-manager operations scoped to vetted non-mutating scripts",
 )
 
 prefix_rule(
-  pattern = ["npx", ["agents-workflows", "tsc", "tsx", "vitest", "jest", "eslint", "prettier"]],
+  pattern = ["npx", ["agents-workflows", "tsc", "vitest", "jest"]],
   decision = "allow",
   justification = "npx only for vetted local toolchain entrypoints",
 )
@@ -132,9 +132,9 @@ prefix_rule(
 )
 
 prefix_rule(
-  pattern = [["tsc", "tsx", "vitest", "jest", "eslint", "prettier"]],
+  pattern = [["tsc", "vitest", "jest"]],
   decision = "allow",
-  justification = "Direct toolchain binaries",
+  justification = "Direct read-only/checking toolchain binaries",
 )
 
 # --- Allow: Python toolchain (explicit safe entrypoints only) --------------
@@ -154,7 +154,7 @@ prefix_rule(
 # --- Allow: Local / read-only git subcommands -----------------------------
 
 prefix_rule(
-  pattern = ["git", ["status", "diff", "log", "branch", "add", "checkout", "switch", "stash", "pull"]],
+  pattern = ["git", ["status", "diff", "log", "branch"]],
   decision = "allow",
-  justification = "Local / read-only git (symmetric with Claude LOCAL_GIT_ALLOWS)",
+  justification = "Read-only git inspection (symmetric with Claude LOCAL_GIT_ALLOWS)",
 )

@@ -11,11 +11,6 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git branch:*)",
-      "Bash(git add:*)",
-      "Bash(git checkout:*)",
-      "Bash(git switch:*)",
-      "Bash(git stash:*)",
-      "Bash(git pull:*)",
       "Bash(tsc:*)",
       "Bash(jest:*)",
       "Bash(eslint:*)",
@@ -30,6 +25,7 @@
       "Bash(git push -f:*)",
       "Bash(git push --force-with-lease:*)",
       "Bash(git reset --hard:*)",
+      "Bash(git reset --merge:*)",
       "Bash(git clean -fd:*)",
       "Bash(git clean -f:*)",
       "Bash(git branch -D:*)",
@@ -51,18 +47,10 @@
       "Bash(irm:*)",
       "Bash(curl.exe:*)",
       "Bash(wget.exe:*)",
-      "Bash(pwsh -Command:*)",
-      "Bash(pwsh -c:*)",
-      "Bash(pwsh -EncodedCommand:*)",
-      "Bash(pwsh.exe -Command:*)",
-      "Bash(pwsh.exe -c:*)",
-      "Bash(pwsh.exe -EncodedCommand:*)",
-      "Bash(powershell -Command:*)",
-      "Bash(powershell -c:*)",
-      "Bash(powershell -EncodedCommand:*)",
-      "Bash(powershell.exe -Command:*)",
-      "Bash(powershell.exe -c:*)",
-      "Bash(powershell.exe -EncodedCommand:*)",
+      "Bash(pwsh:*)",
+      "Bash(pwsh.exe:*)",
+      "Bash(powershell:*)",
+      "Bash(powershell.exe:*)",
       "Bash(cmd /c:*)",
       "Bash(cmd /k:*)",
       "Bash(cmd.exe /c:*)",
@@ -113,7 +101,10 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "#!/usr/bin/env sh\ninput=$(cat)\nif command -v jq >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | jq -r '.tool_input.command // empty')\nelif command -v node >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | node -e \"let data=''; process.stdin.setEncoding('utf8'); process.stdin.on('data', (chunk) => { data += chunk; }); process.stdin.on('end', () => { try { const parsed = JSON.parse(data); const value = parsed?.tool_input?.command; process.stdout.write(typeof value === 'string' ? value : ''); } catch { process.stdout.write(''); } });\")\nelse\n  # Escape-aware fallback parser for shells without jq/node.\n  cmd=$(printf '%s' \"$input\" | awk 'BEGIN { in_cmd = 0; escaped = 0; out = \"\" } { for (i = 1; i <= length($0); i++) { ch = substr($0, i, 1); if (!in_cmd) { buffer = buffer ch; if (buffer ~ /\"tool_input\"[[:space:]]*:[[:space:]]*\\{[^}]*\"command\"[[:space:]]*:[[:space:]]*\"$/) { in_cmd = 1; buffer = \"\" } else if (length(buffer) > 256) { buffer = substr(buffer, length(buffer) - 255) } } else { if (escaped) { out = out ch; escaped = 0 } else if (ch == \"\\\\\") { escaped = 1 } else if (ch == \"\\\"\") { print out; exit } else { out = out ch } } } } END { if (!in_cmd) print \"\" }')\nfi\ncmd=$(printf '%s' \"$cmd\" | tr -s '[:space:]' ' ')\n[ -z \"$cmd\" ] && exit 0\npatterns=\"(^|[[:space:]])rm -rf([[:space:]]|$)|(^|[[:space:]])rm -r([[:space:]]|$)|(^|[[:space:]])rm --recursive([[:space:]]|$)|(^|[[:space:]])rm --force([[:space:]]|$)|(^|[[:space:]])git push --force([[:space:]]|$)|(^|[[:space:]])git push -f([[:space:]]|$)|(^|[[:space:]])git push --force-with-lease([[:space:]]|$)|(^|[[:space:]])git reset --hard([[:space:]]|$)|(^|[[:space:]])git clean -fd([[:space:]]|$)|(^|[[:space:]])git clean -f([[:space:]]|$)|(^|[[:space:]])git branch -D([[:space:]]|$)|(^|[[:space:]])git push([[:space:]]|$)|(^|[[:space:]])git commit([[:space:]]|$)|(^|[[:space:]])git commit --amend([[:space:]]|$)|(^|[[:space:]])git rm([[:space:]]|$)|(^|[[:space:]])sudo([[:space:]]|$)|(^|[[:space:]])npm publish([[:space:]]|$)|(^|[[:space:]])pnpm publish([[:space:]]|$)|(^|[[:space:]])cargo publish([[:space:]]|$)|(^|[[:space:]])twine upload([[:space:]]|$)|(^|[[:space:]])terraform apply([[:space:]]|$)|(^|[[:space:]])kubectl apply([[:space:]]|$)|(^|[[:space:]])kubectl delete([[:space:]]|$)|(^|[[:space:]])Invoke-WebRequest([[:space:]]|$)|(^|[[:space:]])iwr([[:space:]]|$)|(^|[[:space:]])Invoke-RestMethod([[:space:]]|$)|(^|[[:space:]])irm([[:space:]]|$)|(^|[[:space:]])curl\\\\.exe([[:space:]]|$)|(^|[[:space:]])wget\\\\.exe([[:space:]]|$)|(^|[[:space:]])pwsh -Command([[:space:]]|$)|(^|[[:space:]])pwsh -c([[:space:]]|$)|(^|[[:space:]])pwsh -EncodedCommand([[:space:]]|$)|(^|[[:space:]])pwsh\\\\.exe -Command([[:space:]]|$)|(^|[[:space:]])pwsh\\\\.exe -c([[:space:]]|$)|(^|[[:space:]])pwsh\\\\.exe -EncodedCommand([[:space:]]|$)|(^|[[:space:]])powershell -Command([[:space:]]|$)|(^|[[:space:]])powershell -c([[:space:]]|$)|(^|[[:space:]])powershell -EncodedCommand([[:space:]]|$)|(^|[[:space:]])powershell\\\\.exe -Command([[:space:]]|$)|(^|[[:space:]])powershell\\\\.exe -c([[:space:]]|$)|(^|[[:space:]])powershell\\\\.exe -EncodedCommand([[:space:]]|$)|(^|[[:space:]])cmd /c([[:space:]]|$)|(^|[[:space:]])cmd /k([[:space:]]|$)|(^|[[:space:]])cmd\\\\.exe /c([[:space:]]|$)|(^|[[:space:]])cmd\\\\.exe /k([[:space:]]|$)|(^|[[:space:]])node -e([[:space:]]|$)|(^|[[:space:]])node --eval([[:space:]]|$)|(^|[[:space:]])python -c([[:space:]]|$)|(^|[[:space:]])python3 -c([[:space:]]|$)|curl .*\\\\| *sh|curl .*\\\\| *bash|wget .*\\\\| *sh|wget .*\\\\| *bash\"\nif printf '%s' \"$cmd\" | grep -qE \"$patterns\"; then\n  printf '%s\\n' \"Blocked: destructive command matched guard pattern.\" >&2\n  exit 2\nfi\nexit 0" }
+          {
+            "type": "command",
+            "command": "#!/usr/bin/env sh\ninput=$(cat)\nif command -v jq >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | jq -r '.tool_input.command // empty')\nelif command -v node >/dev/null 2>&1; then\n  cmd=$(printf '%s' \"$input\" | node -e \"let data=''; process.stdin.setEncoding('utf8'); process.stdin.on('data', (chunk) => { data += chunk; }); process.stdin.on('end', () => { try { const parsed = JSON.parse(data); const value = parsed?.tool_input?.command; process.stdout.write(typeof value === 'string' ? value : ''); } catch { process.stdout.write(''); } });\")\nelse\n  # Escape-aware fallback parser for shells without jq/node.\n  cmd=$(printf '%s' \"$input\" | awk 'BEGIN { in_cmd = 0; escaped = 0; out = \"\" } { for (i = 1; i <= length($0); i++) { ch = substr($0, i, 1); if (!in_cmd) { buffer = buffer ch; if (buffer ~ /\"tool_input\"[[:space:]]*:[[:space:]]*\\{[^}]*\"command\"[[:space:]]*:[[:space:]]*\"$/) { in_cmd = 1; buffer = \"\" } else if (length(buffer) > 256) { buffer = substr(buffer, length(buffer) - 255) } } else { if (escaped) { out = out ch; escaped = 0 } else if (ch == \"\\\\\") { escaped = 1 } else if (ch == \"\\\"\") { print out; exit } else { out = out ch } } } } END { if (!in_cmd) print \"\" }')\nfi\ncmd=$(printf '%s' \"$cmd\" | tr -s '[:space:]' ' ')\ncmd=$(printf '%s' \"$cmd\" | tr '[:upper:]' '[:lower:]')\nnormalized_cmd=$(printf '%s' \"$cmd\" | sed 's/${ifs}/ /g; s/\\$ifs/ /g; s/\\\\\\([[:alnum:]_.-]\\)/\\1/g' | tr -d \"'\\\"\" | tr -s '[:space:]' ' ')\n[ -z \"$cmd\" ] && exit 0\npatterns=\"(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)rm -rf[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)rm -r[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)rm --recursive[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)rm --force[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git push --force[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git push -f[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git push --force-with-lease[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git reset --hard[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git reset --merge[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git clean -fd[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git clean -f[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git branch -d[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git push([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git commit([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git commit --amend[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)git rm([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)sudo([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)npm publish([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)pnpm publish([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)cargo publish([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)twine upload([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)terraform apply([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)kubectl apply([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)kubectl delete([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)invoke-webrequest[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)iwr([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)invoke-restmethod[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)irm([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)curl\\\\.exe([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)wget\\\\.exe([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)pwsh([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)pwsh\\\\.exe([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)powershell([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)powershell\\\\.exe([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)cmd /c([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)cmd /k([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)cmd\\\\.exe /c([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)cmd\\\\.exe /k([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)node -e[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)node --eval[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)python -c[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|(^|[[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&)python3 -c[A-Za-z]*([[:space:]]|;|\\\\||&|\\\\(|\\\\)|<|>|\\\\|\\\\||&&|$)|curl .*\\\\| *sh|curl .*\\\\| *bash|wget .*\\\\| *sh|wget .*\\\\| *bash\"\nif printf '%s\\n%s' \"$cmd\" \"$normalized_cmd\" | grep -qE \"$patterns\"; then\n  printf '%s\\n' \"Blocked: destructive command matched guard pattern.\" >&2\n  exit 2\nfi\nexit 0"
+          }
         ]
       }
     ],
@@ -121,7 +112,10 @@
       {
         "matcher": "Edit|MultiEdit|Write",
         "hooks": [
-          { "type": "command", "command": "pnpm lint --fix || true" }
+          {
+            "type": "command",
+            "command": "pnpm lint --fix || true"
+          }
         ]
       }
     ]

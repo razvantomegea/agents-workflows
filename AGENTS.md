@@ -5,24 +5,17 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 <!-- agents-workflows:managed-start -->
 
 `agents-workflows` — Reusable AI agent configuration framework.
-
 ## Stack Context
 
 - Typescript (node)
 - Jest (testing)
 - Oxlint (linter)
 - pnpm (package manager)
-
-
 ## Primary Documentation
 
 - The canonical source of project intent lives in `PRD.md`.
 - Read `PRD.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
 - When `PRD.md` and code disagree, flag the mismatch in your output instead of silently picking one.
-
-
-
-
 ## Context budget
 
 - Load only files, symbols, and recent decisions needed for the current task.
@@ -32,8 +25,6 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 - Do not paste docs here — link them. Skills hold task-specific knowledge.
 - When context reaches ~50% full, write a NOTES.md summary and /clear.
 - For nested packages, a closer AGENTS.md wins over an outer one.
-
-
 ## MCP policy
 
 - Prefer CLIs (`gh`, `aws`, `gcloud`) over custom MCP servers when the
@@ -45,8 +36,6 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 - GitHub MCP tokens: use fine-grained PATs with repo-specific scope.
 - Prefer STDIO-on-localhost or OAuth-authenticated Streamable HTTP.
 - Log every MCP tool call with (caller, destination, payload summary).
-
-
 ## Session hygiene
 
 - Never commit or push unless the user explicitly asks.
@@ -57,8 +46,6 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
   instead of hand-rolled diff snapshots.
 - Never try to force determinism through temperature or seed; make
   the test suite the contract.
-
-
 ## Memory discipline
 
 - `/clear` between unrelated tasks. Always.
@@ -69,8 +56,6 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
   or write NOTES.md and `/clear`.
 - Two-strike rule: if the agent is corrected twice on the same issue,
   `/clear` and re-prompt with what you learned.
-
-
 ## Sub-agent Routing
 
 | Task | Agent |
@@ -84,8 +69,6 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Unit tests | `test-writer` |
 
 **Sub-agent deny-bypass caveat.** Claude sub-agents spawned via the `Task` tool do not enforce `permissions.deny` (tracked upstream: [#25000](https://github.com/anthropics/claude-code/issues/25000), [#43142](https://github.com/anthropics/claude-code/issues/43142)). Do not route destructive operations (`git push`, `rm -rf`, `git reset --hard`) through sub-agents — keep them on the main agent where hooks and denies apply. Always review `git diff` and the session transcript before committing; the deny list is defense-in-depth only.
-
-
 ## Model routing (verify current model IDs in vendor docs)
 
 | Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
@@ -106,7 +89,6 @@ available. This rule applies identically across Claude Code, Codex CLI,
 Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
 picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
 Copilot Agent on GPT-5, or vice versa).
-
 ## Planning Workflow
 
 - For complex work, require a simple, explicit `PLAN.md` task breakdown before any implementation starts.
@@ -114,12 +96,10 @@ Copilot Agent on GPT-5, or vice versa).
 - Each task must name exact file paths.
 - Tasks are tagged: `[UI] [LOGIC] [API] [SCHEMA] [TEST]`.
 - Tasks marked `[PARALLEL]` can be executed simultaneously.
-
 ## Git & Branch Rules
 
 - **Always start on a dedicated branch** before any implementation.
 - **NEVER commit or push** unless the user explicitly asks.
-
 ## Code Review Workflow
 
 After every implementation session, run the following loop:
@@ -130,7 +110,6 @@ After every implementation session, run the following loop:
 4. **Re-run tests** — `pnpm test`. All suites must pass.
 
 This loop is mandatory.
-
 ## Code Style
 
 - Always add explicit type annotations to function parameters — never rely on implicit inference.
@@ -142,28 +121,22 @@ This loop is mandatory.
 - Use descriptive variable names in `.map()` callbacks.
 - Avoid hardcoded styling — use theme variables or design tokens.
 - Keep files under 200 lines.
-
-
 ## File Organization
 
 - Keep business logic in `src/utils/` and hooks — keep UI components thin.
 - One public component/helper per file.
 - Use folder-based module organization with colocated tests and `index.ts` barrel exports.
-
-
 ## DRY and Reusability
 
 - Before writing any code, grep the codebase first.
 - Same function + different appearance = extend via props/params, not copy.
 - Any code appearing in 2+ places must be extracted.
-
 ## Rules
 
 - Always use `pnpm` for running scripts.
 - Always do what is asked. If something is unclear, ask clarifying questions.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
-
 ## Dangerous operations — require explicit confirmation
 
 NEVER execute without the user typing "yes" in the current session:
@@ -182,7 +155,6 @@ unavoidable, and ask first.
 
 Before any destructive operation, state: (1) what changes, (2) where
 (env), (3) reversibility, (4) blast radius (count of rows/files/users).
-
 ## Tooling / hooks
 
 `agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
@@ -193,7 +165,6 @@ The generated `.claude/settings.json` enforces safety at the tool-call layer via
 - **PostToolUse `Edit|MultiEdit|Write`** — runs the configured lint/format command automatically after every file edit.
 
 Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key. Per-developer overrides go in `.claude/settings.local.json` (gitignored).
-
 ## Formatting / linting
 
 - One formatter per language, CI-enforced. Fail on diff.
@@ -208,24 +179,8 @@ Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key
 - Security-focused static analysis beyond linting: CodeQL, Semgrep,
   SonarQube (cognitive complexity), `cargo-audit`, `npm audit`,
   `pip-audit`.
-
-
 ## Deployment rules
 
-- Config via environment. No hardcoded secrets or hostnames. Validate
-  required env at boot via a typed schema (zod/pydantic/viper).
-- Stateless processes; session state in external store.
-- Strict dev/staging/prod parity: same DB engine version, same queue,
-  same container base image. No SQLite-in-dev/Postgres-in-prod.
-- Feature flags via OpenFeature SDK + a provider (LaunchDarkly, Unleash,
-  Flagsmith, ConfigCat, Flipt, GrowthBook). Avoid direct vendor SDKs.
-  Flags have owner + removal date in code; clean up quarterly.
-- Progressive delivery: canary with metrics-gated promotion (Argo
-  Rollouts / Flagger). Blue/green for stateful. Rollback ≤5 min.
-- DB migrations: expand-contract (add-new → dual-write → switch-reads →
-  drop-old), each phase a separate deploy. `CREATE INDEX CONCURRENTLY`
-  on Postgres. `pt-online-schema-change` / `gh-ost` on MySQL.
-  `strong_migrations` / `django-safemigrate` / `pgroll` in CI.
-
+See AGENTS-DEPLOYMENT.md for deployment checklist and rules.
 
 <!-- agents-workflows:managed-end -->
