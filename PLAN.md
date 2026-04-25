@@ -1,82 +1,95 @@
-# Plan - Epic 9 Agent Permission & Sandbox Hardening
-_Branch: `feature/epic-9-permission-sandbox-hardening` | Date: 2026-04-24_
+# Plan - Post-Epic-9 Cleanup (Epic 6/8 line-count regressions)
+_Branch: fix/post-epic-9-cleanup | Date: 2026-04-25_
 
 ## Context
-Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. This epic is the **hardening gate** for Epic 10: non-interactive mode stays locked until every MUST item here lands and the E9.T15 smoke suite is green on Windows.
+
+Commit `a88dc1b` rewrote `src/templates/partials/git-rules.md.ejs` with auto-formatter line-wraps and runaway indentation, growing it from 51 to 64 lines and splitting the contiguous string `one logical change per PR` across a wrapped line. That single regression cascades into three failing assertions: the partial breaches its 60-line cap, the rendered `architect.md` breaches its 300-line cap (currently 310), and the Epic 8 T6 "logical change" guard fails because the substring no longer renders contiguously. All three are addressable by restoring the pre-`a88dc1b` flat single-line-per-bullet form of the partial while preserving every Epic 8 T6 string token. No code under `.claude/settings.json`, `.codex/config.toml`, `.codex/rules/project.rules`, `tests/security/**`, `docs/security-smoke-runbook.md`, or `src/templates/partials/subagent-caveat.md.ejs` is touched.
 
 ## Pre-implementation checklist
 
-- [ ] On branch `feature/epic-9-permission-sandbox-hardening`; tree clean (`git status`).
-- [ ] Read `PRD.md` §1.9 (Epic 9, L1776–1912) and §1.9.1 risk register (L358–404).
-- [ ] Grepped codebase for existing equivalents (`DENY_PATTERNS`, `DESTRUCTIVE_BASH_PATTERNS`, `buildPermissions`, partials, template paths).
-- [ ] Verified no type duplication - shared types imported, not redeclared.
-- [ ] Confirmed no magic numbers / no broad `Bash(git:*)` or `--dangerously-skip-permissions` examples land in emitted docs.
+- [ ] Read `PRD.md` §2.6 (Git and commit hygiene) and §1.4 (Destructive-operation guardrails) to confirm required content for the partial
+- [ ] Grep `src/templates` for `logical change`, `bottom-up`, `gt create`, `ghstack`, `git town hack`, `≤ 5` to confirm the partial is the only source for each token
+- [ ] Confirm `tests/generator/epic-8-git-rules.test.ts` is the canonical guard for partial line-count (≤60) and Epic 8 T6 string tokens
+- [ ] Confirm `tests/generator/generate-all.test.ts` enforces the architect render cap of 300 lines (separate from `CODE_REVIEWER_MAX_LINES`)
+- [ ] Verify no Epic 9 deny-listed file is on the modification path
+- [ ] Verify `git status` is clean apart from this PLAN.md before starting Task 1
 
 ## Tasks
 
-### Task 1 - Expand deny + allow patterns [LOGIC]
-**Files**: `src/generator/permissions.ts`, `src/generator/permission-constants.ts` (new if `permissions.ts` grows past 200 lines).
-**Input**: `PRD.md` E9.T1 consolidated list; §1.9.1 item 10.5; existing `DENY_PATTERNS` (L23–44) and `DESTRUCTIVE_BASH_PATTERNS` (L9–21).
-**Output**: `DENY_PATTERNS` superset covering `Bash(git push:*)`, `Bash(git commit:*)`, `Bash(git commit --amend:*)`, `Bash(git rm:*)`, `Bash(sudo:*)`, `Bash(curl:* | sh)`, `Bash(curl:* | bash)`, `Bash(wget:* | sh)`, `Bash(wget:* | bash)`, `Edit(/**)`, `Edit(~/**)`, `Write(/**)`, `Write(~/**)`, `MultiEdit(/**)`, `MultiEdit(~/**)`, and exfil `Bash(Invoke-WebRequest:*)`, `Bash(iwr:*)`, `Bash(Invoke-RestMethod:*)`, `Bash(irm:*)`, `Bash(curl.exe:*)`, `Bash(wget.exe:*)`. `buildPermissions` allow includes `Bash(git status|diff|log|branch|add|checkout|switch|stash|pull:*)`, `Bash(tsc|jest|eslint|prettier|node|npx:*)` (skip duplicates already covered by pnpm glob).
-**Notes**: Every existing deny must remain verbatim (E9 acceptance: "no existing deny is dropped"). Keep one source-of-truth constant — extend, do not fork. If file exceeds 200 lines, extract constants to `permission-constants.ts` and import.
+### Task 1 - Restore flat git-rules partial preserving every Epic 8 T6 token [LOGIC]
 
-### Task 2 - Shared `.claude/settings.json` + sandbox block [LOGIC] [SCHEMA]
-**Files**: `src/templates/config/settings-local.json.ejs` (rename to `settings.json.ejs`), `src/generator/generate-root-config.ts` (L25–26 output path change), `.claude/settings.json` (generated output, tracked).
-**Input**: Task 1 deny/allow constants; E9.T2 + E9.T13 schema (`sandbox.mode`, `sandbox.autoAllowBashIfSandboxed`, `sandbox.allowedDomains`).
-**Output**: Emits `.claude/settings.json` (shared) with `"defaultMode": "default"`, full deny/allow, existing `hooks.PostToolUse` preserved verbatim, and `"sandbox": { "mode": "workspace-write", "autoAllowBashIfSandboxed": true, "allowedDomains": ["api.github.com","registry.npmjs.org","nodejs.org","raw.githubusercontent.com","objects.githubusercontent.com","pypi.org","files.pythonhosted.org"] }`. Output path switches from `settings.local.json` → `settings.json`.
-**Notes**: JSON must parse. `settings.local.json` is no longer emitted by `init`. Preserve `PreToolUse` + `PostToolUse` hooks. No broad `Bash(git:*)` allow.
+**Files**
+- `src/templates/partials/git-rules.md.ejs`
 
-### Task 3 - Codex config + project.rules template [LOGIC] [SCHEMA]
-**Files**: `src/templates/config/codex-config.toml.ejs` (edit), `src/templates/config/codex-project-rules.ejs` (new), `src/generator/generate-root-config.ts` (register new template → `.codex/rules/project.rules`), `.codex/config.toml` (regenerated), `.codex/rules/project.rules` (regenerated).
-**Input**: E9.T3 (Unix forbids + toolchain allows), E9.T10 (Windows-native removes), E9.T11 (exfil), E9.T12 (shell wrappers).
-**Output**: `codex-config.toml.ejs` emits `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. `codex-project-rules.ejs` emits forbid rules for `git push`, `git commit`, `git commit --amend`, `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh|bash`, `wget | sh|bash`, `Remove-Item`, `Remove-ItemProperty`, `del`, `erase`, `rmdir`, `rd`, `ri`, `rm` (PS alias), `Invoke-WebRequest`, `iwr`, `Invoke-RestMethod`, `irm`, `curl.exe`, `wget.exe`, `pwsh -Command|-c|-EncodedCommand`, `powershell -Command|-c|-EncodedCommand`, `cmd /c|/k`, `cmd.exe /c|/k`. Allow rules: `node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`, read-only git subcommands (`status|diff|log|branch|add|checkout|switch|stash`). No broad `["git"]` allow; no `curl`/`wget` allow.
-**Notes**: Keep each rules file ≤200 lines; split the partial if needed. Every forbid carries a short inline justification. No `--dangerously-bypass-approvals-and-sandbox` anywhere.
+**Input**
+- Failing assertion `git-rules partial template file is within 60 lines` (`tests/generator/epic-8-git-rules.test.ts:45-56`)
+- Failing assertion `architect.md contains one-logical-change-per-PR guidance` (`tests/generator/epic-8-git-rules.test.ts:40-43`)
+- Pre-`a88dc1b` form of the partial (51 lines, flush-left bullets, single-line phrases) recoverable via `git show a88dc1b^:src/templates/partials/git-rules.md.ejs`
 
-### Task 4 - `.gitignore` surgical un-ignore [SCHEMA]
-**Files**: `.gitignore`, `src/templates/root/gitignore.ejs` (edit if generator emits this file; otherwise direct edit).
-**Input**: E9.T4 negation spec.
-**Output**: Appends `!/.claude/settings.json`, `!/.codex/config.toml`, `!/.codex/rules/`, and adds `.claude/settings.local.json` to the ignore list. `git check-ignore -v .claude/settings.json` → NOT ignored; `.claude/settings.local.json` → ignored; `.codex/config.toml` → NOT ignored.
-**Notes**: PLAN instruction (NOT automated): after Epic 9 merges, user must `git rm --cached .claude/settings.local.json` then commit the ignore update — architect does not perform this.
+**Output**
+- File is ≤60 lines counted via `content.split('\n').length`
+- Each bullet sits on a single line (no auto-wrap-induced indentation cascades)
+- Rendered architect.md (after Task 2 regeneration) drops back to ≤300 lines
 
-### Task 5 - Sub-agent caveat + policy-boundaries paragraph [LOGIC]
-**Files**: `src/templates/partials/subagent-caveat.md.ejs` (new), `src/templates/config/CLAUDE.md.ejs` (include partial + append ≤8-line boundary paragraph), `src/templates/config/AGENTS.md.ejs` (include partial).
-**Input**: E9.T5 (policy-boundary paragraph), E9.T14 (sub-agent caveat verbatim three-sentence copy).
-**Output**: Partial contains the three-sentence caveat including GitHub issue links `#25000` and `#43142`. Both CLAUDE.md and AGENTS.md include the partial in the Sub-agent Routing / permission section. CLAUDE.md gains a ≤8-line paragraph describing shared `.claude/settings.json` + `.codex/config.toml` + `.codex/rules/project.rules`, per-developer `.claude/settings.local.json`, `~/.codex/rules/default.rules` prune reminder, and Windows primary-guard note.
-**Notes**: PRD E9.T14 references `src/templates/docs/…` — treat as documentation drift; real paths are `src/templates/config/`. Three-sentence caveat must render verbatim.
+**Notes**
+- MUST preserve every Epic 8 T6 substring on a single rendered line: `stacked PR`, `Graphite`, `gt create`, `ghstack`, `git town hack`, `merge bottom-up` (or `bottom-up`), `≤ 5` (or `<= 5`), and the contiguous phrase `one logical change per PR` (or at minimum `logical change` on one unbroken line)
+- MUST keep all section headings: `## Git Rules`, `## Branch Convention`, `### Conventional Commits 1.0`, `### Trunk-Based Development`, `### PR Size Cap`, `### Commit Signing`, `### Pre-Commit Hooks`
+- MUST keep the merge-order sentence and the canonical-commands table (Tool / Create stack entry / Push / sync) intact; collapsing the table is allowed only if every command token still appears as a literal in rendered output
+- MUST keep both `<%= mainBranch %>` interpolations so the `develop`-branch rendering test in `tests/generator/generate-all.test.ts` still passes
+- DRY: do not duplicate the deny-list or branch-naming guidance already covered by `untrusted-content.md.ejs` and `architect-fail-safe.md.ejs`
+- Out of scope: rewriting bullets in the included `dry-rules.md.ejs`, `documentation.md.ejs`, or `design-principles.md.ejs` partials
 
-### Task 6 - Security smoke suite + runbook [TEST]
-**Files**: `tests/security/smoke.test.ts` (new), `docs/security-smoke-runbook.md` (new).
-**Input**: E9.T15 (17 cases); rendered `.claude/settings.json` + `.codex/rules/project.rules` after Task 2 + 3.
-**Output**: Jest automates the 13 must-block cases (`case-G1..G8`, `case-R1..R3`, `case-W4`, `case-N1`) by asserting each denied pattern is present in the rendered policy outputs. Residual / manual cases (`case-W1..W3`, `case-N2`, sub-agent bypass 10.1, Windows sandbox 10.2, settings `bypassPermissions` 10.4) captured in `docs/security-smoke-runbook.md` with reproducible manual steps. Tests run via `pnpm test tests/security`.
-**Notes**: Keep `smoke.test.ts` ≤200 lines — split into `smoke-git.test.ts` / `smoke-fs.test.ts` / `smoke-network.test.ts` if needed. Residual cases document expected failure mode; no silent passes. Pure helper logic (pattern lookup) extracted to `src/utils/` with its own Jest test per global rule.
+### Task 2 - Regenerate committed agent and skill outputs [LOGIC]
 
-### Task 7 - Generator + hooks test updates [TEST]
-**Files**: `tests/generator/permissions.test.ts`, `tests/generator/epic-5-hooks.test.ts`, `tests/generator/generate-root-config.test.ts` (new or existing — grep first).
-**Input**: Task 1, 2, 3 outputs.
-**Output**: New assertions for every Task 1 deny pattern; hook matcher tests updated if `PreToolUse` emit changed; test that `generate-root-config.ts` emits `.claude/settings.json` (not `settings.local.json`) and includes the `sandbox` block with `mode`/`autoAllowBashIfSandboxed`/`allowedDomains`; test that `codex-project-rules.ejs` renders every forbid and allow required by E9.T3/T10/T11/T12.
-**Notes**: Use table-driven tests to avoid duplication across deny-pattern cases (DRY). Do not duplicate fixtures — import from production constants where possible.
+**Files**
+- `.claude/agents/architect.md`
+- `.codex/skills/architect/SKILL.md`
+- Any other generator output files that shrink because of Task 1 (`pnpm generate` will surface the full list)
 
-### Task 8 - Cursor / Copilot / Windsurf partial deltas [LOGIC]
-**Files**: `src/templates/partials/cursor-deny-destructive.md.ejs` (add if missing), `src/templates/partials/copilot-dangerous-ops.md.ejs` (add if missing), `src/templates/partials/windsurf-forbidden-commands.md.ejs` (add if missing) — exact deltas determined by `ls src/templates/partials/` and grep of `src/generator/` for cursor/copilot/windsurf wiring.
-**Input**: E9.T6 (Cursor `00-deny-destructive-ops.mdc` with `alwaysApply: true`), E9.T7 (`.github/copilot-instructions.md` §1.4 deny items + prompt frontmatter `tools:` minimization), E9.T8 (`.windsurf/rules/00-forbidden-commands.md` with `activation: always_on`, "Yolo mode forbidden" line).
-**Output**: Partials contain §1.4 deny list enumeration verbatim + the no-sandbox caveat (Cursor), branch-protection dependency note (Copilot), Manual/Auto approval-mode requirement (Windsurf). Wired into existing emission if plumbing exists.
-**Notes**: If Cursor/Copilot/Windsurf emission plumbing is **not** wired up yet in the generator, DO NOT invent it — record the gap in `## External errors` and limit this task to partials + PRD-required prompt frontmatter edits only.
+**Input**
+- Updated partial from Task 1
+- Failing assertion `architect.md` rendered length must be ≤300 lines (`tests/generator/generate-all.test.ts:163-191`)
+
+**Output**
+- Regenerated `architect.md` is ≤300 lines and contains the contiguous string `one logical change per PR`
+- Regenerated `SKILL.md` reflects the same partial change with no orphaned wrapping
+
+**Notes**
+- MUST run only the existing `pnpm generate` (or equivalent committed script) — do not hand-edit the rendered files
+- DRY: rendered files are derived; never edit them manually if the partial is the source
+- Out of scope: regenerating files under templates unrelated to git-rules (e.g. CLAUDE.md, AGENTS.md) unless `pnpm generate` updates them as a side effect; if so, include only the diff lines tied to git-rules
+
+### Task 3 - Verify all three failing tests pass and no Epic 9 file changed [TEST]
+
+**Files**
+- `tests/generator/epic-8-git-rules.test.ts` (read-only verification)
+- `tests/generator/generate-all.test.ts` (read-only verification)
+
+**Input**
+- Test runner outputs from `pnpm test --filter epic-8-git-rules` and `pnpm test --filter generate-all`
+
+**Output**
+- All eight Epic 8 T6 assertions green
+- `generateAll` line-count assertion green for `architect.md`
+- `git diff --stat` shows zero changes under `.claude/settings.json`, `.codex/config.toml`, `.codex/rules/project.rules`, `tests/security/**`, `docs/security-smoke-runbook.md`, `src/templates/partials/subagent-caveat.md.ejs`
+
+**Notes**
+- MUST NOT widen any line-count limit; only the partial and its derived renders may shrink
+- If a test fails on a token not listed in the Epic 8 T6 guard (e.g. a different partial regressed), record it under `## External errors` in this PLAN and stop — do not expand scope
+- DRY: do not duplicate verification logic already present in the test files
 
 ## Post-implementation checklist
 
-- [ ] `pnpm check-types` - zero errors.
-- [ ] `pnpm test` - all suites pass (incl. `tests/security/smoke.test.ts`).
-- [ ] `pnpm lint` - zero warnings.
-- [ ] `codex execpolicy check --rules .codex/rules/project.rules` exits 0 (manual — requires Codex CLI).
-- [ ] `git check-ignore -v` confirms un-ignore negations (Task 4 Done-when).
-- [ ] Run `code-reviewer` + `security-reviewer` agents in parallel on all modified files - all critical and warning findings fixed.
-- [ ] DRY scan complete - deny patterns emitted from one source-of-truth constant; no duplicated fixtures across tests.
-- [ ] E9.T15 13 automated cases green on Windows; residual cases documented in `docs/security-smoke-runbook.md`.
-- [ ] Every file ≤200 lines; no `any` types; object-param rule honored for functions with 3+ args.
-- [ ] No `--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox` in emitted docs or PR body.
-- [ ] User-deferred: `git rm --cached .claude/settings.local.json` before committing `.gitignore` change.
+- [ ] `pnpm check-types` - zero errors
+- [ ] `pnpm test` - all suites pass (especially `epic-8-git-rules.test.ts` and `generate-all.test.ts`)
+- [ ] `pnpm lint` - zero warnings
+- [ ] `awk 'END {print NR}' src/templates/partials/git-rules.md.ejs` reports ≤60
+- [ ] `awk 'END {print NR}' .claude/agents/architect.md` reports ≤300
+- [ ] `grep -c 'one logical change per PR' .claude/agents/architect.md` reports ≥1
+- [ ] `git diff --stat` confirms zero changes to Epic 9 deny-listed files
+- [ ] Run `code-reviewer` agent on all modified files - all critical and warning findings fixed
+- [ ] DRY scan complete - no duplicated code across modified files
 
 ## External errors
 
-- **PRD §1.9 E9.T3 specifies `approval_policy = "on-failure"` — Codex CLI deprecated this value.** Current Codex CLI (openai/codex) accepts only `untrusted`, `on-request`, `never`, `granular`. Implementation uses `on-request` (the closest semantic match for the safe interactive posture the PRD describes). PRD needs an update to replace `on-failure` references throughout Epic 9 / Epic 10 with `on-request`. Source: https://developers.openai.com/codex/config-reference.
-- **E9.T6 / E9.T7 / E9.T8 emission plumbing not wired in generator.** `src/generator/` has no Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`, `.github/prompts/*.prompt.md`), or Windsurf (`.windsurf/rules/*.md`) template rendering. Grep of `src/generator/` confirms only `generate-scripts.ts` mentions `cursor` (unrelated — script file for the Cursor IDE task shortcut). Writing orphan partials under `src/templates/partials/` now would not be consumed by anything. Deferred to whichever epic introduces multi-tool config emission (likely Epic 11 per PRD §1.9 references). Epic 9 MUST scope for Claude + Codex is complete.
+_None at plan creation time. Record here any failure surfaced during execution that requires touching a file outside this PR's narrow scope._
