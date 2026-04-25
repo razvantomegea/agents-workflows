@@ -170,6 +170,49 @@ npx agents-workflows init --config ./agents-workflows.config.json
 npx agents-workflows init --yes
 ```
 
+### Semi-autonomous non-interactive mode
+
+This mode is **opt-in and off by default**. `--yes` alone does NOT enable it — you must also pass `--non-interactive`. Choosing `host-os` as the isolation environment additionally requires `--accept-risks`. See PRD §1.9.1 for the full risk disclosure before enabling.
+
+**Canonical invocations (no dangerous bypass flags):**
+
+```bash
+# Claude Code — headless
+claude -p "Read ./CLAUDE.md and execute every step in order until complete. Do not ask for input."
+
+# Claude Code — headless with logging
+claude -p "Read ./CLAUDE.md and execute every step in order until complete. Do not ask for input." --output-format stream-json | tee run.log
+
+# Codex CLI — headless
+codex exec "Read ./AGENTS.md and execute every step in order until complete."
+
+# Codex CLI — headless with logging
+codex exec --json --ephemeral "Read ./AGENTS.md and execute every step in order until complete." | tee run.log
+```
+
+> **`--full-auto` is NOT equivalent to `approval_policy = "never"`.**
+> `--full-auto` is a CLI flag with different semantics. This repo only supports config-driven non-interactive mode via `approval_policy = "never"` in `.codex/config.toml` and `"defaultMode": "bypassPermissions"` in `.claude/settings.json`, both emitted by `agents-workflows init --non-interactive`.
+
+**Three-stage guard order:**
+
+1. Deny / forbid rules in `.claude/settings.json` and `.codex/rules/project.rules` evaluate **first** — destructive commands are blocked before approval is considered.
+2. Approval stage — auto-approved in semi-autonomous mode (no prompts).
+3. Sandbox boundary enforcement — `workspace-write` sandbox restricts file writes (subject to PRD §1.9.1 item 10.2 on Windows).
+
+**Scope:** developer-assisted feature-branch runs only. Human `git diff` review is required before any manual commit or push. This is not a claim of unattended CI suitability.
+
+**Per-tool reference:**
+
+| Tool | Headless invocation | Precondition | Forbidden |
+|---|---|---|---|
+| Claude Code | `claude -p "..."` | `.claude/settings.json` deny rules present (Epic 9) | `--dangerously-skip-permissions` |
+| Codex CLI | `codex exec "..."` | `.codex/rules/project.rules` forbid rules present (Epic 9) | `--dangerously-bypass-approvals-and-sandbox`, `sandbox_mode = "danger-full-access"` |
+| Cursor | `cursor-agent --prompt "..."` (or Background Agents) | `.cursor/rules/00-deny-destructive-ops.mdc` present (Epic 9 E9.T6) | `--yolo` |
+| VSCode + Copilot | `/workflow-plan` from chat (executes `.github/prompts/workflow-plan.prompt.md`) or assign issue to Copilot coding agent | `tools:` allow-list in prompt frontmatter; GitHub branch protection on `main` | Do NOT set any auto-approve setting |
+| Windsurf | Cascade `/workflow-plan` in **Auto** mode (NOT Yolo) | `.windsurf/rules/00-forbidden-commands.md` present (Epic 9 E9.T8) | Yolo mode |
+
+**Windows caveat (PRD §1.9.1 item 10.2):** Codex `workspace-write` sandbox is unstable on Windows. Treat `.codex/rules/project.rules` as the PRIMARY guard. Prefer devcontainer / WSL2 / VM / GitHub Codespaces for higher trust.
+
 ## What gets written
 
 | Target | Output paths |

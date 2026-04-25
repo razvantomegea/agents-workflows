@@ -1,5 +1,4 @@
 import { join, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
 import { logger } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
@@ -14,18 +13,31 @@ import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { DetectedStack } from '../detector/types.js';
 import type { MergeStrategy } from '../generator/index.js';
+import type { IsolationChoice } from '../schema/stack-config.js';
+import { parseNonInteractiveFlags } from './non-interactive-flags.js';
+import { hashConfig } from './hash-config.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
   yes?: boolean;
   noPrompt?: boolean;
   mergeStrategy?: MergeStrategy;
+  nonInteractive?: boolean;
+  isolation?: IsolationChoice;
+  acceptRisks?: boolean;
 }
 
 export async function initCommand(
   projectRoot: string,
   options: InitCommandOptions = {},
 ): Promise<void> {
+  // Validate non-interactive flags early; NonInteractiveFlagsError propagates to handleSafetyErrors → exit 1.
+  const nonInteractiveFlags = parseNonInteractiveFlags({
+    nonInteractive: options.nonInteractive,
+    isolation: options.isolation,
+    acceptRisks: options.acceptRisks,
+  });
+
   logger.heading('agents-workflows');
   logger.info('Detecting project stack...\n');
 
@@ -35,13 +47,23 @@ export async function initCommand(
   printDetected(detected);
   printDetectedAiTools(detected.aiAgents.agents);
 
-  const scope = await resolveInstallScope(detected, options);
+  const resolvedOptions: InitCommandOptions = {
+    yes: options.yes,
+    noPrompt: options.noPrompt,
+    mergeStrategy: options.mergeStrategy,
+    config: options.config,
+    nonInteractive: nonInteractiveFlags.enabled,
+    isolation: nonInteractiveFlags.isolation ?? undefined,
+    acceptRisks: nonInteractiveFlags.acceptedHostOsRisk,
+  };
+
+  const scope = await resolveInstallScope(detected, resolvedOptions);
 
   if (scope === 'root') {
     await installSinglePackage({
       projectRoot,
       detected,
-      options,
+      options: resolvedOptions,
       monorepoOverride: rootMonorepoConfig(detected),
     });
     return;
@@ -51,12 +73,12 @@ export async function initCommand(
     await installSinglePackage({
       projectRoot,
       detected,
-      options,
+      options: resolvedOptions,
       monorepoOverride: rootMonorepoConfig(detected),
     });
   }
 
-  await installWorkspaces(projectRoot, detected, options);
+  await installWorkspaces(projectRoot, detected, resolvedOptions);
 }
 
 async function resolveInstallScope(
@@ -111,7 +133,12 @@ async function installSinglePackage({
   monorepoOverride,
 }: InstallSinglePackageParams): Promise<void> {
   logger.blank();
-  const baseConfig = options.config ?? await runPromptFlow(detected, projectRoot, { yes: options.yes });
+  const baseConfig = options.config ?? await runPromptFlow(detected, projectRoot, {
+    yes: options.yes,
+    nonInteractive: options.nonInteractive,
+    isolation: options.isolation,
+    acceptRisks: options.acceptRisks,
+  });
   const config: StackConfig = { ...baseConfig, monorepo: monorepoOverride ?? baseConfig.monorepo };
 
   logger.blank();
@@ -163,6 +190,3 @@ async function installSinglePackage({
   logger.blank();
 }
 
-function hashConfig(json: string): string {
-  return createHash('sha256').update(json).digest('hex').slice(0, 16);
-}

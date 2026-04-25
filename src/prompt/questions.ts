@@ -180,25 +180,19 @@ export async function askAgentSelection(
   return checkbox({ message: 'Select agents to generate:', choices });
 }
 
-/**
- * Prompt the user to choose which CLI command workflows to generate.
- *
- * Displays a checkbox list of available commands (by default `workflowPlan` and `workflowFix` are selected)
- * and returns the identifiers of the chosen commands.
- *
- * @returns The selected command identifiers as an array of strings.
- */
-export async function askCommandSelection(): Promise<string[]> {
-  const choices = [
-    { name: '/workflow-plan — End-to-end feature workflow', value: 'workflowPlan', checked: true },
-    { name: '/workflow-fix — Fix QA issues', value: 'workflowFix', checked: true },
-    { name: '/external-review — External review tool integration', value: 'externalReview', checked: false },
-    { name: '/workflow-longhorizon - Multi-session long-horizon harness', value: 'workflowLonghorizon', checked: false },
-    { name: '/workflow-tcr — TCR (test && commit || revert)', value: 'workflowTcr', checked: false },
-  ];
+const COMMAND_CHOICES = [
+  { name: '/workflow-plan — End-to-end feature workflow', value: 'workflowPlan', checked: true },
+  { name: '/workflow-fix — Fix QA issues', value: 'workflowFix', checked: true },
+  { name: '/external-review — External review tool integration', value: 'externalReview', checked: false },
+  { name: '/workflow-longhorizon - Multi-session long-horizon harness', value: 'workflowLonghorizon', checked: false },
+  { name: '/workflow-tcr — TCR (test && commit || revert)', value: 'workflowTcr', checked: false },
+] as const;
 
-  return checkbox({ message: 'Select commands to generate:', choices });
+/** Prompt the user to choose which CLI command workflows to generate. */
+export async function askCommandSelection(): Promise<string[]> {
+  return checkbox({ message: 'Select commands to generate:', choices: [...COMMAND_CHOICES] });
 }
 
 export { askTargets } from './ask-targets.js';
 export { askGovernance } from './ask-governance.js';
+export { askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } from './ask-non-interactive.js';

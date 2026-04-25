@@ -9,9 +9,18 @@
 #   shell rc files, system packages).
 # - sandbox_workspace_write.network_access = false blocks outbound
 #   network egress unless explicitly approved per command.
+<% if (security.nonInteractiveMode) { -%>
+# Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).
+<%- include('../partials/security-disclosure.md.ejs', { condense: true }) -%>
+approval_policy = "never"
+sandbox_mode = "workspace-write"
 
+[sandbox_workspace_write]
+network_access = true
+<% } else { -%>
 approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
 network_access = false
+<% } -%>

@@ -1,4 +1,4 @@
-import type { StackConfig } from '../schema/stack-config.js';
+import type { StackConfig, SecurityConfig } from '../schema/stack-config.js';
 
 export interface CommandHook {
   type: 'command';
@@ -60,6 +60,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   i18nLibrary: StackConfig['stack']['i18nLibrary'];
   testFramework: string;
   testsDir: string | null;
+  security: SecurityConfig;
 }
 
 export interface GeneratedFile {
