@@ -163,13 +163,18 @@ describe('E6.T7+T8 — tooling and deployment', () => {
   let files: GeneratedFile[];
   beforeAll(async () => { files = await generateAll(makeStackConfig()); });
 
-  it('AGENTS.md contains tooling and deployment keywords', () => {
+  it('AGENTS.md contains tooling keywords and links deployment supplement', () => {
     const c = getRootFileContent(files, 'AGENTS.md');
     expect(c).toContain('Biome');
     expect(c).toContain('ESLint');
     expect(c).toContain('.editorconfig');
     expect(c).toContain('CodeQL');
     expect(c).toContain('Semgrep');
+    expect(c).toContain('AGENTS-DEPLOYMENT.md');
+  });
+
+  it('AGENTS-DEPLOYMENT.md contains deployment keywords', () => {
+    const c = getRootFileContent(files, 'AGENTS-DEPLOYMENT.md');
     expect(c).toContain('OpenFeature');
     expect(c).toContain('expand-contract');
     expect(c).toContain('CREATE INDEX CONCURRENTLY');

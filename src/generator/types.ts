@@ -46,6 +46,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   reviewChecklist: ReviewChecklistItem[];
   permissions: string[];
   denyList: readonly string[];
+  allowedDomains: readonly string[];
   postToolUseHooks: readonly PostToolUseHook[];
   preToolUseHooks: readonly PreToolUseHook[];
   monorepo: StackConfig['monorepo'];

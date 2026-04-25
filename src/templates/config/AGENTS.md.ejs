@@ -43,26 +43,79 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | UI/UX design & review | `ui-designer` |
 <% } -%>
 
-## Model routing (verify current model IDs in vendor docs)
+<%- include('../partials/subagent-caveat.md.ejs') %>
 
-| Role           | Preferred model family        | Reasoning effort | Per-tool invocation hint |
-|----------------|-------------------------------|------------------|--------------------------|
-| architect      | Opus-class (thinking on)      | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
-| implementer    | Sonnet-class / Codex-class    | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
-| code-reviewer  | Same family as implementer    | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
-| reviewer       | DIFFERENT family from implementer | high         | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
-| external-review| DIFFERENT family, fresh context   | high         | Any CLI (Code Rabbit default) · Cursor BugBot · Copilot PR review agent |
-| code-optimizer | Sonnet-class                  | medium           | same as implementer |
-| test-writer    | Sonnet-class                  | medium           | same as implementer |
-| e2e-tester     | Sonnet-class                  | medium           | same as implementer |
-| ui-designer    | Sonnet-class                  | medium           | same as implementer |
+## Model routing (Claude + GPT defaults; verify current model IDs in vendor docs)
 
-Rule: never let the writer be its own final reviewer. A fresh-context
-session with a different model family is the cheapest diversity gain
-available. This rule applies identically across Claude Code, Codex CLI,
-Cursor, VSCode+Copilot, and Windsurf — pick whichever tool's model
-picker yields the family swap (e.g., Cursor Agent on Claude Sonnet +
-Copilot Agent on GPT-5, or vice versa).
+| Role           | Preferred model family                                      | Backup model family                       | Reasoning effort | Per-tool invocation hint |
+|----------------|-------------------------------------------------------------|-------------------------------------------|------------------|--------------------------|
+| architect      | Claude (Opus / latest Sonnet, thinking on)                  | GPT-5.x (high-reasoning mode)             | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
+| implementer    | TS/React/Three.js: GPT-5.x (Codex) · Python/infra: Claude   | Opposite family of the writer             | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
+| code-reviewer  | Same FAMILY as implementer                                  | —                                         | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
+| reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x)        | —                                         | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
+| external-review| CodeRabbit CLI mandatory default; different-family reviewer for exception/fallbacks | Cursor BugBot / Copilot PR review only when CodeRabbit is unavailable | high | CodeRabbit CLI first � `/codex:review` only for Claude-authored diffs � Cursor BugBot / Copilot PR review fallback |
+| code-optimizer | Same family as implementer                                  | Opposite family for risky refactors       | medium           | same as implementer |
+| test-writer    | Claude (test strategy)                                      | GPT-5.x (boilerplate test code)           | medium           | same as implementer |
+| e2e-tester     | Claude                                                      | GPT-5.x                                   | medium           | same as implementer |
+| ui-designer    | **Claude Opus** (UX thinking / a11y / design-system; adaptive thinking on) | - | high           | MUST run before `implementer` on any UI/UX task |
+
+Rule: never let the writer be its own final reviewer. The `reviewer`
+role MUST run on a different model FAMILY than the implementer —
+Claude ↔ GPT-5.x is the cheapest diversity gain available. This rule
+applies identically across Claude Code, Codex CLI, Cursor,
+VSCode+Copilot, and Windsurf — pick whichever tool's model picker
+yields the family swap (e.g., Cursor Agent on Claude Sonnet + Copilot
+Agent on GPT-5.x, or vice versa).
+
+### Stack-aware writer/reviewer defaults
+
+<% const lang = (stack.language || '').toLowerCase();
+   const claudePrimaryLangs = ['python', 'ruby', 'rust', 'java'];
+   const gptPrimaryLangs = ['typescript', 'javascript', 'go', 'csharp', 'c#', 'php', 'swift', 'kotlin'];
+   const isClaudePrimary = claudePrimaryLangs.includes(lang);
+   const isGptPrimary = gptPrimaryLangs.includes(lang); -%>
+<% if (isReact || (isTypescript && isFrontend)) { -%>
+TypeScript / React front-end. Implementer: **GPT-5.x** (Codex / Copilot Agent) — components, hooks, styling, Three.js / WebGL. Reviewer + `/external-review`: **Claude** (Opus or latest Sonnet). Architect + test strategy: **Claude**.
+<% } else if (isClaudePrimary) { -%>
+This workspace is a **<%= stack.language %>** codebase where Claude leads on correctness and refactors. Implementer: **Claude**. Reviewer + `/external-review`: **GPT-5.x**. Architect + test strategy: **Claude**.
+<% } else if (isGptPrimary) { -%>
+This workspace is a **<%= stack.language %>** codebase where GPT-5.x leads on rapid implementation. Implementer: **GPT-5.x**. Reviewer + `/external-review`: **Claude**. Architect + test strategy: **Claude**.
+<% } else { -%>
+Default pairing is writer/reviewer family-opposite. When uncertain, put **Claude** on architect / reviewer roles, **GPT-5.x** on TS/React implementation, and let the compiler / sanitizers / test suite be the final contract for native or polyglot code.
+<% } -%>
+
+### Cross-stack primary / secondary map
+
+**Primary** writes; **Secondary** runs `reviewer` + `/external-review`. Writer and reviewer MUST stay different families.
+
+| Stack / language                                | Primary (implementer) | Secondary (reviewer + cross-check) |
+|-------------------------------------------------|------------------------|------------------------------------|
+| Plain JS / TS (libs, CLIs, Node backends)       | GPT-5.x                | Claude                             |
+| React / Next.js / React Native / Remix          | GPT-5.x                | Claude                             |
+| Three.js / WebGL / canvas / shaders             | GPT-5.x                | Claude                             |
+| Vue / Svelte / Solid / Angular                  | GPT-5.x                | Claude                             |
+| Python (FastAPI / Django / Flask / data)        | Claude                 | GPT-5.x                            |
+| C++ / systems / low-level                       | Tie (see notes)        | Opposite family of writer          |
+| Java (Spring, enterprise OO)                    | Claude                 | GPT-5.x                            |
+| C# / .NET (ASP.NET Core, LINQ)                  | GPT-5.x                | Claude                             |
+| Go (services, CLIs, concurrency)                | GPT-5.x                | Claude                             |
+| Rust (ownership, lifetimes, refactors)          | Claude                 | GPT-5.x                            |
+| PHP (Laravel, Symfony)                          | GPT-5.x                | Claude                             |
+| Ruby / Rails                                    | Claude                 | GPT-5.x                            |
+| Swift / iOS (SwiftUI, UIKit)                    | GPT-5.x                | Claude                             |
+| Kotlin / Android (coroutines, flows)            | GPT-5.x                | Claude                             |
+
+For C++ / low-level work, neither family is authoritative: every change MUST be validated by the compiler, sanitizers, and tests. Prefer GPT-5.x for implementation drafts; prefer Claude for understanding legacy / template code and concurrency invariants.
+
+**UI/UX two-phase exception.** UI work resolves to two different models: **Phase A — design thinking / planning** (flows, IA, UX heuristics, a11y, design-system decisions) runs on **Claude Opus** with adaptive thinking on; **Phase B — UI implementation** (component code, Tailwind, Three.js, SwiftUI) runs on **GPT-5.x (Codex)** taking Opus's approved notes as input. The `ui-designer` role MUST run on Claude Opus and MUST precede the `implementer` on any UI/UX task. See PRD §1.7.1 for the full rationale.
+
+### Cross-model handoff setup (how Claude invokes Codex and vice versa)
+
+The Claude ↔ GPT-5.x rotation is NOT driven by file watching. Three mechanisms, in preference order (PRD §1.7.2):
+
+1. **Codex Plugin for Claude Code (MCP)** — install once: `/plugin marketplace add openai/codex-plugin-cc` → `/plugin install codex@openai-codex` → `/codex:setup`. Claude then calls Codex via `/codex:delegate <task>` (implementation) and `/codex:review` (opposite-family reviewer).
+2. **`claude -p` inside Codex** — from a Codex session, shell out via `claude -p "<prompt>"`; allowlisted in `.codex/rules/project.rules`.
+3. **Subprocess fallback** — `Bash(codex exec "<prompt>")` from Claude Code; `Bash(codex exec:*)` and `Bash(claude -p:*)` are allowlisted in generated `.claude/settings.json`; all §1.9 denies remain in force.
 
 ## Planning Workflow
 
@@ -136,15 +189,17 @@ Before any destructive operation, state: (1) what changes, (2) where
 
 `agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
 
-The generated `.claude/settings.local.json` enforces safety at the tool-call layer via Claude Code hooks:
+The generated `.claude/settings.json` enforces safety at the tool-call layer via Claude Code hooks:
 
 - **PreToolUse `Bash`** — a shell guard runs before every Bash invocation and blocks commands matching the destructive-pattern list (`rm -rf`, `git push --force`, `git reset --hard`, etc.). Exit 2 = blocked with refusal message; exit 0 = allowed.
 - **PostToolUse `Edit|MultiEdit|Write`** — runs the configured lint/format command automatically after every file edit.
 
-Review or adjust hook entries in `.claude/settings.local.json` under the `"hooks"` key.
+Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key. Per-developer overrides go in `.claude/settings.local.json` (gitignored).
 
 <%- include('../partials/tooling.md.ejs') %>
 
-<%- include('../partials/deployment.md.ejs') %>
+## Deployment Rules
+
+See `AGENTS-DEPLOYMENT.md` for deployment checklist and rules.
 
 <!-- agents-workflows:managed-end -->

@@ -2,6 +2,7 @@ import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext } from './types.js';
 import { buildReviewChecklist } from './review-checklist-rules.js';
 import { buildPermissions, buildDenyList, buildPostToolUseHooks, buildPreToolUseHooks } from './permissions.js';
+import { ALLOWED_DOMAINS } from './permission-constants.js';
 import {
   isBackendFramework,
   isFrontendFramework,
@@ -54,8 +55,9 @@ export function buildContext(config: StackConfig): GeneratorContext {
     mainBranch: config.project.mainBranch,
 
     reviewChecklist: buildReviewChecklist(config),
-    permissions: buildPermissions(config),
+    permissions: buildPermissions({ tooling: config.tooling, commands: config.commands }),
     denyList: buildDenyList(),
+    allowedDomains: ALLOWED_DOMAINS,
     postToolUseHooks: buildPostToolUseHooks({ lintCommand: config.commands.lint ?? null }),
     preToolUseHooks: buildPreToolUseHooks(),
     monorepo: config.monorepo,

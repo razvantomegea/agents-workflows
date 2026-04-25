@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-23T15:00:06.453Z",
-  "stackConfigHash": "ddb09b21fce8de41",
+  "generatedAt": "2026-04-24T14:45:40.153Z",
+  "stackConfigHash": "a78301c2a27ad02a",
   "config": {
     "project": {
       "name": "agents-workflows",
@@ -18,7 +18,8 @@
       "uiLibrary": null,
       "stateManagement": null,
       "database": null,
-      "auth": null
+      "auth": null,
+      "i18nLibrary": null
     },
     "tooling": {
       "packageManager": "pnpm",
@@ -71,7 +72,8 @@
       "workflowPlan": true,
       "workflowFix": true,
       "externalReview": true,
-      "workflowLonghorizon": false
+      "workflowLonghorizon": false,
+      "workflowTcr": false
     },
     "targets": {
       "claudeCode": true,
@@ -114,8 +116,9 @@
     ".claude/commands/external-review.md",
     ".codex/prompts/external-review.md",
     "CLAUDE.md",
-    ".claude/settings.local.json",
+    ".claude/settings.json",
     ".codex/config.toml",
+    ".codex/rules/project.rules",
     "AGENTS.md",
     "docs/decisions/0001-adr-template.md",
     ".claude/scripts/cursor-task.sh",

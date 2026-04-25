@@ -1,189 +1,82 @@
-# Plan - Epic 8 Situational Enhancements
-_Branch: `feature/epic-8-situational-enhancements` | Date: 2026-04-23_
+# Plan - Epic 9 Agent Permission & Sandbox Hardening
+_Branch: `feature/epic-9-permission-sandbox-hardening` | Date: 2026-04-24_
 
 ## Context
-Epic 8 [NICE] adds five situational enhancements to the generated agent configs: an i18n partial gated by library detection (E8.T1), a TCR (`test && commit || revert`) workflow command (E8.T2), an OSCAL continuous-compliance scaffold under governance (E8.T3), expanded continuous-profiling guidance inside the existing observability partial (E8.T4), and a Graphite/ghstack stacked-PR tooling mention inside the git-rules partial (E8.T5). NICE only deprioritizes this work versus MUST/SHOULD epics — every task must still satisfy DRY, the 200-line file cap, explicit typing (no `any`), and the standard review/test loop.
+Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. This epic is the **hardening gate** for Epic 10: non-interactive mode stays locked until every MUST item here lands and the E9.T15 smoke suite is green on Windows.
 
 ## Pre-implementation checklist
 
-- [ ] Read `PRD.md` lines 1184–1211 (§2.13 Internationalization paste-ready snippet) and lines 1764–1770 (Epic 8 task list)
-- [ ] Read `src/templates/partials/observability.md.ejs` to confirm the existing single-line continuous-profiling NICE entry that E8.T4 expands
-- [ ] Read `src/templates/partials/git-rules.md.ejs` "PR Size Cap" section that already mentions `Graphite / ghstack / git-town` to confirm where the E8.T5 expansion lands without duplicating
-- [ ] Grep `src/detector/` for an existing i18n-library detector (none expected — confirms a new detector is required for E8.T1)
-- [ ] Grep `src/templates/agents/{ui-designer,implementer}.md.ejs` for any existing i18n include (none expected — confirms partial is new)
-- [ ] Read `src/detector/dependency-detector.ts` and `src/detector/detect-auth.ts` to mirror the `createDependencyDetector` pattern for the new i18n detector
-- [ ] Read `src/generator/generate-commands.ts`, `src/schema/stack-config.ts`, `src/prompt/default-config.ts`, `src/prompt/prompt-flow.ts`, and `src/prompt/questions.ts` to mirror the registration shape used for `workflow-fix` / `workflow-longhorizon` when adding TCR
-- [ ] Read `src/generator/generate-root-config.ts` governance-block structure to mirror the conditional emit pattern for the OSCAL template (`src/templates/governance/oscal-component.json.ejs`)
-- [ ] Grepped codebase for existing equivalents (components, hooks, utils, types, constants)
-- [ ] Verified no type duplication - shared types imported, not redeclared
-- [ ] Confirmed no magic numbers - all values reference design tokens or named constants
+- [ ] On branch `feature/epic-9-permission-sandbox-hardening`; tree clean (`git status`).
+- [ ] Read `PRD.md` §1.9 (Epic 9, L1776–1912) and §1.9.1 risk register (L358–404).
+- [ ] Grepped codebase for existing equivalents (`DENY_PATTERNS`, `DESTRUCTIVE_BASH_PATTERNS`, `buildPermissions`, partials, template paths).
+- [ ] Verified no type duplication - shared types imported, not redeclared.
+- [ ] Confirmed no magic numbers / no broad `Bash(git:*)` or `--dangerously-skip-permissions` examples land in emitted docs.
 
 ## Tasks
 
-### Task 1 - Detect i18n library [LOGIC] [SCHEMA]
-**Files**:
-- `src/detector/detect-i18n.ts` (new)
-- `src/detector/types.ts` (modify — add `i18n: Detection` to `DetectedStack`)
-- `src/detector/detect-stack.ts` (modify — add `detectI18n` to the `Promise.all` and to the returned `DetectedStack`)
-- `src/detector/index.ts` (modify — re-export `detectI18n`)
-- `src/schema/stack-config.ts` (modify — add `stack.i18nLibrary: z.string().nullable().default(null)`)
-- `src/prompt/default-config.ts` (modify — set `stack.i18nLibrary` from detection)
-- `src/prompt/prompt-flow.ts` (modify — propagate `stack.i18nLibrary: detected.i18n.value`)
-- `src/generator/build-context.ts` (modify — surface `hasI18n: Boolean(config.stack.i18nLibrary)` flag)
-- `src/generator/types.ts` (modify — extend `GeneratorContext` with `hasI18n: boolean` and `i18nLibrary: string | null`)
-- `tests/detector/detect-i18n.test.ts` (new)
+### Task 1 - Expand deny + allow patterns [LOGIC]
+**Files**: `src/generator/permissions.ts`, `src/generator/permission-constants.ts` (new if `permissions.ts` grows past 200 lines).
+**Input**: `PRD.md` E9.T1 consolidated list; §1.9.1 item 10.5; existing `DENY_PATTERNS` (L23–44) and `DESTRUCTIVE_BASH_PATTERNS` (L9–21).
+**Output**: `DENY_PATTERNS` superset covering `Bash(git push:*)`, `Bash(git commit:*)`, `Bash(git commit --amend:*)`, `Bash(git rm:*)`, `Bash(sudo:*)`, `Bash(curl:* | sh)`, `Bash(curl:* | bash)`, `Bash(wget:* | sh)`, `Bash(wget:* | bash)`, `Edit(/**)`, `Edit(~/**)`, `Write(/**)`, `Write(~/**)`, `MultiEdit(/**)`, `MultiEdit(~/**)`, and exfil `Bash(Invoke-WebRequest:*)`, `Bash(iwr:*)`, `Bash(Invoke-RestMethod:*)`, `Bash(irm:*)`, `Bash(curl.exe:*)`, `Bash(wget.exe:*)`. `buildPermissions` allow includes `Bash(git status|diff|log|branch|add|checkout|switch|stash|pull:*)`, `Bash(tsc|jest|eslint|prettier|node|npx:*)` (skip duplicates already covered by pnpm glob).
+**Notes**: Every existing deny must remain verbatim (E9 acceptance: "no existing deny is dropped"). Keep one source-of-truth constant — extend, do not fork. If file exceeds 200 lines, extract constants to `permission-constants.ts` and import.
 
-**Input**: stack detection runs in `detect-stack.ts`. The new detector must follow `createDependencyDetector` rules and recognise: `i18next`, `react-i18next`, `next-intl`, `next-translate`, `@formatjs/intl`, `react-intl`, `@lingui/core`, `@lingui/react`, `vue-i18n`, `svelte-i18n`, `@nuxtjs/i18n`. Confidence values mirror `detect-auth.ts` (`0.9` for first-class libs, `0.8` for indirect markers like `@formatjs/intl`).
+### Task 2 - Shared `.claude/settings.json` + sandbox block [LOGIC] [SCHEMA]
+**Files**: `src/templates/config/settings-local.json.ejs` (rename to `settings.json.ejs`), `src/generator/generate-root-config.ts` (L25–26 output path change), `.claude/settings.json` (generated output, tracked).
+**Input**: Task 1 deny/allow constants; E9.T2 + E9.T13 schema (`sandbox.mode`, `sandbox.autoAllowBashIfSandboxed`, `sandbox.allowedDomains`).
+**Output**: Emits `.claude/settings.json` (shared) with `"defaultMode": "default"`, full deny/allow, existing `hooks.PostToolUse` preserved verbatim, and `"sandbox": { "mode": "workspace-write", "autoAllowBashIfSandboxed": true, "allowedDomains": ["api.github.com","registry.npmjs.org","nodejs.org","raw.githubusercontent.com","objects.githubusercontent.com","pypi.org","files.pythonhosted.org"] }`. Output path switches from `settings.local.json` → `settings.json`.
+**Notes**: JSON must parse. `settings.local.json` is no longer emitted by `init`. Preserve `PreToolUse` + `PostToolUse` hooks. No broad `Bash(git:*)` allow.
 
-**Output**: `detected.i18n.value` is a non-null string when any matching dep is present in the target project; the value flows through to `config.stack.i18nLibrary` and into `GeneratorContext` as `hasI18n` + `i18nLibrary`. Existing tests still pass.
+### Task 3 - Codex config + project.rules template [LOGIC] [SCHEMA]
+**Files**: `src/templates/config/codex-config.toml.ejs` (edit), `src/templates/config/codex-project-rules.ejs` (new), `src/generator/generate-root-config.ts` (register new template → `.codex/rules/project.rules`), `.codex/config.toml` (regenerated), `.codex/rules/project.rules` (regenerated).
+**Input**: E9.T3 (Unix forbids + toolchain allows), E9.T10 (Windows-native removes), E9.T11 (exfil), E9.T12 (shell wrappers).
+**Output**: `codex-config.toml.ejs` emits `approval_policy = "on-failure"`, `sandbox_mode = "workspace-write"`, `network_access = false`, no `writable_roots`. `codex-project-rules.ejs` emits forbid rules for `git push`, `git commit`, `git commit --amend`, `git reset --hard`, `git reset --merge`, `git clean -f`, `git clean -fd`, `git branch -D`, `rm`, `sudo`, `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`, `terraform apply`, `kubectl apply`, `kubectl delete`, `curl | sh|bash`, `wget | sh|bash`, `Remove-Item`, `Remove-ItemProperty`, `del`, `erase`, `rmdir`, `rd`, `ri`, `rm` (PS alias), `Invoke-WebRequest`, `iwr`, `Invoke-RestMethod`, `irm`, `curl.exe`, `wget.exe`, `pwsh -Command|-c|-EncodedCommand`, `powershell -Command|-c|-EncodedCommand`, `cmd /c|/k`, `cmd.exe /c|/k`. Allow rules: `node`, `npm`, `npx`, `pnpm`, `yarn`, `tsc`, `tsx`, `vitest`, `jest`, `eslint`, `prettier`, `python`, `python3`, `pip`, read-only git subcommands (`status|diff|log|branch|add|checkout|switch|stash`). No broad `["git"]` allow; no `curl`/`wget` allow.
+**Notes**: Keep each rules file ≤200 lines; split the partial if needed. Every forbid carries a short inline justification. No `--dangerously-bypass-approvals-and-sandbox` anywhere.
 
-**Notes**:
-- DRY: reuse `createDependencyDetector` exactly — no new detector primitive.
-- Do NOT add an interactive prompt in `questions.ts` for this — mirror `detectAuth`, which is detection-only and not user-prompted (per `prompt-flow.ts` line 76 setting `auth: null`). This keeps Epic 8 NICE-scoped and avoids prompt churn.
-- `Detection` type already exists in `src/detector/types.ts`; do not redeclare.
-- File budget: `detect-i18n.ts` should stay ≤ 25 lines.
-- Test colocates a fixture only if needed; otherwise unit-test the detector against a mocked `package.json` via the same pattern used by `tests/detector/detect-auth.test.ts` (read it first to mirror exactly).
+### Task 4 - `.gitignore` surgical un-ignore [SCHEMA]
+**Files**: `.gitignore`, `src/templates/root/gitignore.ejs` (edit if generator emits this file; otherwise direct edit).
+**Input**: E9.T4 negation spec.
+**Output**: Appends `!/.claude/settings.json`, `!/.codex/config.toml`, `!/.codex/rules/`, and adds `.claude/settings.local.json` to the ignore list. `git check-ignore -v .claude/settings.json` → NOT ignored; `.claude/settings.local.json` → ignored; `.codex/config.toml` → NOT ignored.
+**Notes**: PLAN instruction (NOT automated): after Epic 9 merges, user must `git rm --cached .claude/settings.local.json` then commit the ignore update — architect does not perform this.
 
-### Task 2 - i18n partial and conditional includes [UI] [PARALLEL]
-**Files**:
-- `src/templates/partials/i18n.md.ejs` (new)
-- `src/templates/agents/implementer.md.ejs` (modify — conditional include after the `concurrency.md.ejs` line)
-- `src/templates/agents/ui-designer.md.ejs` (modify — conditional include after the `performance.md.ejs` line)
-- `tests/generator/epic-8-i18n.test.ts` (new)
+### Task 5 - Sub-agent caveat + policy-boundaries paragraph [LOGIC]
+**Files**: `src/templates/partials/subagent-caveat.md.ejs` (new), `src/templates/config/CLAUDE.md.ejs` (include partial + append ≤8-line boundary paragraph), `src/templates/config/AGENTS.md.ejs` (include partial).
+**Input**: E9.T5 (policy-boundary paragraph), E9.T14 (sub-agent caveat verbatim three-sentence copy).
+**Output**: Partial contains the three-sentence caveat including GitHub issue links `#25000` and `#43142`. Both CLAUDE.md and AGENTS.md include the partial in the Sub-agent Routing / permission section. CLAUDE.md gains a ≤8-line paragraph describing shared `.claude/settings.json` + `.codex/config.toml` + `.codex/rules/project.rules`, per-developer `.claude/settings.local.json`, `~/.codex/rules/default.rules` prune reminder, and Windows primary-guard note.
+**Notes**: PRD E9.T14 references `src/templates/docs/…` — treat as documentation drift; real paths are `src/templates/config/`. Three-sentence caveat must render verbatim.
 
-**Input**: §2.13 paste-ready snippet (PRD lines 1196–1210). The partial must be a verbatim transcription of the snippet (UTF-8/NFC, no string concat, ICU MessageFormat, `Intl.*`, `Accept-Language` resolution, CSS logical properties, CLDR plural categories, select for gender, `Temporal` over `Date`).
+### Task 6 - Security smoke suite + runbook [TEST]
+**Files**: `tests/security/smoke.test.ts` (new), `docs/security-smoke-runbook.md` (new).
+**Input**: E9.T15 (17 cases); rendered `.claude/settings.json` + `.codex/rules/project.rules` after Task 2 + 3.
+**Output**: Jest automates the 13 must-block cases (`case-G1..G8`, `case-R1..R3`, `case-W4`, `case-N1`) by asserting each denied pattern is present in the rendered policy outputs. Residual / manual cases (`case-W1..W3`, `case-N2`, sub-agent bypass 10.1, Windows sandbox 10.2, settings `bypassPermissions` 10.4) captured in `docs/security-smoke-runbook.md` with reproducible manual steps. Tests run via `pnpm test tests/security`.
+**Notes**: Keep `smoke.test.ts` ≤200 lines — split into `smoke-git.test.ts` / `smoke-fs.test.ts` / `smoke-network.test.ts` if needed. Residual cases document expected failure mode; no silent passes. Pure helper logic (pattern lookup) extracted to `src/utils/` with its own Jest test per global rule.
 
-**Output**: When `hasI18n` is true, both `implementer.md` and `ui-designer.md` render the `## Internationalization` section. When `hasI18n` is false, neither file references it. Test asserts both presence (with i18n lib) and absence (without).
+### Task 7 - Generator + hooks test updates [TEST]
+**Files**: `tests/generator/permissions.test.ts`, `tests/generator/epic-5-hooks.test.ts`, `tests/generator/generate-root-config.test.ts` (new or existing — grep first).
+**Input**: Task 1, 2, 3 outputs.
+**Output**: New assertions for every Task 1 deny pattern; hook matcher tests updated if `PreToolUse` emit changed; test that `generate-root-config.ts` emits `.claude/settings.json` (not `settings.local.json`) and includes the `sandbox` block with `mode`/`autoAllowBashIfSandboxed`/`allowedDomains`; test that `codex-project-rules.ejs` renders every forbid and allow required by E9.T3/T10/T11/T12.
+**Notes**: Use table-driven tests to avoid duplication across deny-pattern cases (DRY). Do not duplicate fixtures — import from production constants where possible.
 
-**Notes**:
-- Conditional include syntax: `<% if (hasI18n) { -%>\n<%- include('../partials/i18n.md.ejs') %>\n<% } -%>` — mirror the `<% if (isBackend) {` pattern already in `implementer.md.ejs` line 29.
-- DRY: the partial is the single source of truth — do not inline the rules into either agent template.
-- The partial must NOT hardcode a specific library; the rules apply regardless of whether the project uses `i18next`, `next-intl`, etc. (matches PRD §2.13 wording).
-- Test fixture must use `makeStackConfig({ stack: { ..., i18nLibrary: 'i18next' } })` — extend `tests/generator/fixtures.ts` with the new field default `null` so existing tests are unaffected.
-- File budget: partial ≤ 30 lines (snippet is 14 lines).
-- `[PARALLEL]` with Tasks 4, 5, 6 — they touch disjoint files.
-
-### Task 3 - TCR workflow command [LOGIC]
-**Files**:
-- `src/templates/commands/workflow-tcr.md.ejs` (new)
-- `src/schema/stack-config.ts` (modify — add `selectedCommands.workflowTcr: z.boolean().default(false)`)
-- `src/prompt/default-config.ts` (modify — set `selectedCommands.workflowTcr: false`)
-- `src/prompt/prompt-flow.ts` (modify — propagate `workflowTcr: selectedCommands.includes('workflowTcr')`)
-- `src/prompt/questions.ts` (modify — add `{ name: '/workflow-tcr — TCR (test && commit || revert)', value: 'workflowTcr', checked: false }` to the `askCommandSelection` choices array)
-- `src/generator/generate-commands.ts` (modify — append `{ key: 'workflowTcr', templateFile: 'commands/workflow-tcr.md.ejs', outputName: 'workflow-tcr.md' }` to `COMMAND_DEFINITIONS`)
-- `tests/generator/fixtures.ts` (modify — add `workflowTcr: false` to the default `selectedCommands` block)
-- `tests/generator/epic-8-tcr.test.ts` (new)
-
-**Input**: TCR semantics from Thoughtworks Radar Vol 33 (Trial): on every change, run the test command; on green, auto-commit; on red, hard-revert. The command must reference `commands.test`, `mainBranch`, and respect the existing "NEVER commit or push unless user-invoked" rule by being explicitly invoked (the slash command itself is the user's opt-in). Mirror the structural shape of `src/templates/commands/workflow-fix.md.ejs`: frontmatter, instructions, verification rules, git-rules footer.
-
-**Output**: When `selectedCommands.workflowTcr` is true and `targets.claudeCode` is true, `.claude/commands/workflow-tcr.md` is emitted; same for `.codex/prompts/workflow-tcr.md` when `targets.codexCli` is true. Default config keeps the command off so existing users' regenerations are unchanged.
-
-**Notes**:
-- DRY: do NOT duplicate command-emit logic — reuse `COMMAND_DEFINITIONS` only.
-- The TCR command must explicitly note the destructive nature of `git reset --hard` and require the user to be on a dedicated TCR branch (never `mainBranch`). The repo-wide deny list already blocks `git reset --hard` in `.claude/settings.local.json` (per Epic 9 work) — flag this conflict in the command body so users know they must invoke TCR with explicit per-tool approval, not via the auto-allowlist.
-- The command body must be ≤ 200 lines.
-- Use `<%= commands.test %>` and `<%= mainBranch %>` for parametrisation; never hardcode `pnpm test` or `main`.
-- Test asserts: file emitted only when flag true; references `<%= commands.test %>` resolved value; contains "test && commit || revert"; warns about `mainBranch`; not emitted by default.
-
-### Task 4 - OSCAL continuous-compliance template [SCHEMA] [PARALLEL]
-**Files**:
-- `src/templates/governance/COMPLIANCE.md.ejs` (new)
-- `src/templates/governance/oscal-component.json.ejs` (new — minimal OSCAL 1.1.2 component-definition skeleton)
-- `src/generator/generate-root-config.ts` (modify — extend the existing `if (config.governance.enabled)` block to also render and push `docs/COMPLIANCE.md` and `docs/oscal/component-definition.json`)
-- `tests/generator/epic-8-oscal.test.ts` (new)
-
-**Input**: NIST OSCAL 1.1.2 component-definition format (the smallest valid OSCAL artifact). The Markdown wrapper (`COMPLIANCE.md`) explains: what OSCAL is, why continuous compliance matters (Radar v33 Adopt), how the JSON sidecar maps repo controls (deny list, secret scanning, signing, SBOM, branch protection) to a control catalog (NIST 800-53 Rev 5 baseline references). The JSON file must validate as well-formed JSON and contain a `component-definition.uuid`, `metadata.title`, `metadata.last-modified`, `metadata.version`, `metadata.oscal-version`, and one `components` entry.
-
-**Output**: When `governance.enabled` is true, `docs/COMPLIANCE.md` and `docs/oscal/component-definition.json` are emitted alongside the existing `docs/GOVERNANCE.md` and `docs/SUPPLY_CHAIN.md`. When `governance.enabled` is false, neither file appears.
-
-**Notes**:
-- DRY: route through the existing `governance.enabled` gate — do NOT add a new top-level config flag. Mirror the parallel `Promise.all` pattern in `generate-root-config.ts` lines 31–40.
-- Use a fixed placeholder UUID literal (e.g. `00000000-0000-0000-0000-000000000000`) and document it as "regenerate per project" in the Markdown wrapper. Generating a real UUID requires `crypto.randomUUID()` and would make the output non-deterministic — out of scope for this NICE task.
-- Tone/structure mirrors `src/templates/governance/SUPPLY_CHAIN.md.ejs` (single H1, partial includes if needed). Keep `COMPLIANCE.md.ejs` ≤ 80 lines and `oscal-component.json.ejs` ≤ 50 lines.
-- Test asserts: file emitted only when `governance.enabled` true; JSON parses via `JSON.parse`; contains required OSCAL keys; off by default.
-- `[PARALLEL]` with Tasks 2, 5, 6.
-
-### Task 5 - Continuous profiling note inside observability partial [LOGIC] [PARALLEL]
-**Files**:
-- `src/templates/partials/observability.md.ejs` (modify — replace the single-line `NICE: continuous profiling (Pyroscope / Parca / OTel eBPF receiver).` with an expanded 4–6 line block)
-- `tests/generator/epic-8-observability.test.ts` (new)
-
-**Input**: Expand the existing one-line NICE entry into actionable guidance: name eBPF as the low-overhead production-safe profiler; cite Pyroscope / Parca / Polar Signals as concrete OSS implementations; mention the OpenTelemetry profiles signal (now stable in OTel spec, 2025); call out CPU-flame-graph + heap as the two profile types worth shipping; warn that profiling sample rates need a budget (default 100 Hz) and PII-safe stack symbolisation.
-
-**Output**: The observability partial now includes a substantive continuous-profiling subsection. All agents that include `observability.md.ejs` (currently `implementer.md.ejs`) automatically pick up the change. No new EJS variables introduced.
-
-**Notes**:
-- DRY: extend the existing single line — do NOT add a new partial. The expansion belongs inside `observability.md.ejs` because `implementer.md.ejs` already includes that partial.
-- Keep total `observability.md.ejs` ≤ 40 lines after the change (currently 18).
-- Test asserts: `implementer.md` content contains "eBPF", "OpenTelemetry profiles", at least one of "Pyroscope" / "Parca" / "Polar Signals", and the "100 Hz" sample-rate guidance literal — proving the expansion landed via the partial chain.
-- `[PARALLEL]` with Tasks 2, 4, 6.
-
-### Task 6 - Stacked PR tooling note in git-rules partial [LOGIC] [PARALLEL]
-**Files**:
-- `src/templates/partials/git-rules.md.ejs` (modify — expand the existing "PR Size Cap" bullet that already mentions `Graphite / ghstack / git-town` into a 3-line block with concrete invocation examples)
-- `tests/generator/epic-8-git-rules.test.ts` (new)
-
-**Input**: The current bullet at line 31 of `git-rules.md.ejs` reads: `PRs ≤ 400 LOC changed. If larger, split using stacked PRs (Graphite / ghstack / git-town).` Expand into: (a) when to stack (one logical change per PR, dependent stack ≤ 5), (b) the canonical commands (`gt create` / `ghstack` / `git town hack`), (c) merge order (bottom-up, never rebase a stack from an old base).
-
-**Output**: `git-rules.md.ejs` retains its existing "PR Size Cap" heading but the body is expanded. All consumers of the partial (AGENTS.md, CLAUDE.md, architect.md) automatically pick up the change via existing includes — no other files modified.
-
-**Notes**:
-- DRY: do NOT create a new `stacked-pr.md.ejs` partial. The mention is small enough to belong with `git-rules.md.ejs`. PRD §E8.T5 explicitly says "in git-rules".
-- Keep `git-rules.md.ejs` ≤ 60 lines after the change (currently 41).
-- Test asserts: `AGENTS.md` content contains "stacked PRs", "Graphite" or "gt create", and "merge bottom-up" or equivalent literal.
-- `[PARALLEL]` with Tasks 2, 4, 5.
-
-### Task 7 - Aggregate Epic 8 integration test and snapshot refresh [TEST]
-**Files**:
-- `tests/generator/epic-8-integration.test.ts` (new)
-- `tests/generator/fixtures.ts` (modify — add `i18nLibrary: null` to default stack and `workflowTcr: false` to default selectedCommands so existing tests remain green)
-- `tests/detector/__snapshots__/detect-ai-agents.test.ts.snap` (regenerate ONLY if `pnpm test` reports it as broken — do not blanket-refresh)
-
-**Input**: A single end-to-end test that exercises the full Epic 8 surface: (a) renders with `i18nLibrary: 'i18next'` + `workflowTcr: true` + `governance.enabled: true` and asserts every Epic 8 artifact is present; (b) renders with all defaults and asserts none are present; (c) regression-checks that no pre-Epic-8 file path disappears.
-
-**Output**: Single integration test that fails loudly if any Epic 8 task regresses. Existing tests in `tests/generator/generate-all.test.ts` and `tests/detector/detect-stack.test.ts` continue to pass.
-
-**Notes**:
-- DRY: reuse `makeStackConfig`, `findFile`, `getContent` from `tests/generator/fixtures.ts` — do not redeclare helpers.
-- Do NOT duplicate the per-task assertions from Tasks 2/3/4/5/6 — this aggregate test is a smoke matrix, not an exhaustive re-test.
-- File budget: ≤ 100 lines.
-- Run `pnpm test` once locally after Task 7 lands to confirm full suite is green before invoking the review loop.
+### Task 8 - Cursor / Copilot / Windsurf partial deltas [LOGIC]
+**Files**: `src/templates/partials/cursor-deny-destructive.md.ejs` (add if missing), `src/templates/partials/copilot-dangerous-ops.md.ejs` (add if missing), `src/templates/partials/windsurf-forbidden-commands.md.ejs` (add if missing) — exact deltas determined by `ls src/templates/partials/` and grep of `src/generator/` for cursor/copilot/windsurf wiring.
+**Input**: E9.T6 (Cursor `00-deny-destructive-ops.mdc` with `alwaysApply: true`), E9.T7 (`.github/copilot-instructions.md` §1.4 deny items + prompt frontmatter `tools:` minimization), E9.T8 (`.windsurf/rules/00-forbidden-commands.md` with `activation: always_on`, "Yolo mode forbidden" line).
+**Output**: Partials contain §1.4 deny list enumeration verbatim + the no-sandbox caveat (Cursor), branch-protection dependency note (Copilot), Manual/Auto approval-mode requirement (Windsurf). Wired into existing emission if plumbing exists.
+**Notes**: If Cursor/Copilot/Windsurf emission plumbing is **not** wired up yet in the generator, DO NOT invent it — record the gap in `## External errors` and limit this task to partials + PRD-required prompt frontmatter edits only.
 
 ## Post-implementation checklist
 
-- [ ] `pnpm check-types` - zero errors
-- [ ] `pnpm test` - all suites pass
-- [ ] `pnpm lint` - zero warnings
-- [ ] Run `code-reviewer` agent on all modified files - all critical and warning findings fixed
-- [ ] Run `security-reviewer` agent in parallel with `code-reviewer` (TCR command and OSCAL artifact ship security-relevant content)
-- [ ] DRY scan complete - no duplicated code across modified files
-- [ ] Verified no agent template exceeds the 200-line cap after the new conditional includes
-- [ ] Verified `i18n.md.ejs` does NOT render when `hasI18n` is false (negative test passes)
-- [ ] Verified `workflow-tcr.md` does NOT render when `selectedCommands.workflowTcr` is false (default-off behavior preserved)
-- [ ] Verified `docs/COMPLIANCE.md` and `docs/oscal/component-definition.json` only render when `governance.enabled` is true
-- [ ] Run `/external-review` and address every CodeRabbit finding via `/workflow-fix`
+- [ ] `pnpm check-types` - zero errors.
+- [ ] `pnpm test` - all suites pass (incl. `tests/security/smoke.test.ts`).
+- [ ] `pnpm lint` - zero warnings.
+- [ ] `codex execpolicy check --rules .codex/rules/project.rules` exits 0 (manual — requires Codex CLI).
+- [ ] `git check-ignore -v` confirms un-ignore negations (Task 4 Done-when).
+- [ ] Run `code-reviewer` + `security-reviewer` agents in parallel on all modified files - all critical and warning findings fixed.
+- [ ] DRY scan complete - deny patterns emitted from one source-of-truth constant; no duplicated fixtures across tests.
+- [ ] E9.T15 13 automated cases green on Windows; residual cases documented in `docs/security-smoke-runbook.md`.
+- [ ] Every file ≤200 lines; no `any` types; object-param rule honored for functions with 3+ args.
+- [ ] No `--dangerously-skip-permissions` / `--dangerously-bypass-approvals-and-sandbox` in emitted docs or PR body.
+- [ ] User-deferred: `git rm --cached .claude/settings.local.json` before committing `.gitignore` change.
 
 ## External errors
 
-CodeRabbit external review (2026-04-23) surfaced 10 findings outside the Epic 8 changeset — recorded here, not fixed in this branch:
-- `.github/workflows/ci.yml`: missing `pnpm lint` CI step (pre-existing infra).
-- `src/templates/partials/architect-fail-safe.md.ejs`: CRLF line endings (pre-existing).
-- `src/templates/agents/test-writer.md.ejs`: doc says tests live in separate `tests/` dir; project convention is colocated (pre-existing template — both Claude and Codex outputs reflect this).
-- `tests/generator/epic-1-safety.test.ts`: implicit-typed `find` callbacks (Epic 1).
-- `src/templates/partials/stack-context.md.ejs`: unguarded `stackItems.forEach` (pre-existing).
-- `src/prompt/detected-ai-flags.ts`: implicit `candidate` parameter type (pre-existing).
-- `src/templates/agents/ui-designer.md.ejs`: references `README.md` as canonical-source rather than `PRD.md` (pre-existing — Epic 8 only added an i18n include here).
-- `src/templates/partials/testing-patterns.md.ejs`: unguarded `<%= testsDir %>` and `<%= conventions.maxFileLength %>` (pre-existing).
-- `.claude/scratchpad/review-task-epic5.md` (×2): scratchpad artifacts, not shipped product code.
-
-## Summary
-
-| # | Title | Type | Parallel | Files (count) |
-|---|---|---|---|---|
-| 1 | Detect i18n library | LOGIC + SCHEMA | no | 10 |
-| 2 | i18n partial and conditional includes | UI | yes | 4 |
-| 3 | TCR workflow command | LOGIC | no | 8 |
-| 4 | OSCAL continuous-compliance template | SCHEMA | yes | 4 |
-| 5 | Continuous profiling note inside observability partial | LOGIC | yes | 2 |
-| 6 | Stacked PR tooling note in git-rules partial | LOGIC | yes | 2 |
-| 7 | Aggregate Epic 8 integration test and snapshot refresh | TEST | no | 3 |
+- **PRD §1.9 E9.T3 specifies `approval_policy = "on-failure"` — Codex CLI deprecated this value.** Current Codex CLI (openai/codex) accepts only `untrusted`, `on-request`, `never`, `granular`. Implementation uses `on-request` (the closest semantic match for the safe interactive posture the PRD describes). PRD needs an update to replace `on-failure` references throughout Epic 9 / Epic 10 with `on-request`. Source: https://developers.openai.com/codex/config-reference.
+- **E9.T6 / E9.T7 / E9.T8 emission plumbing not wired in generator.** `src/generator/` has no Cursor (`.cursor/rules/*.mdc`), Copilot (`.github/copilot-instructions.md`, `.github/prompts/*.prompt.md`), or Windsurf (`.windsurf/rules/*.md`) template rendering. Grep of `src/generator/` confirms only `generate-scripts.ts` mentions `cursor` (unrelated — script file for the Cursor IDE task shortcut). Writing orphan partials under `src/templates/partials/` now would not be consumed by anything. Deferred to whichever epic introduces multi-tool config emission (likely Epic 11 per PRD §1.9 references). Epic 9 MUST scope for Claude + Codex is complete.

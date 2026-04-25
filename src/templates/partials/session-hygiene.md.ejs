@@ -1,7 +1,6 @@
 ## Session hygiene
 
-- Commit early and often with descriptive messages — `git revert` is
-  the agent's real undo button.
+- Never commit or push unless the user explicitly asks.
 - Every agent session starts from a clean tree on a named branch.
 - For parallel/competing agent runs, use `git worktree add` — one
   worktree per task — to prevent cross-contamination.

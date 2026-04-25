@@ -11,7 +11,7 @@ This CLI tool extracts proven agentic workflow patterns into parameterized templ
 
 - **Up to 10 specialized agents**: architect, implementer, react-ts-senior (React + TypeScript stacks only), code-reviewer, security-reviewer, code-optimizer, test-writer, e2e-tester, reviewer, ui-designer
 - **3 workflow commands**: `/workflow-plan`, `/workflow-fix`, `/external-review`
-- **Root config files**: `AGENTS.md`, plus `CLAUDE.md` and `.claude/settings.local.json` when Claude Code output is selected
+- **Root config files**: `AGENTS.md`, plus `CLAUDE.md` and `.claude/settings.json` when Claude Code output is selected
 - **Sync scripts**: Codex CLI integration with `.codex/` skills and prompts
 
 ## Quick start
@@ -62,7 +62,7 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 | File type | Merge behaviour |
 |---|---|
 | Markdown (`AGENTS.md`, `CLAUDE.md`, agent prompts, command files) | Structured merge by top-level heading. User-edited sections are preserved. Sections marked `<!-- agents-workflows:managed -->` are updated by the generator. |
-| JSON (`.claude/settings.local.json`, Codex config) | Deep-merge with array union (de-duplicated). User wins on scalar conflicts for non-managed keys. |
+| JSON (`.claude/settings.json`, Codex config) | Deep-merge with array union (de-duplicated). User wins on scalar conflicts for non-managed keys. |
 | Any other format | Falls back to yes / no / all / skip; no structured merge option is offered. |
 
 ### CI usage
@@ -175,14 +175,14 @@ npx agents-workflows init --yes
 | Target | Output paths |
 |---|---|
 | Always | `AGENTS.md`, `.agents-workflows.json` |
-| Claude Code | `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/scripts/*.sh`, `CLAUDE.md`, `.claude/settings.local.json` |
-| Codex CLI | `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.sh`, `.codex/scripts/sync-codex.ps1` |
+| Claude Code | `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/scripts/*.sh`, `CLAUDE.md`, `.claude/settings.json` |
+| Codex CLI | `.codex/config.toml`, `.codex/rules/project.rules`, `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.sh`, `.codex/scripts/sync-codex.ps1` |
 
 ## Project structure
 
 ### Top-level layout
 
-```
+```text
 agents-workflows/
 ├── src/                        TypeScript source (CLI, detectors, generators, templates)
 ├── tests/                      Jest test suite mirroring src/
@@ -228,7 +228,7 @@ All generated output starts as an `.ejs` file here. Five categories:
 |---|---|
 | `agents/` | `architect.md.ejs`, `implementer.md.ejs`, `react-ts-senior.md.ejs`, `code-reviewer.md.ejs`, `security-reviewer.md.ejs`, `code-optimizer.md.ejs`, `test-writer.md.ejs`, `e2e-tester.md.ejs`, `reviewer.md.ejs`, `ui-designer.md.ejs` |
 | `commands/` | `workflow-plan.md.ejs`, `workflow-fix.md.ejs`, `external-review.md.ejs` |
-| `config/` | `AGENTS.md.ejs`, `CLAUDE.md.ejs`, `codex-config.toml.ejs`, `settings-local.json.ejs` |
+| `config/` | `AGENTS.md.ejs`, `CLAUDE.md.ejs`, `codex-config.toml.ejs`, `settings.json.ejs`, `codex-project-rules.ejs` |
 | `partials/` | Reusable context blocks included by agents/commands: `code-style`, `context-budget`, `definition-of-done`, `dry-rules`, `error-handling-self`, `fail-safe`, `file-organization`, `git-rules`, `review-checklist`, `stack-context`, `tdd-discipline`, `testing-patterns`, `tool-use-discipline`, `untrusted-content`, `workspaces`, `docs-reference` |
 | `scripts/` | `sync-codex.sh.ejs`, `sync-codex.ps1.ejs`, `run-parallel.sh.ejs`, `cursor-task.sh.ejs` |
 
@@ -256,11 +256,12 @@ Jest suite mirrors `src/` one-to-one.
 | `.claude/commands/` | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` |
 | `.claude/scripts/` | `run-parallel.sh`, `cursor-task.sh` |
 | `.claude/scratchpad/` | Per-task working notes (ephemeral) |
-| `.claude/settings.local.json` | Project-scoped permissions |
+| `.claude/settings.json` | Shared project-scoped permissions (tracked; per-developer overrides go in `settings.local.json`, gitignored) |
 | `.codex/skills/<agent>/SKILL.md` | One SKILL.md per agent |
 | `.codex/prompts/` | `workflow-plan.md`, `workflow-fix.md`, `external-review.md` |
 | `.codex/scripts/` | `sync-codex.sh`, `sync-codex.ps1` |
 | `.codex/config.toml` | Codex skill/prompt registry |
+| `.codex/rules/project.rules` | Project-scoped Codex policy rules (forbid/allow) |
 
 ### Other top-level folders
 

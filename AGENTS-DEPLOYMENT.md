@@ -1,0 +1,20 @@
+# AGENTS-DEPLOYMENT.md
+
+Supplemental deployment guidance for agents working in this repository.
+
+## Deployment rules
+
+- Config via environment. No hardcoded secrets or hostnames. Validate
+  required env at boot via a typed schema (zod/pydantic/viper).
+- Stateless processes; session state in external store.
+- Strict dev/staging/prod parity: same DB engine version, same queue,
+  same container base image. No SQLite-in-dev/Postgres-in-prod.
+- Feature flags via OpenFeature SDK + a provider (LaunchDarkly, Unleash,
+  Flagsmith, ConfigCat, Flipt, GrowthBook). Avoid direct vendor SDKs.
+  Flags have owner + removal date in code; clean up quarterly.
+- Progressive delivery: canary with metrics-gated promotion (Argo
+  Rollouts / Flagger). Blue/green for stateful. Rollback ≤5 min.
+- DB migrations: expand-contract (add-new → dual-write → switch-reads →
+  drop-old), each phase a separate deploy. `CREATE INDEX CONCURRENTLY`
+  on Postgres. `pt-online-schema-change` / `gh-ost` on MySQL.
+  `strong_migrations` / `django-safemigrate` / `pgroll` in CI.

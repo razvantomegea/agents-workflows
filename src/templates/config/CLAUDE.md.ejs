@@ -47,6 +47,8 @@ Use sub-agents with independent, single, simple tasks as much as possible.
 **Mandatory ui-designer routing:** every UI/UX implementation must go through the `ui-designer` sub-agent *before* any implementation agent writes code.
 <% } -%>
 
+<%- include('../partials/subagent-caveat.md.ejs') %>
+
 ## Planning Workflow
 
 - For complex work, require a simple, explicit `PLAN.md` task breakdown before any implementation starts.
@@ -69,6 +71,9 @@ After every implementation session, run the following loop before considering th
 2. **Apply every finding** using the `implementer` agent — every critical and warning finding must be fixed.
 3. **Re-run type-check** — `<%= commands.typeCheck || 'N/A' %>`. Fix any new errors.
 4. **Re-run tests** — `<%= commands.test %>`. All suites must pass.
+<% if (commands.lint) { -%>
+5. **Re-run lint** — `<%= commands.lint %>`. Must complete with zero warnings.
+<% } -%>
 
 This loop is mandatory.
 
@@ -93,5 +98,9 @@ DRY and reusability are critical principles — enforced without exception:
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
+
+## Shared agent policy
+
+The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. Codex per-user approvals accumulate in `~/.codex/rules/default.rules` on Unix and `%USERPROFILE%\.codex\rules\default.rules` on Windows - prune them quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
 
 <!-- agents-workflows:managed-end -->

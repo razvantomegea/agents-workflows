@@ -1,5 +1,6 @@
 {
   "permissions": {
+    "defaultMode": "default",
     "allow": [
 <% permissions.forEach(function(permission, i) { -%>
       <%- jsonString(permission) %><%= i < permissions.length - 1 ? ',' : '' %>
@@ -8,6 +9,15 @@
     "deny": [
 <% denyList.forEach(function(pattern, i) { -%>
       <%- jsonString(pattern) %><%= i < denyList.length - 1 ? ',' : '' %>
+<% }); -%>
+    ]
+  },
+  "sandbox": {
+    "mode": "workspace-write",
+    "autoAllowBashIfSandboxed": true,
+    "allowedDomains": [
+<% allowedDomains.forEach(function(domain, i) { -%>
+      <%- jsonString(domain) %><%= i < allowedDomains.length - 1 ? ',' : '' %>
 <% }); -%>
     ]
   }<% if (postToolUseHooks.length > 0 || preToolUseHooks.length > 0) { %>,

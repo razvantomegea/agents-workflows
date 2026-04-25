@@ -1,9 +1,9 @@
 # Codex CLI configuration — safe defaults for agentic workflows
-# Uses workspace-write with on-request approvals so current-project edits run
-# without repeated confirmation while sandbox escapes still require approval.
+# Uses workspace-write sandbox with on-request approvals so sandboxed commands
+# run freely and approval is requested only when a command asks for more access.
 #
 # - approval_policy = "on-request" runs sandboxed commands without prompting
-#   and asks only when a command requests more access.
+#   and asks only when a command requests more access than the sandbox grants.
 # - sandbox_mode = "workspace-write" confines writes to the project root
 #   (blocks edits to .env outside the workspace, migrations/** outside,
 #   shell rc files, system packages).
