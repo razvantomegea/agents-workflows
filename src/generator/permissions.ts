@@ -3,22 +3,28 @@ import type { PostToolUseHook, PreToolUseHook } from './types.js';
 import {
   ALLOWED_DOMAINS,
   BASH_DENY_COMMAND_PATTERNS,
+  CROSS_MODEL_HANDOFF_ALLOWS,
   DENY_PATTERNS,
   escapeRegexLiteral,
   EXPECTED_ALLOWED_DOMAINS_COUNT,
   PRE_TOOL_USE_PATTERN_EXTRAS,
   LOCAL_GIT_ALLOWS,
+  SANDBOX_WRAPPER_ALLOWS,
+  SANDBOX_WRAPPER_DENIES,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
 export {
   ALLOWED_DOMAINS,
   BASH_DENY_COMMAND_PATTERNS,
+  CROSS_MODEL_HANDOFF_ALLOWS,
   PRE_TOOL_USE_PATTERN_EXTRAS,
   DENY_PATTERNS,
   escapeRegexLiteral,
   EXPECTED_ALLOWED_DOMAINS_COUNT,
   LOCAL_GIT_ALLOWS,
+  SANDBOX_WRAPPER_ALLOWS,
+  SANDBOX_WRAPPER_DENIES,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
@@ -63,6 +69,23 @@ export function buildPermissions(input: PermissionsInput): string[] {
     const command = match ? match[1] : null;
     const isHighRiskRuntime = command === 'node' || command === 'npx';
     if (command && !isHighRiskRuntime && !isCoveredByGlob(command, prefix) && !perms.includes(entry)) {
+      perms.push(entry);
+    }
+  }
+
+  // Cross-model handoff (§1.7.2): codex exec / claude -p subprocess fallback.
+  for (const entry of CROSS_MODEL_HANDOFF_ALLOWS) {
+    if (!perms.includes(entry)) {
+      perms.push(entry);
+    }
+  }
+
+  // Sandbox-wrapper forms of the above so a host agent can drive a project
+  // running inside WSL, a docker/podman container, or a devcontainer. The
+  // wrapper denies in DENY_PATTERNS run first, so e.g. `wsl pwsh` and
+  // `docker exec myc bash -c "..."` are blocked before reaching these.
+  for (const entry of SANDBOX_WRAPPER_ALLOWS) {
+    if (!perms.includes(entry)) {
       perms.push(entry);
     }
   }

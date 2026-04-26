@@ -35,7 +35,7 @@ describe('Epic 10 template branching — non-interactive mode', () => {
       expect(toml).toContain('PRD §1.9.1');
     });
 
-    it('emits defaultMode = "bypassPermissions" in .claude/settings.json', async () => {
+    it('emits defaultMode = "acceptEdits" in .claude/settings.json', async () => {
       const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const json = getContent(files, SETTINGS_JSON_PATH);
       const parsed = JSON.parse(json) as {
@@ -43,9 +43,21 @@ describe('Epic 10 template branching — non-interactive mode', () => {
         sandbox: { mode: string; allowedDomains: string[] };
       };
 
-      expect(parsed.permissions.defaultMode).toBe('bypassPermissions');
+      expect(parsed.permissions.defaultMode).toBe('acceptEdits');
+      expect(json).not.toContain('bypassPermissions');
       expect(parsed.sandbox.mode).toBe('workspace-write');
       expect(parsed.sandbox.allowedDomains.length).toBeGreaterThan(0);
+    });
+
+    it('renders the acceptEdits Bash-still-prompts caveat in CLAUDE.md and AGENTS.md', async () => {
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
+      const claudeMd = getContent(files, CLAUDE_MD_PATH);
+      const agentsMd = getContent(files, AGENTS_MD_PATH);
+
+      expect(claudeMd).toContain('defaultMode = "acceptEdits"');
+      expect(claudeMd).toContain('Bash commands still prompt');
+      expect(agentsMd).toContain('defaultMode = "acceptEdits"');
+      expect(agentsMd).toContain('Bash commands still prompt');
     });
   });
 

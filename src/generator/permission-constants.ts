@@ -105,6 +105,55 @@ export const BASH_DENY_COMMAND_PATTERNS: readonly string[] = [
 ];
 
 /**
+ * Sandbox-execution wrappers that bridge from a host shell into an isolated
+ * environment (WSL, Docker / Compose, Podman, devcontainer CLI). PRD §1.9.2
+ * recommends running agents in these environments; the deny / allow tables
+ * therefore include parallel rules for each wrapper so agents inside a
+ * sandbox stay subject to the same prefix_rule guarantees as the host.
+ *
+ * Each wrapper is treated literally: `wsl`, `docker exec`, `docker compose
+ * exec`, `podman exec`, `devcontainer exec`. Wrappers with opaque -c bodies
+ * (`ssh user@host -c '...'`, `vagrant ssh -c '...'`) are deliberately omitted
+ * — they have the same prefix_rule-bypass shape as `pwsh -Command` (PRD
+ * §1.9.1 item 10.3) and stay disallowed.
+ */
+const SANDBOX_WRAPPER_PREFIXES: readonly string[] = [
+  'wsl',
+  'docker exec',
+  'docker compose exec',
+  'podman exec',
+  'devcontainer exec',
+];
+
+/**
+ * Inner-command shapes that, when reachable through any sandbox wrapper,
+ * would let a caller bypass the prefix_rule deny list (raw interpreters and
+ * shell `-c` evaluators). Block both the bare and flag-prefixed forms so
+ * e.g. `wsl bash -c "rm -rf /"` and `docker exec myc pwsh -Command "iwr ..."`
+ * are both denied before allow rules are checked.
+ */
+const SANDBOX_INNER_DENIES: readonly string[] = [
+  ...RAW_INTERPRETER_PATTERNS,
+  // -c / -Command-style interpreters not in RAW_INTERPRETER_PATTERNS
+  'bash -c',
+  'sh -c',
+  'zsh -c',
+  'dash -c',
+  'ksh -c',
+];
+
+function expandWrapper(wrapper: string, inners: readonly string[]): string[] {
+  return inners.flatMap((inner: string) => [
+    `Bash(${wrapper} ${inner}:*)`,
+    `Bash(${wrapper} * ${inner}:*)`,
+  ]);
+}
+
+export const SANDBOX_WRAPPER_DENIES: readonly string[] = SANDBOX_WRAPPER_PREFIXES.flatMap(
+  (wrapper: string) => expandWrapper(wrapper, SANDBOX_INNER_DENIES),
+);
+
+/**
  * Non-bash deny entries that are NOT derived from BASH_DENY_COMMAND_PATTERNS
  * (filesystem editors, pipe-to-shell bash expressions, secret-path globs).
  * Pure `Bash(<cmd>:*)` patterns belong in BASH_DENY_COMMAND_PATTERNS instead.
@@ -138,12 +187,14 @@ const EXTRA_DENY_PATTERNS: readonly string[] = [
 ];
 
 /**
- * Complete deny list: DESTRUCTIVE_BASH_PATTERNS mapped to Bash entries, plus
- * all additional deny patterns. This is the single source of truth for
- * buildDenyList().
+ * Complete deny list: DESTRUCTIVE_BASH_PATTERNS mapped to Bash entries, the
+ * wsl-wrapper denies (so wsl-wrapped pwsh/cmd/bash -c cannot bypass the
+ * prefix_rule deny list), plus all additional deny patterns. This is the
+ * single source of truth for buildDenyList().
  */
 export const DENY_PATTERNS: readonly string[] = [
   ...BASH_DENY_COMMAND_PATTERNS.map((p: string) => `Bash(${p}:*)`),
+  ...SANDBOX_WRAPPER_DENIES,
   ...EXTRA_DENY_PATTERNS,
 ];
 
@@ -177,4 +228,45 @@ export const TOOLCHAIN_ALLOWS: readonly string[] = [
  * MCP, which does not require any Bash allowlist entry.
  */
 export const CROSS_MODEL_HANDOFF_ALLOWS: readonly string[] = [
+  'Bash(codex exec:*)',
+  'Bash(claude -p:*)',
 ];
+
+/**
+ * Inner commands that may be safely invoked through any sandbox wrapper from
+ * the host. Combines the package-manager binaries, local read-only git, the
+ * toolchain binaries, and the cross-model handoff binaries so a host-side
+ * Claude Code or Codex session can drive a project that lives inside WSL,
+ * a docker/podman container, or a devcontainer.
+ *
+ * Two patterns are emitted per (wrapper, inner) pair:
+ *   `Bash(<wrapper> <inner>:*)`     — matches the bare form
+ *                                     (e.g. `wsl pnpm test`)
+ *   `Bash(<wrapper> * <inner>:*)`   — matches the flag-prefixed form
+ *                                     (e.g. `wsl --distribution Ubuntu pnpm test`,
+ *                                     `docker exec -i myc pnpm test`)
+ *
+ * The SANDBOX_WRAPPER_DENIES above run first, so a wrapper invocation that
+ * targets a raw interpreter (`wsl pwsh`, `docker exec myc bash -c "..."`,
+ * etc.) is blocked before allow rules are evaluated.
+ */
+const SANDBOX_INNER_ALLOWED: readonly string[] = [
+  'pnpm',
+  'npm',
+  'yarn',
+  'bun',
+  'git status',
+  'git diff',
+  'git log',
+  'git branch',
+  'tsc',
+  'jest',
+  'eslint',
+  'prettier',
+  'codex exec',
+  'claude -p',
+];
+
+export const SANDBOX_WRAPPER_ALLOWS: readonly string[] = SANDBOX_WRAPPER_PREFIXES.flatMap(
+  (wrapper: string) => expandWrapper(wrapper, SANDBOX_INNER_ALLOWED),
+);

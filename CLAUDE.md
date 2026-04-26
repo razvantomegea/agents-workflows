@@ -148,9 +148,14 @@ These complement the command-layer denies — see PRD §1.9.2 for full rationale
 
 ### What non-interactive mode does
 
-- Codex runs with `approval_policy = "never"`.
-- Claude runs with `defaultMode = "bypassPermissions"`.
-- Approval prompts are skipped.
+- Codex runs with `approval_policy = "never"`. All approval prompts are skipped.
+- Claude runs with `defaultMode = "acceptEdits"`. File edits and basic
+  filesystem ops (`mkdir`, `touch`, `mv`, `cp`) auto-approve in the working
+  directory; **Bash commands still prompt** unless they match a rule in
+  `permissions.allow`. To get truly headless Claude sessions, pair
+  `acceptEdits` with the Epic 9 Bash allow-list — never with
+  `bypassPermissions` or `--dangerously-skip-permissions`, which are the
+  same dangerous mode in two delivery surfaces.
 
 ### What it does NOT relax
 
@@ -169,10 +174,7 @@ These complement the command-layer denies — see PRD §1.9.2 for full rationale
 3. **PowerShell wrapper prefix_rule bypass.** `pwsh -Command` / `cmd /c` body is
    opaque to prefix_rule (OpenAI #13502). Mitigated by E9.T12 forbid rules.
 
-4. **Claude `bypassPermissions` unreliability.** Settings-based flip is often ignored
-   (#34923 + dupes). Fails safe today — prompts rather than silent bypass.
-
-5. **Network exfiltration surface.** `network_access = true` plus prompt injection via
+4. **Network exfiltration surface.** `network_access = true` plus prompt injection via
    README / issue body / sourcemap can exfiltrate secrets via `curl` / `iwr`.
    Mitigated by E9.T11 denies and E9.T13 `allowedDomains`; residual via `node -e`
    raw sockets.

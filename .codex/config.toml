@@ -21,8 +21,7 @@
 # 1. Claude sub-agent deny-bypass (Anthropic #25000, #43142)
 # 2. Codex Windows sandbox instability (OpenAI #15850)
 # 3. PowerShell wrapper prefix_rule bypass (OpenAI #13502)
-# 4. Claude bypassPermissions unreliability (Anthropic #34923)
-# 5. Network exfiltration surface (mitigated by E9.T11 + E9.T13)
+# 4. Network exfiltration surface (mitigated by E9.T11 + E9.T13)
 approval_policy = "never"
 sandbox_mode = "workspace-write"
 

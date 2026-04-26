@@ -97,10 +97,41 @@ describe('buildPermissions', () => {
     expect(perms).not.toContain('Bash(npx:*)');
   });
 
-  it('does not auto-allow opaque cross-model subprocess handoffs', () => {
+  it('auto-allows the cross-model subprocess handoffs (PRD §1.7.2)', () => {
     const perms = buildPermissions(PNPM_INPUT);
-    expect(perms).not.toContain('Bash(codex exec:*)');
-    expect(perms).not.toContain('Bash(claude -p:*)');
+    expect(perms).toContain('Bash(codex exec:*)');
+    expect(perms).toContain('Bash(claude -p:*)');
+  });
+
+  it('auto-allows sandbox-wrapped forms of pnpm / git-readonly / toolchain / handoff binaries', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    // wsl
+    expect(perms).toContain('Bash(wsl pnpm:*)');
+    expect(perms).toContain('Bash(wsl * pnpm:*)');
+    expect(perms).toContain('Bash(wsl git status:*)');
+    expect(perms).toContain('Bash(wsl tsc:*)');
+    expect(perms).toContain('Bash(wsl codex exec:*)');
+    expect(perms).toContain('Bash(wsl claude -p:*)');
+    // docker exec
+    expect(perms).toContain('Bash(docker exec pnpm:*)');
+    expect(perms).toContain('Bash(docker exec * pnpm:*)');
+    // docker compose exec
+    expect(perms).toContain('Bash(docker compose exec pnpm:*)');
+    expect(perms).toContain('Bash(docker compose exec * pnpm:*)');
+    // podman exec
+    expect(perms).toContain('Bash(podman exec pnpm:*)');
+    expect(perms).toContain('Bash(podman exec * pnpm:*)');
+    // devcontainer exec
+    expect(perms).toContain('Bash(devcontainer exec pnpm:*)');
+    expect(perms).toContain('Bash(devcontainer exec * pnpm:*)');
+  });
+
+  it('does NOT broaden the wrapper allow to opaque -c/-Command forms', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).not.toContain('Bash(wsl bash -c:*)');
+    expect(perms).not.toContain('Bash(wsl pwsh:*)');
+    expect(perms).not.toContain('Bash(docker exec bash -c:*)');
+    expect(perms).not.toContain('Bash(podman exec bash -c:*)');
   });
 });
 
@@ -161,6 +192,36 @@ describe('DENY_PATTERNS — E9.T1 + E9.T11 required entries', () => {
   it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern) => {
     expect(DENY_PATTERNS).toContain(pattern);
   });
+});
+
+describe('DENY_PATTERNS — sandbox-wrapper bypass guards', () => {
+  const SANDBOX_WRAPPER_BYPASS_REQUIRED: readonly string[] = [
+    // wsl
+    'Bash(wsl pwsh:*)', 'Bash(wsl * pwsh:*)',
+    'Bash(wsl powershell:*)', 'Bash(wsl * powershell:*)',
+    'Bash(wsl cmd /c:*)', 'Bash(wsl * cmd /c:*)',
+    'Bash(wsl bash -c:*)', 'Bash(wsl * bash -c:*)',
+    'Bash(wsl sh -c:*)', 'Bash(wsl * sh -c:*)',
+    'Bash(wsl node -e:*)', 'Bash(wsl * node -e:*)',
+    'Bash(wsl python -c:*)', 'Bash(wsl * python -c:*)',
+    // docker exec
+    'Bash(docker exec pwsh:*)', 'Bash(docker exec * pwsh:*)',
+    'Bash(docker exec bash -c:*)', 'Bash(docker exec * bash -c:*)',
+    // docker compose exec
+    'Bash(docker compose exec bash -c:*)',
+    'Bash(docker compose exec * bash -c:*)',
+    // podman exec
+    'Bash(podman exec bash -c:*)', 'Bash(podman exec * bash -c:*)',
+    // devcontainer exec
+    'Bash(devcontainer exec bash -c:*)', 'Bash(devcontainer exec * bash -c:*)',
+  ];
+
+  it.each(SANDBOX_WRAPPER_BYPASS_REQUIRED)(
+    'DENY_PATTERNS contains %s (sandbox-wrapper bypass guard)',
+    (pattern) => {
+      expect(DENY_PATTERNS).toContain(pattern);
+    },
+  );
 });
 
 describe('buildPostToolUseHooks', () => {
