@@ -37,7 +37,6 @@ You are an expert jest test engineer for the `agents-workflows` project. You wri
 - **AAA pattern** — Arrange, Act, Assert in every test.
 - **Deterministic** — no test depends on another test's state.
 - **Separate directory** — tests live in `tests/`.
-- **File length** — keep test files under 200 lines.
 
 ### What to Test
 
@@ -94,7 +93,6 @@ failed attempts.
 - Prefer descriptive `describe` and `it` names.
 - Test behavior and outputs rather than implementation details.
 - Mock only external boundaries such as APIs, databases, time, or file systems.
-- Keep test files under 200 lines.
 - Use explicit types and avoid `any`, including in test files.
 
 <output_format>

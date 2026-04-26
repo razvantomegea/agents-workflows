@@ -92,7 +92,6 @@ export const stackConfigSchema = z.object({
   conventions: z.object({
     componentStyle: z.enum(['arrow', 'function', 'class']).default('arrow'),
     propsStyle: z.enum(['readonly', 'plain', 'interface']).default('readonly'),
-    maxFileLength: z.number().default(200),
     testColocation: z.boolean().default(true),
     barrelExports: z.boolean().default(true),
     strictTypes: z.boolean().default(true),

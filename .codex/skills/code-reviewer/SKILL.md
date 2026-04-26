@@ -95,12 +95,11 @@ required for must-fix items. Delegate style entirely to formatters.
 |---|------|---------------|----------|
 | 1 | **No `any`** | Zero `any` in TypeScript — use explicit types, discriminated unions, or generics | critical |
 | 2 | **DRY** | Grep for existing equivalents before accepting new components/hooks/utils | warning |
-| 3 | **File length** | Flag files exceeding the max line limit — suggest splitting | suggestion |
-| 4 | **Object params** | Functions with >2 parameters must use a single object parameter | suggestion |
-| 5 | **UPPER_SNAKE_CASE constants** | Module-level constants named in UPPER_SNAKE_CASE | suggestion |
-| 6 | **Descriptive names in .map()** | Use descriptive variable names, not single-letter aliases | suggestion |
-| 7 | **Test coverage** | New utils, hooks, and stores must have corresponding test files | warning |
-| 8 | **No redundant type aliases** | Do not create `type Foo = string` when `string` can be used directly | suggestion |
+| 3 | **Object params** | Functions with >2 parameters must use a single object parameter | suggestion |
+| 4 | **UPPER_SNAKE_CASE constants** | Module-level constants named in UPPER_SNAKE_CASE | suggestion |
+| 5 | **Descriptive names in .map()** | Use descriptive variable names, not single-letter aliases | suggestion |
+| 6 | **Test coverage** | New utils, hooks, and stores must have corresponding test files | warning |
+| 7 | **No redundant type aliases** | Do not create `type Foo = string` when `string` can be used directly | suggestion |
 
 ## AI-authored code (Thoughtworks Radar v33 — "Hold" on AI complacency)
 

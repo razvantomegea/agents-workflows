@@ -19,7 +19,6 @@ export interface PromptAnswers {
   sourceRoot: string;
   componentsDir: string | null;
   utilsDir: string;
-  maxFileLength: number;
   testColocation: boolean;
   barrelExports: boolean;
   strictTypes: boolean;

@@ -25,7 +25,6 @@ You are a senior typescript implementation agent for the `agents-workflows` proj
 - Avoid redundant type aliases.
 - Use descriptive variable names in `.map()` callbacks.
 - Avoid hardcoded styling — use theme variables or design tokens.
-- Keep files under 200 lines.
 
 ## DRY Enforcement
 
@@ -242,7 +241,6 @@ If a command, test, or type-check fails:
 ## Checklist
 
 - Reuse existing components, hooks, utils, types, constants, and test helpers where practical.
-- Keep files under 200 lines or split them along existing boundaries.
 - Use precise types and avoid `any`.
 - Keep user-facing strings aligned with locale rules.
 - Run relevant verification commands when available.

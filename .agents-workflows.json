@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-26T14:44:52.149Z",
-  "stackConfigHash": "9c220cd3d2f700c8",
+  "generatedAt": "2026-04-26T16:10:42.154Z",
+  "stackConfigHash": "82c3eb389e2f04cb",
   "config": {
     "project": {
       "name": "agents-workflows",
@@ -51,7 +51,6 @@
     "conventions": {
       "componentStyle": "arrow",
       "propsStyle": "readonly",
-      "maxFileLength": 200,
       "testColocation": false,
       "barrelExports": true,
       "strictTypes": true

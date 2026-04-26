@@ -32,9 +32,6 @@ You are an expert <%= tooling.testFramework %> test engineer for the `<%= projec
 - Prefer descriptive `describe` and `it` names.
 - Test behavior and outputs rather than implementation details.
 - Mock only external boundaries such as APIs, databases, time, or file systems.
-<% if (conventions.maxFileLength) { -%>
-- Keep test files under <%= conventions.maxFileLength %> lines.
-<% } -%>
 <% if (conventions.strictTypes) { -%>
 - Use explicit types and avoid `any`, including in test files.
 <% } -%>

@@ -122,7 +122,6 @@ export async function runPromptFlow(
     conventions: {
       componentStyle: 'arrow',
       propsStyle: 'readonly',
-      maxFileLength: conventions.maxFileLength,
       testColocation: conventions.testColocation,
       barrelExports: conventions.barrelExports,
       strictTypes: conventions.strictTypes,

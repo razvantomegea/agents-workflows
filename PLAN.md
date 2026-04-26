@@ -15,7 +15,6 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - [ ] Inspect `src/templates/partials/subagent-caveat.md.ejs` (1-line partial) as the precedent for the new `security-disclosure.md.ejs` partial format and consumer-include style.
 - [ ] Inspect `tests/generator/epic-1-safety.test.ts` for the inline-assertion snapshot pattern (no Jest snapshot files; assertions on `JSON.parse(content)` and TOML `.toContain`) so Task 8's nine cases match house style.
 - [ ] Confirm root docs (`README.md`, `CLAUDE.md`, `AGENTS.md`, `QA.md`) are hand-edited; Epic 10 doc tasks (T3, T4, T6, T7, T8) update **both** the root files and the corresponding EJS templates in `src/templates/config/` so downstream consumers receive the same guidance.
-- [ ] Confirm no file in the modified set crosses 200 lines after edits — flag split-out helper modules in advance (notably `src/cli/non-interactive-flags.ts` for shared validation; `src/prompt/ask-non-interactive.ts` for the disclosure prompt to keep `questions.ts` ≤200 lines).
 
 ## Tasks
 
@@ -42,12 +41,11 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 **Notes**
 - Lands FIRST — Tasks 2, 3, 4, 5 all import the new schema or the `IsolationChoice` union. Anything that compiles against the old shape breaks until this task is in.
 - DRY: define `IsolationChoice` once in `src/schema/stack-config.ts` (export from there) and re-import in `src/prompt/types.ts`, `src/prompt/ask-non-interactive.ts` (Task 2), `src/cli/non-interactive-flags.ts` (Task 3). Do not redeclare the union in any other file.
-- File-size watch: `stack-config.ts` is currently 129 lines — adding ~10 lines stays well under 200.
 - Keep helper-free; no `any`. Use `z.infer<typeof stackConfigSchema>['security']` if a derived TS type is needed instead of redeclaring.
 
 ### Task 2 — `askNonInteractiveMode()` prompt + disclosure render [LOGIC] [UI]
 **Files**
-- `src/prompt/ask-non-interactive.ts` (new — keeps `questions.ts` under 200 lines)
+- `src/prompt/ask-non-interactive.ts` (new — keeps `questions.ts` focused)
 - `src/prompt/questions.ts` (re-export only)
 - `src/prompt/prompt-flow.ts` (call site)
 
@@ -68,8 +66,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 **Notes**
 - Depends on Task 1 (schema/types) and Task 4 (partial body). Wire the partial render via the existing EJS render util used by `src/generator/` (read template, render with `{}` context, strip leading `#` heading lines for terminal display); document the helper in this task so Task 5 reuses the same render call.
 - DRY: the exact-match string `"yes, I accept the risks"` and the host-os warning text appear in BOTH this prompt AND the `security-disclosure.md.ejs` partial (Task 4). Define the constant once in `src/prompt/ask-non-interactive.ts` as `HOST_OS_ACCEPT_PHRASE` and import it from `src/cli/non-interactive-flags.ts` (Task 3) so error messages stay in lockstep.
-- `prompt-flow.ts` is currently 142 lines — adding ~6 lines for the call + assembly stays under 200. Do NOT inline the prompt logic there.
-- File-size watch: target `ask-non-interactive.ts` ≤120 lines.
+- Do NOT inline the prompt logic in `prompt-flow.ts`.
 - No `any`; explicit return + param types throughout.
 
 ### Task 3 — CLI flag wiring on `init` and `update` [API] [LOGIC]
@@ -100,8 +97,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - Depends on Task 1 (`IsolationChoice`) and Task 2 (the prompt that consumes the flags). Lands after both.
 - DRY: `parseNonInteractiveFlags` is the SINGLE validator; both `init` and `update` call it. Do NOT duplicate validation in `update-command.ts` — that is Task 6's responsibility consuming the same helper.
 - DRY: reuse `HOST_OS_ACCEPT_PHRASE` constant from Task 2 inside the host-os error message wording so both surfaces speak the same phrase.
-- `index.ts` is currently 92 lines — six `.option()` additions across two subcommands brings it to ~110, still under 200.
-- File-size watch: target `non-interactive-flags.ts` ≤80 lines.
+- Keep flag parsing in `non-interactive-flags.ts` rather than duplicating it in command files.
 - No `any`; every commander action callback uses an explicit interface, not `Record<string, unknown>`.
 
 ### Task 4 — Security-disclosure EJS partial [SCHEMA] [DOCS] [PARALLEL with Task 1]
@@ -127,7 +123,6 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 **Notes**
 - PARALLEL with Task 1 (no shared files). Lands before Task 2 (prompt renders it) and Task 5 (templates embed it).
 - DRY: this partial is the ONLY copy of the §1.9.1 disclosure language; if the partial changes, all three consumers update simultaneously. Tasks 2, 5, and 7 must NOT inline duplicate text.
-- File-size watch: target ≤180 lines (most content is short bullets; well under 200).
 - No JSX/HTML; use plain Markdown so terminal rendering preserves structure.
 
 ### Task 5 — Template branching for `.codex/config.toml` and `.claude/settings.json` [SCHEMA] [LOGIC]
@@ -156,7 +151,6 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 **Notes**
 - Depends on Task 1 (schema) and Task 4 (partial). Lands after both.
 - DRY: the short-form comment lines come from the SAME partial as the long-form prompt render (Task 2) and the docs embed (Task 7) — three consumers, one source of truth.
-- File-size watch: `codex-config.toml.ejs` grows from 17 → ~40 lines (well under 200); `settings.json.ejs` grows from 54 → ~56 lines; `build-context.ts` grows from 105 → ~115 lines.
 - No `any`; `GeneratorContext` additions are explicit `StackConfig['security']` and `readonly string[]`.
 - Verify the emitted TOML still parses with a TOML parser in Task 8 (case 7 + 8) and the emitted JSON still parses with `JSON.parse` (case 9).
 
@@ -216,7 +210,6 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - Groups E10.T3 + T4 + T6 + T7 + T8 (5 doc-shaped tasks) into one logical unit per the orchestrator's "max 8 tasks" cap and the prompt's grouping guidance.
 - Depends on Task 4 (partial body to embed) and Task 5 (template context now exposes `security`).
 - DRY: every per-tool invocation appears ONCE in the README table; `CLAUDE.md` / `AGENTS.md` link to README's Semi-autonomous subsection rather than repeat the table. The §1.9.1 disclosure body lives only in the partial (Task 4).
-- File-size watch: `README.md` 323 → ~370 lines (no cap; reference doc). `CLAUDE.md` 130 → ~145 lines (under the 200 cap from `CLAUDE.md` itself). `AGENTS.md` 247 → ~262 lines (already over 200 — flag the existing overrun in the Notes; do not refactor in this epic, but record the violation in the post-implementation checklist as a follow-up). `AGENTS.md.ejs` 208 → ~223 lines (already over 200 in template — same flag).
 - Cursor / Copilot / Windsurf doc additions are PROSE only — no new template files (E11 owns the actual `.cursor/rules` / `.github/prompts` / `.windsurf/rules` emission pipeline). Document the per-tool prerequisites and reference the Epic 9 deny-rule files; do not generate them here.
 
 ### Task 8 — Tests: `tests/generator/epic-10-non-interactive.test.ts` [TEST]
@@ -245,7 +238,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 **Notes**
 - Lands LAST. Depends on every prior task.
 - DRY: do not duplicate the makeStackConfig fixture — extend it. If multiple tests need the non-interactive variant, factor `makeStackConfigNonInteractive(overrides)` into `tests/generator/fixtures.ts` so future epics reuse it.
-- File-size watch: target ≤200 lines for the new test file. If it exceeds, split the snapshot cases (7–9) into `epic-10-templates.test.ts` and keep flag/round-trip logic in `epic-10-non-interactive.test.ts`.
+- If the new tests become hard to read, split the snapshot cases (7–9) into `epic-10-templates.test.ts` and keep flag/round-trip logic in `epic-10-non-interactive.test.ts`.
 - Do NOT regress `tests/generator/epic-1-safety.test.ts` line 152 (`approval_policy = "on-request"`) — the safe-default branch must still emit it byte-for-byte. Run the full Jest suite as part of post-implementation checklist.
 - Mock `@inquirer/prompts` for cases 1–4 (the prompt-driven cases); use real `parseNonInteractiveFlags` (no mocking — it is pure) for the validation throws.
 - No `any`; explicit interface for the manifest fixture and the parsed JSON / TOML shapes.
@@ -262,9 +255,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - [ ] Run `code-reviewer` agent on all modified files — fix every critical and warning finding.
 - [ ] Run `security-reviewer` agent (parallel) on all modified files — confirm the Epic 9 deny-list / forbid-list still enforced in the non-interactive branch; flag any path where the new branch silently drops a guard.
 - [ ] DRY scan: confirm `IsolationChoice` is declared exactly once (Task 1), the `HOST_OS_ACCEPT_PHRASE` constant exactly once (Task 2), and the `security-disclosure.md.ejs` partial body has no parallel copy in any other file.
-- [ ] Pre-existing file-size violations noted but NOT remediated in this epic: `AGENTS.md` (root) and `src/templates/config/AGENTS.md.ejs` both exceed the 200-line cap. Open a follow-up issue rather than refactoring inside this branch.
 
 ## External errors
 
-- **Pre-existing file-size overage (not remediated in Epic 10):** `AGENTS.md` (root) and `src/templates/config/AGENTS.md.ejs` both exceed the project's 200-line cap. Both files were already over the cap before Epic 10 began (per the PLAN's pre-implementation notes). Epic 10 added ~3–8 net lines to each (for the semi-autonomous paragraph and the conditional disclosure include). Refactoring these files is out of scope for Epic 10 and should be tracked as a follow-up cleanup.
 - **PRD §E10.T11 spec gap (acknowledged, not fixable in code):** The PRD asks for a self-documenting `runsIn` + `acknowledged` comment block in BOTH `.codex/config.toml` and `.claude/settings.json` when non-interactive mode is enabled. JSON does not support inline comments natively, so `settings.json` only emits the `defaultMode` value change; the comment block lands only in the TOML emit. Documented in `README.md`'s Semi-autonomous subsection and the rendered `CLAUDE.md` / `AGENTS.md` disclosure embed.

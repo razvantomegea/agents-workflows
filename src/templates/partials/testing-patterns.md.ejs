@@ -27,9 +27,6 @@
 <% } else { -%>
 - **Separate directory** — tests live in a dedicated tests folder.
 <% } -%>
-<% if (conventions.maxFileLength) { -%>
-- **File length** — keep test files under <%= conventions.maxFileLength %> lines.
-<% } -%>
 
 ### What to Test
 
@@ -48,9 +45,6 @@
 - **Arrange-Act-Assert** in every test function.
 - **Use fixtures** for setup and teardown.
 - **Parametrize** for testing multiple inputs.
-<% if (conventions.maxFileLength) { -%>
-- Keep test files under <%= conventions.maxFileLength %> lines.
-<% } -%>
 <% } else if (testFramework === 'go-test') { -%>
 ### Core Principles
 

@@ -22,8 +22,6 @@ This file provides guidance to Claude Code when working with code in this reposi
 ## Context budget
 
 - Load only files, symbols, and recent decisions needed for the current task.
-- Keep this file under 200 lines. If a line's removal would not cause
-  mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
 - Do not paste docs here — link them. Skills hold task-specific knowledge.
 - When context reaches ~50% full, write a NOTES.md summary and /clear.
@@ -99,7 +97,6 @@ This loop is mandatory.
 - Avoid redundant type aliases.
 - Use descriptive variable names in `.map()` callbacks.
 - Avoid hardcoded styling — use theme variables or design tokens.
-- Keep files under 200 lines.
 
 ## File Organization
 

@@ -60,8 +60,6 @@ The framework is therefore **architecturally sound**. What follows is not a rede
 ```
 ## Context budget
 - Load only files, symbols, and recent decisions needed for the current task.
-- Keep this file under 200 lines. If a line's removal would not cause
-  mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
 - Do not paste docs here — link them. Skills hold task-specific knowledge.
 - When context reaches ~50% full, write a NOTES.md summary and /clear.
@@ -2048,7 +2046,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST] [DONE 2026-04-25]
+## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST] [IN REVIEW]
 
 **Landed on** `feature/epic-10-non-interactive-mode`.
 
@@ -2568,7 +2566,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E14.T1 — Refinement prompt template [§1.20] — M
 
 - **Files**: new `src/templates/refine/AGENTS_REFINE.md.ejs`.
-- **Change**: Render the six sections from §1.20 with EJS placeholders driven by the full `StackConfig`. Reference enabled agents dynamically via `<% for (const [key, enabled] of Object.entries(agents)) { if (enabled) { %>...<% } } %>`. Include the DoD commands from `commands.{typeCheck,test,lint}` verbatim in the "Verification hand-off" section. Cite PRD sections (§1.3, §1.6, §1.13, §2.1) with anchor syntax. Keep the template under 200 lines.
+- **Change**: Render the six sections from §1.20 with EJS placeholders driven by the full `StackConfig`. Reference enabled agents dynamically via `<% for (const [key, enabled] of Object.entries(agents)) { if (enabled) { %>...<% } } %>`. Include the DoD commands from `commands.{typeCheck,test,lint}` verbatim in the "Verification hand-off" section. Cite PRD sections (§1.3, §1.6, §1.13, §2.1) with anchor syntax.
 - **Done when**: rendering against the current repo's stack produces a prompt that names every currently-enabled agent file under `.claude/agents/` (and/or `.codex/skills/`), references the project's real `pnpm` commands, and includes each mandated section.
 
 ### E14.T2 — Generator entry [§1.20] — S
@@ -2631,7 +2629,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E15.T1 — Inventory and gap report [§2.14] — S
 
 - **Files**: new `scripts/audit-docstrings.ts`.
-- **Change**: Add a one-shot Node script that walks `src/**/*.ts`, parses each file with `typescript`'s compiler API (already a transitive dep via `tsx`), and prints a CSV of `(file, exportName, kind, hasDocstring, lineCount)` for every `export function` / `export const fn = (...) =>` / `export class { method }`. Skip files matching the out-of-scope rules above. Keep the script under 200 lines.
+- **Change**: Add a one-shot Node script that walks `src/**/*.ts`, parses each file with `typescript`'s compiler API (already a transitive dep via `tsx`), and prints a CSV of `(file, exportName, kind, hasDocstring, lineCount)` for every `export function` / `export const fn = (...) =>` / `export class { method }`. Skip files matching the out-of-scope rules above.
 - **Done when**: `pnpm tsx scripts/audit-docstrings.ts > docs/docstring-audit.csv` produces a deterministic, sorted report; the CSV is committed alongside the script and updated whenever the inventory shifts.
 
 ### E15.T2 — Document `src/utils/` [§2.14] — S
@@ -2717,8 +2715,8 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E16.T3 — `AGENTS.md.ejs` routing update [§1.7] — M
 
 - **Files**: [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
-- **Change**: Replace the current **Model routing** table with the Claude/GPT-5.x-named version (E16.T1 schema). Preserve the trailing "never let the writer be its own final reviewer" paragraph. Append a **Stack-aware writer/reviewer defaults** block that dispatches on `stack.language` using two small in-template allow-lists — Claude-primary (`python`, `ruby`, `rust`, `java`) and GPT-primary (`typescript`, `javascript`, `go`, `csharp` / `c#`, `php`, `swift`, `kotlin`) — combined with the existing `isReact` / `isTypescript` / `isFrontend` flags from `buildContext()`. TS/React fixtures hit a dedicated branch first so UI-heavy workspaces still get the Three.js-flavored guidance. Finally, append a **Cross-stack primary / secondary map** table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) so non-detected workspaces still get explicit guidance. Keep the template under 200 lines.
-- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present; template stays ≤ 210 lines after E16.T9 adds the cross-model handoff setup block.
+- **Change**: Replace the current **Model routing** table with the Claude/GPT-5.x-named version (E16.T1 schema). Preserve the trailing "never let the writer be its own final reviewer" paragraph. Append a **Stack-aware writer/reviewer defaults** block that dispatches on `stack.language` using two small in-template allow-lists — Claude-primary (`python`, `ruby`, `rust`, `java`) and GPT-primary (`typescript`, `javascript`, `go`, `csharp` / `c#`, `php`, `swift`, `kotlin`) — combined with the existing `isReact` / `isTypescript` / `isFrontend` flags from `buildContext()`. TS/React fixtures hit a dedicated branch first so UI-heavy workspaces still get the Three.js-flavored guidance. Finally, append a **Cross-stack primary / secondary map** table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) so non-detected workspaces still get explicit guidance.
+- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present.
 
 ### E16.T4 — `workflow-plan.md.ejs` model-selection note [§1.7] — S
 
@@ -2883,7 +2881,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 - Performance block always rendered: CLS target ≤0.1 for ≥75% of page visits; reserve image space with `width`/`height` attributes (modern browsers infer aspect ratio) or CSS `aspect-ratio`; animate `transform` (compositor-driven), never `top`/`left`/`box-sizing`; web fonts via WOFF2 only, `font-display: swap` for least render delay or `optional` to avoid swap-induced shift, tune fallback metrics with `size-adjust` and `ascent-override`, inline font declarations in `<head>`, preconnect to font origins, preload critical font files; LCP/image hints (`fetchpriority="high"` on the LCP image, `loading="lazy"` for below-the-fold, `decoding="async"` for non-critical).
 - AGENTS.md routing-table label updated: the `| UI/UX design (after every UI task) | \`ui-designer\` |` row renders an optional engine label when known, e.g. `| UI/UX design | \`ui-designer\` (tailwind-v4 + react variant) |`. Hidden entirely on backend fixtures (already gated by `isFrontendFramework` per Epic 13's E13.T5).
 - Snapshot tests under `tests/generator/` assert (a) every fixture in `tests/fixtures/frontend-{react,vue,angular,svelte}/` and `tests/fixtures/{frontend-vanilla,mobile-rn,mobile-expo,mobile-flutter}/` (the last four are NEW per E18.T3) renders the framework-specific recommendation row first; (b) Tailwind-v4 fixtures contain the v3→v4 migration utility list verbatim; (c) NON-Tailwind fixtures (CSS Modules, styled-components, vanilla CSS) contain zero Tailwind utility names; (d) Flutter fixtures contain `ColorScheme.fromSeed` and contain zero occurrences of `tailwind`; (e) every rendered `ui-designer.md` contains the 9-state checklist headings and the WCAG 2.2 SC numbers (1.4.1, 1.4.11, 2.1.1, 2.1.2, 2.4.3, 2.4.11, 2.5.3, 2.5.7, 2.5.8, 3.2.6, 3.3.7); (f) every rendered file contains the iOS 44pt + Android 48dp + web 24×24 px touch-target trio; (g) the engine label on the AGENTS.md routing row matches the fixture's `cssEngine`+`framework` pair.
-- `pnpm check-types && pnpm lint && pnpm test` green; reviewer + security-reviewer loop passes; the rewritten `ui-designer.md.ejs` stays ≤200 lines per CLAUDE.md (each conditional partial counts toward its own ≤200-line cap).
+- `pnpm check-types && pnpm lint && pnpm test` green; reviewer + security-reviewer loop passes.
 
 **Canonical sources (cite-or-lose-points).**
 
@@ -2902,7 +2900,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 ### E18.T2 — Stack-aware `ui-designer.md.ejs` rewrite [§18] — L
 
 - **Files**: [src/templates/agents/ui-designer.md.ejs](src/templates/agents/ui-designer.md.ejs) (replace existing content), new partial `src/templates/partials/ui-designer-tailwind-v4.md.ejs`, new partial `src/templates/partials/ui-designer-mobile.md.ejs`.
-- **Change**: Replace the React-hardcoded body with a template that branches on `cssEngine` and `framework`. Use shared `<%- include('../partials/ui-designer-tailwind-v4.md.ejs') %>` when `cssEngine === 'tailwind-v4'`; the mobile partial when `framework ∈ {'react-native','expo'}`; a "Material 3" inline block when `framework === 'flutter'`; a "framework-agnostic" fallback branch when both `framework` and `cssEngine` are unknown. Always emit the 9-state checklist + 5-a11y block + WCAG 2.2 SC numbers + the framework-aware component-library recommendation table from the §"Acceptance" §"Framework-aware component-library" criterion + the RTL/i18n block + the performance block. The Stack Context line MUST read from `<%= framework %>` and `<%= language %>` — no hardcoded "React". Keep each file (template + each partial) ≤200 lines per CLAUDE.md.
+- **Change**: Replace the React-hardcoded body with a template that branches on `cssEngine` and `framework`. Use shared `<%- include('../partials/ui-designer-tailwind-v4.md.ejs') %>` when `cssEngine === 'tailwind-v4'`; the mobile partial when `framework ∈ {'react-native','expo'}`; a "Material 3" inline block when `framework === 'flutter'`; a "framework-agnostic" fallback branch when both `framework` and `cssEngine` are unknown. Always emit the 9-state checklist + 5-a11y block + WCAG 2.2 SC numbers + the framework-aware component-library recommendation table from the §"Acceptance" §"Framework-aware component-library" criterion + the RTL/i18n block + the performance block. The Stack Context line MUST read from `<%= framework %>` and `<%= language %>` — no hardcoded "React".
 - **Done when**: rendering against the existing React+Tailwind-v4 fixture produces output containing all eight v3→v4 migration utility renames, the React row first in the component-library table, the 9-state checklist headings, the 11 WCAG 2.2 SC numbers, the iOS-44pt + Android-48dp + web-24×24-px touch-target trio, and zero hardcoded "React" outside the conditional branch; `pnpm test` passes the snapshot suite from E18.T6.
 
 ### E18.T3 — Mobile + Flutter + vanilla fixtures + Dart detection [§18] — M
@@ -2930,7 +2928,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 
 ### E18.T6 — Snapshot tests [§18] — M
 
-- **Files**: extend [tests/generator/stack-aware-agents.test.ts](tests/generator/stack-aware-agents.test.ts), or add a parallel new `tests/generator/ui-designer-multi-framework.test.ts` if extending the existing file would breach the 200-line CLAUDE.md cap (prefer the new file for clarity).
+- **Files**: extend [tests/generator/stack-aware-agents.test.ts](tests/generator/stack-aware-agents.test.ts), or add a parallel new `tests/generator/ui-designer-multi-framework.test.ts` if that keeps the assertions clearer.
 - **Change**: For each of the new + existing frontend fixtures (React+Tailwind-v4, Vue+Tailwind-v4, Angular+Tailwind-v3, Svelte+Tailwind-v4, Vanilla+Tailwind-v4, RN+NativeWind, Expo+NativeWind, Flutter), assert: (a) rendered `ui-designer.md` exists; (b) the framework-specific component-library recommendation row appears first (e.g., `shadcn/ui` first on the React fixture, `shadcn-vue` first on the Vue fixture, `spartan/ui` first on the Angular fixture); (c) Tailwind-v4 fixtures contain the eight v3→v4 migration utility renames verbatim; (d) NON-Tailwind fixtures (CSS Modules, styled-components, vanilla-CSS) contain zero Tailwind utility names (regex `\b(@apply|hover:|focus:|md:|sm:|lg:|xl:|focus-visible:|motion-reduce:|motion-safe:|disabled:|sr-only|ms-[0-9]|me-[0-9]|ps-[0-9]|pe-[0-9])\b` returns zero matches); (e) Flutter fixtures contain `ColorScheme.fromSeed` and contain zero occurrences of the literal string `tailwind`; (f) every fixture contains the 9-state checklist headings and the eleven WCAG 2.2 SC numbers (1.4.1, 1.4.11, 2.1.1, 2.1.2, 2.4.3, 2.4.11, 2.5.3, 2.5.7, 2.5.8, 3.2.6, 3.3.7); (g) every fixture contains the literal `44` (iOS) and `48` (Android) and `24` (web) touch-target numbers near the touch-target heading; (h) **Flutter detection assertions** (paired with E18.T3 changes): `detectStack` against the `mobile-flutter` fixture returns `language.value === 'dart'`, `framework.value === 'flutter'`, `packageManager.value === 'pub'`, `cssEngine === 'unknown'`; the rendered `commands` object contains `test === 'flutter test'`, `lint === 'dart analyze'`, `typeCheck === 'dart analyze'`, `build === 'flutter build'`, `format === 'dart format .'`; `isFrontendFramework('flutter') === true`.
 - **Done when**: `pnpm test` green; reverting any of E18.T2's branches causes the matching assertion to fail; new fixtures add ≤300 LOC total.
 

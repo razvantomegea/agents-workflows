@@ -76,7 +76,6 @@ export function createDefaultConfig(
     conventions: {
       componentStyle: 'arrow',
       propsStyle: 'readonly',
-      maxFileLength: 200,
       testColocation: true,
       barrelExports: true,
       strictTypes: true,

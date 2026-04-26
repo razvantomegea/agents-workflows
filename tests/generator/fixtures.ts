@@ -90,7 +90,7 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
     tooling: { packageManager: 'pnpm', packageManagerPrefix: 'pnpm', testFramework: 'jest', testLibrary: 'react-testing-library', e2eFramework: 'playwright', linter: 'eslint', formatter: 'prettier', ...overrides.tooling },
     paths: { sourceRoot: 'src/', componentsDir: 'src/components/', hooksDir: 'src/hooks/', utilsDir: 'src/utils/', testsDir: 'tests/', designTokensFile: null, i18nDir: null, testConfigFile: null, ...overrides.paths },
     commands: { typeCheck: 'pnpm check-types', test: 'pnpm test', lint: 'pnpm lint', format: null, build: null, dev: null, ...overrides.commands },
-    conventions: { componentStyle: 'arrow', propsStyle: 'readonly', maxFileLength: 200, testColocation: true, barrelExports: true, strictTypes: true, ...overrides.conventions },
+    conventions: { componentStyle: 'arrow', propsStyle: 'readonly', testColocation: true, barrelExports: true, strictTypes: true, ...overrides.conventions },
     agents: mergedAgents,
     selectedCommands: mergedSelectedCommands,
     targets: mergedTargets,
