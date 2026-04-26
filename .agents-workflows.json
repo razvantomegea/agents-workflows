@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-25T11:33:15.673Z",
-  "stackConfigHash": "a78301c2a27ad02a",
+  "generatedAt": "2026-04-26T16:10:42.154Z",
+  "stackConfigHash": "82c3eb389e2f04cb",
   "config": {
     "project": {
       "name": "agents-workflows",
@@ -51,7 +51,6 @@
     "conventions": {
       "componentStyle": "arrow",
       "propsStyle": "readonly",
-      "maxFileLength": 200,
       "testColocation": false,
       "barrelExports": true,
       "strictTypes": true
@@ -92,7 +91,12 @@
     "governance": {
       "enabled": false
     },
-    "monorepo": null
+    "monorepo": null,
+    "security": {
+      "nonInteractiveMode": true,
+      "runsIn": "vm",
+      "disclosureAcknowledgedAt": "2026-04-26T14:25:24.831Z"
+    }
   },
   "files": [
     ".claude/agents/architect.md",

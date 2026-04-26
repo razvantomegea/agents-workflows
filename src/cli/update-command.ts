@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createHash } from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
 import { logger, fileExists } from '../utils/index.js';
 import { manifestSchema } from '../schema/manifest.js';
@@ -9,13 +8,19 @@ import { withSafetySession } from './safety-session.js';
 import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
 import { askMainBranch } from '../prompt/questions.js';
+import { resolveSecurityUpdate } from './resolve-security-update.js';
+import { hashConfig } from './hash-config.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { MergeStrategy } from '../generator/index.js';
+import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
 
 export interface UpdateCommandOptions {
   yes?: boolean;
   noPrompt?: boolean;
   mergeStrategy?: MergeStrategy;
+  nonInteractive?: boolean;
+  isolation?: IsolationChoice;
+  acceptRisks?: boolean;
 }
 
 export async function updateCommand(
@@ -47,15 +52,26 @@ export async function updateCommand(
     process.exit(1);
   }
 
-  const nonInteractive = options.yes || options.noPrompt;
-  const config = {
+  const promptsSuppressed = options.yes || options.noPrompt;
+
+  const securityResolved = await resolveSecurityUpdate({
+    existing: parsed.data.config.security,
+    yes: options.yes,
+    noPrompt: options.noPrompt,
+    nonInteractive: options.nonInteractive,
+    isolation: options.isolation,
+    acceptRisks: options.acceptRisks,
+  });
+
+  const config: StackConfig = {
     ...parsed.data.config,
     project: {
       ...parsed.data.config.project,
-      mainBranch: nonInteractive
+      mainBranch: promptsSuppressed
         ? parsed.data.config.project.mainBranch
         : await askMainBranch(parsed.data.config.project.mainBranch),
     },
+    security: securityResolved,
   };
 
   logger.heading('agents-workflows update');
@@ -80,13 +96,13 @@ export async function updateCommand(
     } else {
       logger.warn(`  ~ ${diff.path} (modified)`);
       if (diff.patch) {
-        console.log(diff.patch);
+        logger.info(diff.patch);
       }
     }
   }
 
   logger.blank();
-  const proceed = nonInteractive || await confirm({ message: 'Apply changes?', default: true });
+  const proceed = promptsSuppressed || await confirm({ message: 'Apply changes?', default: true });
 
   if (!proceed) {
     logger.info('Aborted.');
@@ -126,6 +142,3 @@ export async function updateCommand(
   });
 }
 
-function hashConfig(json: string): string {
-  return createHash('sha256').update(json).digest('hex').slice(0, 16);
-}

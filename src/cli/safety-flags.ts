@@ -1,6 +1,7 @@
 import { configureWriteSession } from '../generator/index.js';
 import type { MergeStrategy } from '../generator/index.js';
 import { logger } from '../utils/index.js';
+import { NonInteractiveFlagsError } from './non-interactive-flags.js';
 
 export interface SafetyFlags {
   yes: boolean;
@@ -83,10 +84,10 @@ export async function handleSafetyErrors(action: () => Promise<void>): Promise<v
   try {
     await action();
   } catch (error) {
-    if (error instanceof SafetyFlagsError) {
+    if (error instanceof SafetyFlagsError || error instanceof NonInteractiveFlagsError) {
       logger.error(error.message);
       process.exit(1);
-      return;
+      return; // reason: process.exit is mocked in tests — return prevents fall-through to re-throw
     }
     throw error;
   }

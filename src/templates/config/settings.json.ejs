@@ -1,6 +1,6 @@
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "<%= security.nonInteractiveMode ? 'bypassPermissions' : 'default' %>",
     "allow": [
 <% permissions.forEach(function(permission, i) { -%>
       <%- jsonString(permission) %><%= i < permissions.length - 1 ? ',' : '' %>

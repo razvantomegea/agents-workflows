@@ -103,4 +103,9 @@ DRY and reusability are critical principles — enforced without exception:
 
 The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. Codex per-user approvals accumulate in `~/.codex/rules/default.rules` on Unix and `%USERPROFILE%\.codex\rules\default.rules` on Windows - prune them quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
 
+<%- include('../partials/host-hardening.md.ejs') %>
+<% if (security.nonInteractiveMode) { %>
+<%- include('../partials/security-disclosure.md.ejs') %>
+<% } %>
+
 <!-- agents-workflows:managed-end -->

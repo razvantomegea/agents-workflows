@@ -1,3 +1,5 @@
+import type { SecurityConfig } from '../schema/stack-config.js';
+
 export interface PromptAnswers {
   projectName: string;
   projectDescription: string;
@@ -17,7 +19,6 @@ export interface PromptAnswers {
   sourceRoot: string;
   componentsDir: string | null;
   utilsDir: string;
-  maxFileLength: number;
   testColocation: boolean;
   barrelExports: boolean;
   strictTypes: boolean;
@@ -25,4 +26,5 @@ export interface PromptAnswers {
   selectedCommands: string[];
   claudeCode: boolean;
   codexCli: boolean;
+  security: SecurityConfig;
 }

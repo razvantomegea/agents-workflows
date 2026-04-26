@@ -1,5 +1,16 @@
 import { z } from 'zod';
 
+export const ISOLATION_CHOICES = [
+  'devcontainer',
+  'docker',
+  'vm',
+  'vps',
+  'clean-machine',
+  'host-os',
+] as const;
+
+export type IsolationChoice = (typeof ISOLATION_CHOICES)[number];
+
 const SAFE_COMMAND_RE = /^[a-zA-Z0-9 ._/:=@-]+$/;
 const SAFE_COMMAND_MESSAGE = 'command contains disallowed shell metacharacters';
 const SAFE_BRANCH_RE = /^[a-zA-Z0-9._/-]+$/;
@@ -11,6 +22,16 @@ const SAFE_PROJECT_NAME_WHITESPACE_MESSAGE = 'project.name cannot be empty or wh
 const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
 const safeCommandNullable = safeCommand.nullable().default(null);
 const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
+
+export const SECURITY_DEFAULTS = {
+  nonInteractiveMode: false,
+  runsIn: null,
+  disclosureAcknowledgedAt: null,
+} satisfies {
+  nonInteractiveMode: boolean;
+  runsIn: IsolationChoice | null;
+  disclosureAcknowledgedAt: string | null;
+};
 
 export const stackConfigSchema = z.object({
   project: z.object({
@@ -71,7 +92,6 @@ export const stackConfigSchema = z.object({
   conventions: z.object({
     componentStyle: z.enum(['arrow', 'function', 'class']).default('arrow'),
     propsStyle: z.enum(['readonly', 'plain', 'interface']).default('readonly'),
-    maxFileLength: z.number().default(200),
     testColocation: z.boolean().default(true),
     barrelExports: z.boolean().default(true),
     strictTypes: z.boolean().default(true),
@@ -123,6 +143,13 @@ export const stackConfigSchema = z.object({
     tool: z.enum(['pnpm', 'npm', 'yarn', 'lerna', 'turbo', 'nx']).nullable(),
     workspaces: z.array(z.string()),
   }).nullable().default(null),
+
+  security: z.object({
+    nonInteractiveMode: z.boolean().default(false),
+    runsIn: z.enum(ISOLATION_CHOICES).nullable().default(null),
+    disclosureAcknowledgedAt: z.string().datetime().nullable().default(null),
+  }).default(() => ({ ...SECURITY_DEFAULTS })),
 });
 
 export type StackConfig = z.infer<typeof stackConfigSchema>;
+export type SecurityConfig = z.infer<typeof stackConfigSchema>['security'];

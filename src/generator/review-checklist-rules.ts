@@ -50,12 +50,6 @@ const ALL_RULES: RuleDefinition[] = [
     appliesWhen: ['react'],
   },
   {
-    name: 'File length',
-    howToVerify: 'Flag files exceeding the max line limit — suggest splitting',
-    severity: 'suggestion',
-    appliesWhen: ['all'],
-  },
-  {
     name: 'JSX extraction',
     howToVerify: 'JSX blocks >30 lines inside render should be extracted to separate components',
     severity: 'suggestion',

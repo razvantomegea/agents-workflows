@@ -25,7 +25,6 @@ You are a senior typescript implementation agent for the `agents-workflows` proj
 - Avoid redundant type aliases.
 - Use descriptive variable names in `.map()` callbacks.
 - Avoid hardcoded styling — use theme variables or design tokens.
-- Keep files under 200 lines.
 
 ## DRY Enforcement
 
@@ -127,6 +126,7 @@ explicit human approval per egress action. No exceptions.
   - LLM07 — never put secrets in system prompts; apply output validation before use.
   - LLM08 — validate embedding source integrity in RAG; reject unauthenticated vector stores.
   - LLM10 — rate-limit token spend; enforce resource budgets to prevent unbounded consumption.
+- **Host environment (any OS):** see PRD §1.9.2 / the generated `## Host hardening` block in `AGENTS.md` and `CLAUDE.md` for operator-side hardening — native-filesystem-only execution (no cross-mount work on Windows / macOS / Linux / WSL), `/sandbox` or devcontainer / Docker / VM, non-elevated user accounts, and org-mandated EDR (MDE / Falcon / SentinelOne) on enterprise devices. The OWASP defaults above are code-layer; host hardening is environment-layer.
 </security_defaults>
 
 ## Definition of done
@@ -241,7 +241,6 @@ If a command, test, or type-check fails:
 ## Checklist
 
 - Reuse existing components, hooks, utils, types, constants, and test helpers where practical.
-- Keep files under 200 lines or split them along existing boundaries.
 - Use precise types and avoid `any`.
 - Keep user-facing strings aligned with locale rules.
 - Run relevant verification commands when available.

@@ -60,8 +60,6 @@ The framework is therefore **architecturally sound**. What follows is not a rede
 ```
 ## Context budget
 - Load only files, symbols, and recent decisions needed for the current task.
-- Keep this file under 200 lines. If a line's removal would not cause
-  mistakes, delete it.
 - Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
 - Do not paste docs here — link them. Skills hold task-specific knowledge.
 - When context reaches ~50% full, write a NOTES.md summary and /clear.
@@ -466,6 +464,7 @@ Do not edit or remove feature entries — only flip the passes field.
 - **Impact.** On Windows 10/11, `workspace-write` sandbox fails with `CreateProcessWithLogonW 1056` / exit `0xC0000142` in recent CLI versions. Sandbox may fall through or produce persistent write failures.
 - **Mitigation.** On Windows, treat `.codex/rules/project.rules` as the **primary** guard, not secondary (E9.T10–E9.T12). Re-run the E9.T15 smoke suite on every Codex CLI upgrade. For high-trust sessions, run inside a devcontainer or remote VM.
 - **Residual.** Sandbox enforcement is best-effort on Windows.
+- **Codex on Windows-native is intentionally unsupported.** The wrapper-deny rules for `pwsh*` / `powershell*` / `cmd /c|/k` (E9.T12) make Codex unusable on Windows-native hosts because the Codex CLI runtime spawns every command via `powershell.exe -NoProfile -Command '<inner>'`, which the wrapper deny rejects before the inner command is inspected. WSL2 or a devcontainer is the supported path for Codex on Windows — the Linux runtime uses direct `execve` so the deny rules apply to the actual command. Claude Code uses direct bash and is unaffected; it remains supported on Windows-native.
 
 ### 10.3 Codex PowerShell / cmd wrapper prefix_rule bypass
 
@@ -493,6 +492,47 @@ Do not edit or remove feature entries — only flip the passes field.
 - Both tools scope *config-file discovery* to the project folder, but the agent process runs as the current user and retains user-level filesystem reach.
 - `workspace-write` restricts **writes** outside the workspace, not **reads**. `~/.ssh/*`, `~/.aws/credentials`, `~/.config/gh/hosts.yml`, browser profile cookies, and Windows `%APPDATA%` remain readable.
 - True project-scoped isolation requires a devcontainer, Docker container, or VM. This is recommended — but not required — by the E10.T9 isolation selector.
+
+## 1.9.2 Host-environment hardening (operator guidance, all OSes)
+
+**Rule.** Deny rules and the workspace-write sandbox are command-layer guards. Four operator-side practices reduce blast radius for the residual risks enumerated in §1.9.1 (especially items 10.5 and 10.6, which `workspace-write` does not close on reads). These apply on every supported host OS — Windows-native, Windows + WSL2, macOS, and Linux.
+
+**Priority.** [MUST] — referenced from generated `AGENTS.md` / `CLAUDE.md` via the `host-hardening.md.ejs` partial.
+
+### 11.1 Avoid cross-OS / cross-volume access
+
+- Run agents in the *native* filesystem of the OS that executes them. Cross-mounts expose host files that `workspace-write` does not gate on reads (§1.9.1 item 10.6).
+- **WSL2:** clone into `~/Projects/...`, not `/mnt/c/`. Reading `/mnt/c/Users/<you>/...` exposes browser profiles, `%APPDATA%`, `%USERPROFILE%\.aws\`, and Windows credential stores to a prompt-injected agent.
+- **macOS:** avoid working from external volumes / network shares (`/Volumes/...`, SMB mounts) for repos that touch secrets — keep them on the local APFS volume.
+- **Linux:** keep repos on local disk; avoid running an agent rooted at `/mnt/...`, `/media/...`, or `sshfs`/NFS mounts unless the mount is explicitly trusted.
+- **Windows-native:** keep repos under `%USERPROFILE%\Projects\...`; avoid UNC paths and removable media.
+- **Container hosts:** when bind-mounting host directories into Docker / Podman, mount only the project subtree, never `$HOME`.
+
+### 11.2 Use sandboxing
+
+- **Cross-platform first choice:** Claude Code's `/sandbox` slash command for ad-hoc isolated runs (works on every OS Claude Code supports).
+- **Cross-platform full session:** devcontainer / Docker / Podman / GitHub Codespaces.
+- **OS-native primitives** where they apply: Linux seccomp / Landlock / user namespaces; macOS `sandbox-exec`; Windows AppContainer / WDAC; WSL2 itself acting as a Linux VM under Hyper-V. Kernel sandbox primitives do not apply on Windows-native hosts (CLAUDE.md "Shared agent policy") — rules and `/sandbox` are the available controls there.
+- **Trust ladder:** `/sandbox` < `workspace-write` < devcontainer < disposable VM. The ordering compares **write** isolation. For **read** isolation against the §1.9.1 item 10.6 exfil surface, `/sandbox` adds syscall-filtered read restriction that `workspace-write` does not — combine the two when read-exfil is the threat. The ladder applies regardless of host OS.
+
+### 11.3 Hardened setup — no privilege escalation, any OS
+
+- Never install or run agents under `sudo` / `doas` / `su` (Linux/macOS) or "Run as administrator" / elevated PowerShell / `runas /user:Administrator` (Windows). Command-layer denies (`.codex/rules/project.rules` `[["rm", "sudo"]]` block, `.claude/settings.json` `Bash(sudo:*)`) only block the *agent* from invoking `sudo`; they do not stop a human operator from launching the harness with elevation.
+- Use a dedicated non-privileged user for daily development on every OS:
+  - **WSL2 / Linux:** non-root user; install pnpm/Node via a user-scoped manager (nvm, fnm, mise) — not `sudo apt`.
+  - **macOS:** standard user account, not the original Admin; Homebrew installed once under that user (avoid `sudo brew`). On Apple Silicon the initial `/opt/homebrew` setup prompts for `sudo` once; subsequent `brew install` must not require `sudo`. If it does, stop and reinstall Homebrew under the correct user.
+  - **Windows-native:** standard (non-Administrator) user account; install Node/pnpm via user-scope (winget `--scope user`, fnm, Volta). A UAC consent prompt appearing during an agent session is a red flag — decline and investigate before continuing.
+- If a compromised agent process can elevate, the blast radius is the entire host; a non-privileged account caps it at one user profile.
+
+### 11.4 Enterprise endpoint monitoring (any OS)
+
+- For org-managed devices, install the org-mandated EDR/MDR agent on the same OS the harness runs on. Treat as **[SHOULD]** for enterprise; **N/A** for personal devices.
+  - **Windows + WSL2:** Microsoft Defender for Endpoint **plus the MDE plug-in for WSL** (so the Linux distro is monitored alongside Windows).
+  - **macOS:** Microsoft Defender for Endpoint for macOS, CrowdStrike Falcon, SentinelOne, etc.
+  - **Linux:** Microsoft Defender for Endpoint for Linux, Falcon Sensor for Linux, auditd-based agents, etc.
+- Do not script EDR install in `agents-workflows init` — deployment is org/MDM-controlled (Intune, Jamf, etc.).
+
+**Verification.** `docs/security-smoke-runbook.md` adds OS-detection-aware items confirming non-elevated execution and native-fs working directory.
 
 ## 1.10 Checkpointing, worktrees, and session reproducibility
 
@@ -2006,7 +2046,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST]
+## Epic 10 — Semi-Autonomous Non-Interactive Workflow Mode [MUST] [IN REVIEW]
+
+**Landed on** `feature/epic-10-non-interactive-mode`.
 
 **Goal.** Make both Claude Code and Codex run workflow sessions headlessly **when the user explicitly opts in** (via `agents-workflows init` / `update`), while keeping deny/forbid policy and workspace sandbox boundaries fully active. Non-interactive is an informed-consent choice, not a default. These sessions are **developer-assisted runs on feature branches**; this epic does not claim or require suitability for unattended CI automation.
 
@@ -2524,7 +2566,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E14.T1 — Refinement prompt template [§1.20] — M
 
 - **Files**: new `src/templates/refine/AGENTS_REFINE.md.ejs`.
-- **Change**: Render the six sections from §1.20 with EJS placeholders driven by the full `StackConfig`. Reference enabled agents dynamically via `<% for (const [key, enabled] of Object.entries(agents)) { if (enabled) { %>...<% } } %>`. Include the DoD commands from `commands.{typeCheck,test,lint}` verbatim in the "Verification hand-off" section. Cite PRD sections (§1.3, §1.6, §1.13, §2.1) with anchor syntax. Keep the template under 200 lines.
+- **Change**: Render the six sections from §1.20 with EJS placeholders driven by the full `StackConfig`. Reference enabled agents dynamically via `<% for (const [key, enabled] of Object.entries(agents)) { if (enabled) { %>...<% } } %>`. Include the DoD commands from `commands.{typeCheck,test,lint}` verbatim in the "Verification hand-off" section. Cite PRD sections (§1.3, §1.6, §1.13, §2.1) with anchor syntax.
 - **Done when**: rendering against the current repo's stack produces a prompt that names every currently-enabled agent file under `.claude/agents/` (and/or `.codex/skills/`), references the project's real `pnpm` commands, and includes each mandated section.
 
 ### E14.T2 — Generator entry [§1.20] — S
@@ -2587,7 +2629,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E15.T1 — Inventory and gap report [§2.14] — S
 
 - **Files**: new `scripts/audit-docstrings.ts`.
-- **Change**: Add a one-shot Node script that walks `src/**/*.ts`, parses each file with `typescript`'s compiler API (already a transitive dep via `tsx`), and prints a CSV of `(file, exportName, kind, hasDocstring, lineCount)` for every `export function` / `export const fn = (...) =>` / `export class { method }`. Skip files matching the out-of-scope rules above. Keep the script under 200 lines.
+- **Change**: Add a one-shot Node script that walks `src/**/*.ts`, parses each file with `typescript`'s compiler API (already a transitive dep via `tsx`), and prints a CSV of `(file, exportName, kind, hasDocstring, lineCount)` for every `export function` / `export const fn = (...) =>` / `export class { method }`. Skip files matching the out-of-scope rules above.
 - **Done when**: `pnpm tsx scripts/audit-docstrings.ts > docs/docstring-audit.csv` produces a deterministic, sorted report; the CSV is committed alongside the script and updated whenever the inventory shifts.
 
 ### E15.T2 — Document `src/utils/` [§2.14] — S
@@ -2673,8 +2715,8 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 ### E16.T3 — `AGENTS.md.ejs` routing update [§1.7] — M
 
 - **Files**: [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs).
-- **Change**: Replace the current **Model routing** table with the Claude/GPT-5.x-named version (E16.T1 schema). Preserve the trailing "never let the writer be its own final reviewer" paragraph. Append a **Stack-aware writer/reviewer defaults** block that dispatches on `stack.language` using two small in-template allow-lists — Claude-primary (`python`, `ruby`, `rust`, `java`) and GPT-primary (`typescript`, `javascript`, `go`, `csharp` / `c#`, `php`, `swift`, `kotlin`) — combined with the existing `isReact` / `isTypescript` / `isFrontend` flags from `buildContext()`. TS/React fixtures hit a dedicated branch first so UI-heavy workspaces still get the Three.js-flavored guidance. Finally, append a **Cross-stack primary / secondary map** table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) so non-detected workspaces still get explicit guidance. Keep the template under 200 lines.
-- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present; template stays ≤ 210 lines after E16.T9 adds the cross-model handoff setup block.
+- **Change**: Replace the current **Model routing** table with the Claude/GPT-5.x-named version (E16.T1 schema). Preserve the trailing "never let the writer be its own final reviewer" paragraph. Append a **Stack-aware writer/reviewer defaults** block that dispatches on `stack.language` using two small in-template allow-lists — Claude-primary (`python`, `ruby`, `rust`, `java`) and GPT-primary (`typescript`, `javascript`, `go`, `csharp` / `c#`, `php`, `swift`, `kotlin`) — combined with the existing `isReact` / `isTypescript` / `isFrontend` flags from `buildContext()`. TS/React fixtures hit a dedicated branch first so UI-heavy workspaces still get the Three.js-flavored guidance. Finally, append a **Cross-stack primary / secondary map** table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) so non-detected workspaces still get explicit guidance.
+- **Done when**: rendering against a TS/React fixture emits the TS/React branch (`Implementer: **GPT-5.x**`); Python / Ruby / Rust / Java fixtures emit `Claude leads on correctness` + `Implementer: **Claude**`; Go / C# / PHP / Swift / Kotlin fixtures emit `GPT-5.x leads on rapid implementation` + `Implementer: **GPT-5.x**`; the cross-stack map renders every row on every fixture; the `## Model routing` heading, the nine roles listed in `tests/generator/epic-3-review-depth.helpers.ts::MODEL_ROUTING_ROLES`, and the writer-vs-reviewer rule all remain present.
 
 ### E16.T4 — `workflow-plan.md.ejs` model-selection note [§1.7] — S
 
@@ -2839,7 +2881,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 - Performance block always rendered: CLS target ≤0.1 for ≥75% of page visits; reserve image space with `width`/`height` attributes (modern browsers infer aspect ratio) or CSS `aspect-ratio`; animate `transform` (compositor-driven), never `top`/`left`/`box-sizing`; web fonts via WOFF2 only, `font-display: swap` for least render delay or `optional` to avoid swap-induced shift, tune fallback metrics with `size-adjust` and `ascent-override`, inline font declarations in `<head>`, preconnect to font origins, preload critical font files; LCP/image hints (`fetchpriority="high"` on the LCP image, `loading="lazy"` for below-the-fold, `decoding="async"` for non-critical).
 - AGENTS.md routing-table label updated: the `| UI/UX design (after every UI task) | \`ui-designer\` |` row renders an optional engine label when known, e.g. `| UI/UX design | \`ui-designer\` (tailwind-v4 + react variant) |`. Hidden entirely on backend fixtures (already gated by `isFrontendFramework` per Epic 13's E13.T5).
 - Snapshot tests under `tests/generator/` assert (a) every fixture in `tests/fixtures/frontend-{react,vue,angular,svelte}/` and `tests/fixtures/{frontend-vanilla,mobile-rn,mobile-expo,mobile-flutter}/` (the last four are NEW per E18.T3) renders the framework-specific recommendation row first; (b) Tailwind-v4 fixtures contain the v3→v4 migration utility list verbatim; (c) NON-Tailwind fixtures (CSS Modules, styled-components, vanilla CSS) contain zero Tailwind utility names; (d) Flutter fixtures contain `ColorScheme.fromSeed` and contain zero occurrences of `tailwind`; (e) every rendered `ui-designer.md` contains the 9-state checklist headings and the WCAG 2.2 SC numbers (1.4.1, 1.4.11, 2.1.1, 2.1.2, 2.4.3, 2.4.11, 2.5.3, 2.5.7, 2.5.8, 3.2.6, 3.3.7); (f) every rendered file contains the iOS 44pt + Android 48dp + web 24×24 px touch-target trio; (g) the engine label on the AGENTS.md routing row matches the fixture's `cssEngine`+`framework` pair.
-- `pnpm check-types && pnpm lint && pnpm test` green; reviewer + security-reviewer loop passes; the rewritten `ui-designer.md.ejs` stays ≤200 lines per CLAUDE.md (each conditional partial counts toward its own ≤200-line cap).
+- `pnpm check-types && pnpm lint && pnpm test` green; reviewer + security-reviewer loop passes.
 
 **Canonical sources (cite-or-lose-points).**
 
@@ -2858,7 +2900,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 ### E18.T2 — Stack-aware `ui-designer.md.ejs` rewrite [§18] — L
 
 - **Files**: [src/templates/agents/ui-designer.md.ejs](src/templates/agents/ui-designer.md.ejs) (replace existing content), new partial `src/templates/partials/ui-designer-tailwind-v4.md.ejs`, new partial `src/templates/partials/ui-designer-mobile.md.ejs`.
-- **Change**: Replace the React-hardcoded body with a template that branches on `cssEngine` and `framework`. Use shared `<%- include('../partials/ui-designer-tailwind-v4.md.ejs') %>` when `cssEngine === 'tailwind-v4'`; the mobile partial when `framework ∈ {'react-native','expo'}`; a "Material 3" inline block when `framework === 'flutter'`; a "framework-agnostic" fallback branch when both `framework` and `cssEngine` are unknown. Always emit the 9-state checklist + 5-a11y block + WCAG 2.2 SC numbers + the framework-aware component-library recommendation table from the §"Acceptance" §"Framework-aware component-library" criterion + the RTL/i18n block + the performance block. The Stack Context line MUST read from `<%= framework %>` and `<%= language %>` — no hardcoded "React". Keep each file (template + each partial) ≤200 lines per CLAUDE.md.
+- **Change**: Replace the React-hardcoded body with a template that branches on `cssEngine` and `framework`. Use shared `<%- include('../partials/ui-designer-tailwind-v4.md.ejs') %>` when `cssEngine === 'tailwind-v4'`; the mobile partial when `framework ∈ {'react-native','expo'}`; a "Material 3" inline block when `framework === 'flutter'`; a "framework-agnostic" fallback branch when both `framework` and `cssEngine` are unknown. Always emit the 9-state checklist + 5-a11y block + WCAG 2.2 SC numbers + the framework-aware component-library recommendation table from the §"Acceptance" §"Framework-aware component-library" criterion + the RTL/i18n block + the performance block. The Stack Context line MUST read from `<%= framework %>` and `<%= language %>` — no hardcoded "React".
 - **Done when**: rendering against the existing React+Tailwind-v4 fixture produces output containing all eight v3→v4 migration utility renames, the React row first in the component-library table, the 9-state checklist headings, the 11 WCAG 2.2 SC numbers, the iOS-44pt + Android-48dp + web-24×24-px touch-target trio, and zero hardcoded "React" outside the conditional branch; `pnpm test` passes the snapshot suite from E18.T6.
 
 ### E18.T3 — Mobile + Flutter + vanilla fixtures + Dart detection [§18] — M
@@ -2886,7 +2928,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 
 ### E18.T6 — Snapshot tests [§18] — M
 
-- **Files**: extend [tests/generator/stack-aware-agents.test.ts](tests/generator/stack-aware-agents.test.ts), or add a parallel new `tests/generator/ui-designer-multi-framework.test.ts` if extending the existing file would breach the 200-line CLAUDE.md cap (prefer the new file for clarity).
+- **Files**: extend [tests/generator/stack-aware-agents.test.ts](tests/generator/stack-aware-agents.test.ts), or add a parallel new `tests/generator/ui-designer-multi-framework.test.ts` if that keeps the assertions clearer.
 - **Change**: For each of the new + existing frontend fixtures (React+Tailwind-v4, Vue+Tailwind-v4, Angular+Tailwind-v3, Svelte+Tailwind-v4, Vanilla+Tailwind-v4, RN+NativeWind, Expo+NativeWind, Flutter), assert: (a) rendered `ui-designer.md` exists; (b) the framework-specific component-library recommendation row appears first (e.g., `shadcn/ui` first on the React fixture, `shadcn-vue` first on the Vue fixture, `spartan/ui` first on the Angular fixture); (c) Tailwind-v4 fixtures contain the eight v3→v4 migration utility renames verbatim; (d) NON-Tailwind fixtures (CSS Modules, styled-components, vanilla-CSS) contain zero Tailwind utility names (regex `\b(@apply|hover:|focus:|md:|sm:|lg:|xl:|focus-visible:|motion-reduce:|motion-safe:|disabled:|sr-only|ms-[0-9]|me-[0-9]|ps-[0-9]|pe-[0-9])\b` returns zero matches); (e) Flutter fixtures contain `ColorScheme.fromSeed` and contain zero occurrences of the literal string `tailwind`; (f) every fixture contains the 9-state checklist headings and the eleven WCAG 2.2 SC numbers (1.4.1, 1.4.11, 2.1.1, 2.1.2, 2.4.3, 2.4.11, 2.5.3, 2.5.7, 2.5.8, 3.2.6, 3.3.7); (g) every fixture contains the literal `44` (iOS) and `48` (Android) and `24` (web) touch-target numbers near the touch-target heading; (h) **Flutter detection assertions** (paired with E18.T3 changes): `detectStack` against the `mobile-flutter` fixture returns `language.value === 'dart'`, `framework.value === 'flutter'`, `packageManager.value === 'pub'`, `cssEngine === 'unknown'`; the rendered `commands` object contains `test === 'flutter test'`, `lint === 'dart analyze'`, `typeCheck === 'dart analyze'`, `build === 'flutter build'`, `format === 'dart format .'`; `isFrontendFramework('flutter') === true`.
 - **Done when**: `pnpm test` green; reverting any of E18.T2's branches causes the matching assertion to fail; new fixtures add ≤300 LOC total.
 

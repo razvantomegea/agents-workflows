@@ -1,5 +1,6 @@
 import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
+import { SECURITY_DEFAULTS } from '../schema/stack-config.js';
 import type { PackageJson } from '../utils/index.js';
 import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
 import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
@@ -75,7 +76,6 @@ export function createDefaultConfig(
     conventions: {
       componentStyle: 'arrow',
       propsStyle: 'readonly',
-      maxFileLength: 200,
       testColocation: true,
       barrelExports: true,
       strictTypes: true,
@@ -103,5 +103,6 @@ export function createDefaultConfig(
     governance: { enabled: false },
     detectedAiAgents: toDetectedAiAgentFlags(detected),
     monorepo: null,
+    security: { ...SECURITY_DEFAULTS },
   };
 }

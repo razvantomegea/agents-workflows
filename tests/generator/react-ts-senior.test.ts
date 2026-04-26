@@ -17,7 +17,6 @@ describe('react-ts-senior agent', () => {
     expect(agent?.content).toContain('useCallback');
     expect(agent?.content).toContain('useMemo');
     expect(agent?.content).toContain('test-app');
-    expect(agent?.content.split(/\r?\n/).length).toBeLessThanOrEqual(200);
 
     const templatePath = join(process.cwd(), 'src/templates/agents/react-ts-senior.md.ejs');
     const templateSource = await readFile(templatePath, 'utf8');

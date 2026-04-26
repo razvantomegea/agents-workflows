@@ -70,6 +70,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
     i18nLibrary: config.stack.i18nLibrary,
     testFramework: config.tooling.testFramework,
     testsDir: config.paths.testsDir,
+    security: config.security,
   };
 }
 

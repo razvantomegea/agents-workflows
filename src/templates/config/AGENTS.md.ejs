@@ -53,7 +53,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | implementer    | TS/React/Three.js: GPT-5.x (Codex) · Python/infra: Claude   | Opposite family of the writer             | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
 | code-reviewer  | Same FAMILY as implementer                                  | —                                         | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
 | reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x)        | —                                         | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
-| external-review| CodeRabbit CLI mandatory default; different-family reviewer for exception/fallbacks | Cursor BugBot / Copilot PR review only when CodeRabbit is unavailable | high | CodeRabbit CLI first � `/codex:review` only for Claude-authored diffs � Cursor BugBot / Copilot PR review fallback |
+| external-review| CodeRabbit CLI mandatory default; different-family reviewer for exception/fallbacks | Cursor BugBot / Copilot PR review only when CodeRabbit is unavailable | high | CodeRabbit CLI first · `/codex:review` only for Claude-authored diffs · Cursor BugBot / Copilot PR review fallback |
 | code-optimizer | Same family as implementer                                  | Opposite family for risky refactors       | medium           | same as implementer |
 | test-writer    | Claude (test strategy)                                      | GPT-5.x (boilerplate test code)           | medium           | same as implementer |
 | e2e-tester     | Claude                                                      | GPT-5.x                                   | medium           | same as implementer |
@@ -197,6 +197,10 @@ The generated `.claude/settings.json` enforces safety at the tool-call layer via
 Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key. Per-developer overrides go in `.claude/settings.local.json` (gitignored).
 
 <%- include('../partials/tooling.md.ejs') %>
+<%- include('../partials/host-hardening.md.ejs') %>
+<% if (security.nonInteractiveMode) { %>
+<%- include('../partials/security-disclosure.md.ejs') %>
+<% } %>
 
 ## Deployment Rules
 

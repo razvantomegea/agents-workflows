@@ -15,4 +15,5 @@
   - LLM07 — never put secrets in system prompts; apply output validation before use.
   - LLM08 — validate embedding source integrity in RAG; reject unauthenticated vector stores.
   - LLM10 — rate-limit token spend; enforce resource budgets to prevent unbounded consumption.
+- **Host environment (any OS):** see PRD §1.9.2 / the generated `## Host hardening` block in `AGENTS.md` and `CLAUDE.md` for operator-side hardening — native-filesystem-only execution (no cross-mount work on Windows / macOS / Linux / WSL), `/sandbox` or devcontainer / Docker / VM, non-elevated user accounts, and org-mandated EDR (MDE / Falcon / SentinelOne) on enterprise devices. The OWASP defaults above are code-layer; host hardening is environment-layer.
 </security_defaults>

@@ -9,9 +9,22 @@
 #   shell rc files, system packages).
 # - sandbox_workspace_write.network_access = false blocks outbound
 #   network egress unless explicitly approved per command.
-
-approval_policy = "on-request"
+#
+# Host hardening — applies on Windows / macOS / Linux / WSL (PRD §1.9.2):
+# 1. Native FS only — no cross-mount work (no /mnt/c, no /Volumes, no UNC).
+# 2. Container hosts: bind-mount only the project subtree, never $HOME.
+# 3. Sandbox via /sandbox or devcontainer / Docker / Podman / VM.
+# 4. Non-elevated user — never sudo / doas / su / runas / "Run as administrator".
+# 5. Enterprise: install org EDR (MDE / Falcon / SentinelOne) on the host OS.
+# Non-interactive mode enabled (runsIn=vm, acknowledged=2026-04-26T14:25:24.831Z).
+# Known risks (PRD §1.9.1):
+# 1. Claude sub-agent deny-bypass (Anthropic #25000, #43142)
+# 2. Codex Windows sandbox instability (OpenAI #15850)
+# 3. PowerShell wrapper prefix_rule bypass (OpenAI #13502)
+# 4. Claude bypassPermissions unreliability (Anthropic #34923)
+# 5. Network exfiltration surface (mitigated by E9.T11 + E9.T13)
+approval_policy = "never"
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
-network_access = false
+network_access = true

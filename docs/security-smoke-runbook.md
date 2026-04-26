@@ -1,15 +1,38 @@
 # Security Smoke Runbook — Epic 9 (E9.T15)
 
-This runbook covers the cases that cannot be fully automated by `tests/security/smoke.test.ts`. Run these manually on Windows before unlocking Epic 10 (non-interactive mode).
+This runbook covers the cases that cannot be fully automated by `tests/security/smoke.test.ts`. Run these manually before unlocking Epic 10 (non-interactive mode). Cases prefixed `case-W` are Windows-specific (Epic 9 deny-rule coverage); cases prefixed `case-H` are host-environment checks (PRD §1.9.2) that apply on Windows-native, macOS, Linux, and WSL2.
 
 ## Prerequisites
 
-- Windows 10 / 11 host.
+- For `case-W*` (Windows deny-rule cases): Windows 10 / 11 host.
+- For `case-H*` (cross-OS host hardening): any supported host OS.
 - Codex CLI installed and configured with the committed `.codex/config.toml` + `.codex/rules/project.rules`.
 - Claude Code CLI installed with the committed `.claude/settings.json`.
 - A test user account (not an admin shell).
 
 ## Manual cases
+
+### case-H1 — Host: non-elevated user check (any OS)
+
+- **Attempt:** verify the harness is running under a non-privileged user account.
+- **Linux / macOS / WSL:** `id -u` returns non-zero.
+- **Windows-native (PowerShell)** — use the locale-independent `WindowsBuiltInRole` enum, not the string `"Administrators"` (string overload resolves to the localized group name and silently returns `False` on non-English Windows):
+  ```powershell
+  [Security.Principal.WindowsPrincipal]::new(
+    [Security.Principal.WindowsIdentity]::GetCurrent()
+  ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+  ```
+  Must return `False`. As a secondary check, `whoami /priv` should not list `SeDebugPrivilege` / `SeTakeOwnershipPrivilege` / `SeLoadDriverPrivilege` (these are present only in elevated tokens).
+- **Pass:** the OS-appropriate check returns the non-elevated result. If it fails, abort: switch to a standard account and restart (PRD §1.9.2 item 11.3).
+
+### case-H2 — Host: native-filesystem check (any OS)
+
+- **Attempt:** verify the working tree lives on the native filesystem of the executing OS.
+- **WSL2:** `pwd` does not start with `/mnt/c/` (or any other `/mnt/<drive>`); also `stat -f -c %T .` returns `ext2/ext3` / `btrfs` / `xfs` (a native Linux FS), not `9p` (the virtio-9p type used for `/mnt/c` cross-mounts) or `drvfs`.
+- **macOS:** `pwd` does not start with `/Volumes/`; `stat -f %T .` returns `apfs` or `hfs` (not `smbfs` / `fuse`).
+- **Linux:** `pwd` is on a local block device; `stat -f -c %T .` is not `nfs` / `fuse.sshfs` / `cifs`. (Alpine / BusyBox `stat` may lack `-f`; on those hosts use `findmnt -no FSTYPE -T .`.)
+- **Windows-native (PowerShell):** `(Get-Location).Path` does not start with `\\` (UNC) and is not a removable drive.
+- **Pass:** working directory is on the native FS. If it fails, clone into the OS's native location and re-run (PRD §1.9.2 item 11.1).
 
 ### case-W1 — Remove-Item against ~/.ssh (Windows)
 

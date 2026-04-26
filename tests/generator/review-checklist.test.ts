@@ -35,7 +35,6 @@ describe('buildReviewChecklist', () => {
     const names = rules.map((r) => r.name);
     expect(names).toContain('DRY');
     expect(names).toContain('Object params');
-    expect(names).toContain('File length');
   });
 
   it('includes i18n rule when locale rules exist', () => {

@@ -1,0 +1,29 @@
+<%# condense {boolean} — when true emits compact comment-block form for TOML headers; when false/absent emits full markdown -%>
+<% if (typeof condense !== 'undefined' && condense) { -%>
+# Host hardening — applies on Windows / macOS / Linux / WSL (PRD §1.9.2):
+# 1. Native FS only — no cross-mount work (no /mnt/c, no /Volumes, no UNC).
+# 2. Container hosts: bind-mount only the project subtree, never $HOME.
+# 3. Sandbox via /sandbox or devcontainer / Docker / Podman / VM.
+# 4. Non-elevated user — never sudo / doas / su / runas / "Run as administrator".
+# 5. Enterprise: install org EDR (MDE / Falcon / SentinelOne) on the host OS.
+<% } else { -%>
+## Host hardening (operator-side, applies on every OS)
+
+These complement the command-layer denies — see PRD §1.9.2 for full rationale. Each item lists OS-specific guidance; the **rule** itself applies regardless of OS.
+
+- **Avoid cross-OS / cross-volume access.** Run inside the native filesystem of whichever OS executes the agent. `workspace-write` does not restrict reads, so a prompt-injected agent reaching across mounts can read host secrets.
+  - WSL2: `~/Projects/...`, not `/mnt/c/`.
+  - macOS: local APFS, not `/Volumes/...` or SMB shares.
+  - Linux: local disk, not `/mnt/...`, `sshfs`, or NFS unless explicitly trusted.
+  - Windows-native: `%USERPROFILE%\Projects\...`, not UNC paths.
+  - Container hosts (Docker / Podman): bind-mount only the project subtree — never `$HOME`. Mounting `$HOME` into a sandboxed agent exposes SSH keys, cloud credentials, and browser profiles.
+- **Use sandboxing.** Prefer Claude Code's `/sandbox` for ad-hoc runs (cross-platform). For full sessions, prefer devcontainer / Docker / Podman / Codespaces. OS-native primitives where they apply: Linux seccomp / Landlock, macOS `sandbox-exec`, Windows AppContainer / WDAC. Kernel sandbox primitives do not apply on Windows-native hosts — rules and `/sandbox` are the available controls there. Trust ladder ordering (`/sandbox` < `workspace-write` < devcontainer < disposable VM) compares **write** isolation; for **read** isolation, `/sandbox` adds syscall-filtered read restriction that `workspace-write` does not, so combine the two when read-exfil is the threat.
+- **No privilege escalation, any OS.** Never run the harness under `sudo` / `doas` / `su` (Linux/macOS) or "Run as administrator" / elevated PowerShell / `runas /user:Administrator` (Windows). Use a non-privileged user account for daily development:
+  - WSL2 / Linux: non-root user with user-scope tooling (nvm / fnm / mise).
+  - macOS: standard (non-Admin) user; Homebrew installed once under that user. On Apple Silicon, the initial `/opt/homebrew` setup prompts for `sudo` once — subsequent `brew install` must not require `sudo`. If a later `brew install` prompts for `sudo`, stop and reinstall Homebrew under the correct user.
+  - Windows-native: standard (non-Administrator) user; user-scope installs (winget `--scope user`, fnm, Volta). If a UAC consent prompt appears during an agent session, decline and investigate before continuing — it is a red flag, not a routine confirmation.
+- **Enterprise endpoint monitoring.** Org-managed devices: install the org-mandated EDR for the host OS so the agent's process is observable alongside other workloads:
+  - Windows + WSL2: Microsoft Defender for Endpoint **plus the MDE WSL plug-in**.
+  - macOS: Defender for Endpoint for macOS, CrowdStrike Falcon, SentinelOne, etc.
+  - Linux: Defender for Endpoint for Linux, Falcon Sensor for Linux, auditd-based agents, etc.
+<% } -%>

@@ -1,5 +1,7 @@
 import type { StackConfig } from '../../src/schema/stack-config.js';
+import { SECURITY_DEFAULTS } from '../../src/schema/stack-config.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
+import type { DetectedStack } from '../../src/detector/types.js';
 import { supportsReactTsStack } from '../../src/constants/frameworks.js';
 
 export const IMPLEMENTER_PATH = '.claude/agents/implementer.md';
@@ -40,6 +42,35 @@ export function getContent(files: GeneratedFile[], filePath: string): string {
  * @param overrides - Partial configuration values to override the defaults
  * @returns The assembled StackConfig with defaults merged and override values applied
  */
+const EMPTY_DETECTION = { value: null, confidence: 0 };
+
+/**
+ * Creates a minimal DetectedStack with sensible defaults for use in tests.
+ * Override individual detection fields as needed.
+ */
+export function makeDetectedStack(overrides: Partial<DetectedStack> = {}): DetectedStack {
+  return {
+    language: { value: 'typescript', confidence: 0.9 },
+    runtime: { value: 'node', confidence: 0.9 },
+    framework: EMPTY_DETECTION,
+    uiLibrary: EMPTY_DETECTION,
+    stateManagement: EMPTY_DETECTION,
+    database: EMPTY_DETECTION,
+    auth: EMPTY_DETECTION,
+    i18n: EMPTY_DETECTION,
+    testFramework: { value: 'jest', confidence: 0.9 },
+    testLibrary: EMPTY_DETECTION,
+    e2eFramework: EMPTY_DETECTION,
+    linter: EMPTY_DETECTION,
+    formatter: EMPTY_DETECTION,
+    packageManager: { value: 'pnpm', confidence: 0.9 },
+    monorepo: { isMonorepo: false, tool: null, workspaces: [] },
+    aiAgents: { agents: [], hasClaudeCode: false, hasCodexCli: false },
+    docsFile: EMPTY_DETECTION,
+    ...overrides,
+  };
+}
+
 export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConfig {
   const baseStack: StackConfig['stack'] = { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null, i18nLibrary: null };
   const baseTargets: StackConfig['targets'] = { claudeCode: true, codexCli: true };
@@ -59,13 +90,14 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
     tooling: { packageManager: 'pnpm', packageManagerPrefix: 'pnpm', testFramework: 'jest', testLibrary: 'react-testing-library', e2eFramework: 'playwright', linter: 'eslint', formatter: 'prettier', ...overrides.tooling },
     paths: { sourceRoot: 'src/', componentsDir: 'src/components/', hooksDir: 'src/hooks/', utilsDir: 'src/utils/', testsDir: 'tests/', designTokensFile: null, i18nDir: null, testConfigFile: null, ...overrides.paths },
     commands: { typeCheck: 'pnpm check-types', test: 'pnpm test', lint: 'pnpm lint', format: null, build: null, dev: null, ...overrides.commands },
-    conventions: { componentStyle: 'arrow', propsStyle: 'readonly', maxFileLength: 200, testColocation: true, barrelExports: true, strictTypes: true, ...overrides.conventions },
+    conventions: { componentStyle: 'arrow', propsStyle: 'readonly', testColocation: true, barrelExports: true, strictTypes: true, ...overrides.conventions },
     agents: mergedAgents,
     selectedCommands: mergedSelectedCommands,
     targets: mergedTargets,
     governance: mergedGovernance,
     detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false, ...overrides.detectedAiAgents },
     monorepo: overrides.monorepo !== undefined ? overrides.monorepo : null,
+    security: { ...SECURITY_DEFAULTS, ...overrides.security },
   };
 
   return {
