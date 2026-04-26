@@ -495,6 +495,47 @@ Do not edit or remove feature entries — only flip the passes field.
 - `workspace-write` restricts **writes** outside the workspace, not **reads**. `~/.ssh/*`, `~/.aws/credentials`, `~/.config/gh/hosts.yml`, browser profile cookies, and Windows `%APPDATA%` remain readable.
 - True project-scoped isolation requires a devcontainer, Docker container, or VM. This is recommended — but not required — by the E10.T9 isolation selector.
 
+## 1.9.2 Host-environment hardening (operator guidance, all OSes)
+
+**Rule.** Deny rules and the workspace-write sandbox are command-layer guards. Four operator-side practices reduce blast radius for the residual risks enumerated in §1.9.1 (especially items 10.5 and 10.6, which `workspace-write` does not close on reads). These apply on every supported host OS — Windows-native, Windows + WSL2, macOS, and Linux.
+
+**Priority.** [MUST] — referenced from generated `AGENTS.md` / `CLAUDE.md` via the `host-hardening.md.ejs` partial.
+
+### 11.1 Avoid cross-OS / cross-volume access
+
+- Run agents in the *native* filesystem of the OS that executes them. Cross-mounts expose host files that `workspace-write` does not gate on reads (§1.9.1 item 10.6).
+- **WSL2:** clone into `~/Projects/...`, not `/mnt/c/`. Reading `/mnt/c/Users/<you>/...` exposes browser profiles, `%APPDATA%`, `%USERPROFILE%\.aws\`, and Windows credential stores to a prompt-injected agent.
+- **macOS:** avoid working from external volumes / network shares (`/Volumes/...`, SMB mounts) for repos that touch secrets — keep them on the local APFS volume.
+- **Linux:** keep repos on local disk; avoid running an agent rooted at `/mnt/...`, `/media/...`, or `sshfs`/NFS mounts unless the mount is explicitly trusted.
+- **Windows-native:** keep repos under `%USERPROFILE%\Projects\...`; avoid UNC paths and removable media.
+- **Container hosts:** when bind-mounting host directories into Docker / Podman, mount only the project subtree, never `$HOME`.
+
+### 11.2 Use sandboxing
+
+- **Cross-platform first choice:** Claude Code's `/sandbox` slash command for ad-hoc isolated runs (works on every OS Claude Code supports).
+- **Cross-platform full session:** devcontainer / Docker / Podman / GitHub Codespaces.
+- **OS-native primitives** where they apply: Linux seccomp / Landlock / user namespaces; macOS `sandbox-exec`; Windows AppContainer / WDAC; WSL2 itself acting as a Linux VM under Hyper-V. Kernel sandbox primitives do not apply on Windows-native hosts (CLAUDE.md "Shared agent policy") — rules and `/sandbox` are the available controls there.
+- **Trust ladder:** `/sandbox` < `workspace-write` < devcontainer < disposable VM. The ordering compares **write** isolation. For **read** isolation against the §1.9.1 item 10.6 exfil surface, `/sandbox` adds syscall-filtered read restriction that `workspace-write` does not — combine the two when read-exfil is the threat. The ladder applies regardless of host OS.
+
+### 11.3 Hardened setup — no privilege escalation, any OS
+
+- Never install or run agents under `sudo` / `doas` / `su` (Linux/macOS) or "Run as administrator" / elevated PowerShell / `runas /user:Administrator` (Windows). Command-layer denies (`.codex/rules/project.rules` `[["rm", "sudo"]]` block, `.claude/settings.json` `Bash(sudo:*)`) only block the *agent* from invoking `sudo`; they do not stop a human operator from launching the harness with elevation.
+- Use a dedicated non-privileged user for daily development on every OS:
+  - **WSL2 / Linux:** non-root user; install pnpm/Node via a user-scoped manager (nvm, fnm, mise) — not `sudo apt`.
+  - **macOS:** standard user account, not the original Admin; Homebrew installed once under that user (avoid `sudo brew`). On Apple Silicon the initial `/opt/homebrew` setup prompts for `sudo` once; subsequent `brew install` must not require `sudo`. If it does, stop and reinstall Homebrew under the correct user.
+  - **Windows-native:** standard (non-Administrator) user account; install Node/pnpm via user-scope (winget `--scope user`, fnm, Volta). A UAC consent prompt appearing during an agent session is a red flag — decline and investigate before continuing.
+- If a compromised agent process can elevate, the blast radius is the entire host; a non-privileged account caps it at one user profile.
+
+### 11.4 Enterprise endpoint monitoring (any OS)
+
+- For org-managed devices, install the org-mandated EDR/MDR agent on the same OS the harness runs on. Treat as **[SHOULD]** for enterprise; **N/A** for personal devices.
+  - **Windows + WSL2:** Microsoft Defender for Endpoint **plus the MDE plug-in for WSL** (so the Linux distro is monitored alongside Windows).
+  - **macOS:** Microsoft Defender for Endpoint for macOS, CrowdStrike Falcon, SentinelOne, etc.
+  - **Linux:** Microsoft Defender for Endpoint for Linux, Falcon Sensor for Linux, auditd-based agents, etc.
+- Do not script EDR install in `agents-workflows init` — deployment is org/MDM-controlled (Intune, Jamf, etc.).
+
+**Verification.** `docs/security-smoke-runbook.md` adds OS-detection-aware items confirming non-elevated execution and native-fs working directory.
+
 ## 1.10 Checkpointing, worktrees, and session reproducibility
 
 **Rule.** Claude Code shipped native checkpointing (`Esc+Esc`, `/rewind`) in 2025; Codex ships `codex resume --last` and `/fork`; Cursor ships worktree-per-session in 2.0 (Oct 29 2025). Reasoning models are non-deterministic even at temperature 0; make verification deterministic, not generation.

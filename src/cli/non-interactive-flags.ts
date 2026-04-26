@@ -15,6 +15,7 @@ export interface NonInteractiveFlags {
 export class NonInteractiveFlagsError extends Error {
   constructor(message: string) {
     super(message);
+    Object.setPrototypeOf(this, NonInteractiveFlagsError.prototype);
     this.name = 'NonInteractiveFlagsError';
   }
 }

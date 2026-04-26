@@ -197,6 +197,7 @@ The generated `.claude/settings.json` enforces safety at the tool-call layer via
 Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key. Per-developer overrides go in `.claude/settings.local.json` (gitignored).
 
 <%- include('../partials/tooling.md.ejs') %>
+<%- include('../partials/host-hardening.md.ejs') %>
 <% if (security.nonInteractiveMode) { %>
 <%- include('../partials/security-disclosure.md.ejs') %>
 <% } %>

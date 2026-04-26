@@ -23,14 +23,14 @@ const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
 const safeCommandNullable = safeCommand.nullable().default(null);
 const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
 
-export const SECURITY_DEFAULTS: {
-  nonInteractiveMode: boolean;
-  runsIn: IsolationChoice | null;
-  disclosureAcknowledgedAt: string | null;
-} = {
+export const SECURITY_DEFAULTS = {
   nonInteractiveMode: false,
   runsIn: null,
   disclosureAcknowledgedAt: null,
+} satisfies {
+  nonInteractiveMode: boolean;
+  runsIn: IsolationChoice | null;
+  disclosureAcknowledgedAt: string | null;
 };
 
 export const stackConfigSchema = z.object({
@@ -149,7 +149,7 @@ export const stackConfigSchema = z.object({
     nonInteractiveMode: z.boolean().default(false),
     runsIn: z.enum(ISOLATION_CHOICES).nullable().default(null),
     disclosureAcknowledgedAt: z.string().datetime().nullable().default(null),
-  }).default(SECURITY_DEFAULTS),
+  }).default(() => ({ ...SECURITY_DEFAULTS })),
 });
 
 export type StackConfig = z.infer<typeof stackConfigSchema>;

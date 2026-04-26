@@ -44,15 +44,16 @@ export async function runPromptFlow(
   options: PromptFlowOptions = {},
 ): Promise<StackConfig> {
   const pkg = await readPackageJson(projectRoot);
+  const nonInteractiveOptions: PromptFlowOptions = {
+    yes: options.yes,
+    nonInteractive: options.nonInteractive,
+    isolation: options.isolation,
+    acceptRisks: options.acceptRisks,
+  };
 
   if (options.yes) {
     const baseConfig = createDefaultConfig(detected, pkg?.scripts ?? {}, pkg);
-    const security = await askNonInteractiveMode({
-      yes: options.yes,
-      nonInteractive: options.nonInteractive,
-      isolation: options.isolation,
-      acceptRisks: options.acceptRisks,
-    });
+    const security = await askNonInteractiveMode(nonInteractiveOptions);
     return { ...baseConfig, security };
   }
 
@@ -68,12 +69,7 @@ export async function runPromptFlow(
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
   const governance = await askGovernance();
-  const security = await askNonInteractiveMode({
-    yes: options.yes,
-    nonInteractive: options.nonInteractive,
-    isolation: options.isolation,
-    acceptRisks: options.acceptRisks,
-  });
+  const security = await askNonInteractiveMode(nonInteractiveOptions);
 
   const commands = resolveCommands(
     tooling.packageManager,

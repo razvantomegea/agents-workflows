@@ -185,7 +185,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - File-size watch: `update-command.ts` is 131 lines — branching block adds ~30 lines, total ~160. If it crosses 180, extract the branching into `src/cli/resolve-security-update.ts` (`resolveSecurityForUpdate({ existing, options }): Promise<StackConfig['security']>`) and call from `update-command.ts`. Plan for the helper-extraction up front; do not inline >50 lines here.
 - No `any`; the `security` resolution function returns `StackConfig['security']` explicitly.
 
-### Task 7 — Docs: invocation, rule-order, isolation, multi-tool guidance [DOCS]
+### Task 7 — Docs: invocation, rule-order, isolation, multi-tool guidance [DOCS] [LOGIC]
 **Files**
 - `README.md` (root, hand-edited)
 - `CLAUDE.md` (root, hand-edited)
@@ -201,6 +201,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - PRD E10.T7 (lines 2110–2118): VSCode Agent mode + `chat.agent.enabled`, Copilot coding agent + branch-protection backstop, `tools:` frontmatter is the ceiling, no auto-approve setting.
 - PRD E10.T8 (lines 2119–2127): Cascade Manual/Auto/Yolo modes, Auto = repo-recommended non-interactive, Yolo forbidden, `.windsurf/rules/00-forbidden-commands.md` precondition.
 - PRD E10.T5 (lines 2087–2099): smoke-test protocol entries (baseline denial, sandbox rejection, wget-pipe-to-shell, SSH keypair write, PowerShell wrapper, iwr exfil, sub-agent residual, nominal flow, logging) — all into `QA.md`.
+- Exact file paths in scope: `README.md`, `CLAUDE.md`, `AGENTS.md`, `QA.md`, `src/templates/config/AGENTS.md.ejs`, `src/templates/config/CLAUDE.md.ejs`.
 - Embed `security-disclosure.md.ejs` (Task 4) into the "Semi-autonomous" section of the EJS `CLAUDE.md` and `AGENTS.md` templates ONLY when `security.nonInteractiveMode === true` (gate via `<% if (security.nonInteractiveMode) { %>`).
 
 **Output**
@@ -209,6 +210,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - `QA.md` (currently empty) gains the full E10.T5 smoke checklist + a pointer to `tests/security/smoke.test.ts` (E9.T15) for the automatable subset and a "residual cases (expected to fail today)" section for the sub-agent bypass entry.
 - `src/templates/config/CLAUDE.md.ejs` and `src/templates/config/AGENTS.md.ejs` gain a `<% if (security.nonInteractiveMode) { %><%- include('../partials/security-disclosure.md.ejs') %><% } %>` block in the Semi-autonomous section so generated docs cite the disclosure inline when the user opted in.
 - All examples use ONLY the safe invocations (`claude -p`, `codex exec`, `cursor-agent --prompt`, `/workflow-plan` from VSCode chat, Cascade Auto). No `--dangerously-skip-permissions`, `--dangerously-bypass-approvals-and-sandbox`, `--yolo`, or `sandbox_mode = "danger-full-access"` appears in any of these files.
+- Exact paths touched in this task body: `README.md`, `CLAUDE.md`, `AGENTS.md`, `QA.md`, `src/templates/config/CLAUDE.md.ejs`, `src/templates/config/AGENTS.md.ejs`.
 
 **Notes**
 - Groups E10.T3 + T4 + T6 + T7 + T8 (5 doc-shaped tasks) into one logical unit per the orchestrator's "max 8 tasks" cap and the prompt's grouping guidance.
@@ -260,9 +262,9 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - [ ] Run `code-reviewer` agent on all modified files — fix every critical and warning finding.
 - [ ] Run `security-reviewer` agent (parallel) on all modified files — confirm the Epic 9 deny-list / forbid-list still enforced in the non-interactive branch; flag any path where the new branch silently drops a guard.
 - [ ] DRY scan: confirm `IsolationChoice` is declared exactly once (Task 1), the `HOST_OS_ACCEPT_PHRASE` constant exactly once (Task 2), and the `security-disclosure.md.ejs` partial body has no parallel copy in any other file.
-- [ ] Pre-existing file-size violations noted but NOT remediated in this epic: `AGENTS.md` (root, 243 lines) and `src/templates/config/AGENTS.md.ejs` (205 lines). Open a follow-up issue rather than refactoring inside this branch.
+- [ ] Pre-existing file-size violations noted but NOT remediated in this epic: `AGENTS.md` (root) and `src/templates/config/AGENTS.md.ejs` both exceed the 200-line cap. Open a follow-up issue rather than refactoring inside this branch.
 
 ## External errors
 
-- **Pre-existing file-size overage (not remediated in Epic 10):** `AGENTS.md` (root) is 247 lines and `src/templates/config/AGENTS.md.ejs` is 208 lines, both exceeding the project's 200-line cap. Both files were already over the cap before Epic 10 began (per the PLAN's pre-implementation notes). Epic 10 added ~3–8 net lines to each (for the semi-autonomous paragraph and the conditional disclosure include). Refactoring these files is out of scope for Epic 10 and should be tracked as a follow-up cleanup.
+- **Pre-existing file-size overage (not remediated in Epic 10):** `AGENTS.md` (root) and `src/templates/config/AGENTS.md.ejs` both exceed the project's 200-line cap. Both files were already over the cap before Epic 10 began (per the PLAN's pre-implementation notes). Epic 10 added ~3–8 net lines to each (for the semi-autonomous paragraph and the conditional disclosure include). Refactoring these files is out of scope for Epic 10 and should be tracked as a follow-up cleanup.
 - **PRD §E10.T11 spec gap (acknowledged, not fixable in code):** The PRD asks for a self-documenting `runsIn` + `acknowledged` comment block in BOTH `.codex/config.toml` and `.claude/settings.json` when non-interactive mode is enabled. JSON does not support inline comments natively, so `settings.json` only emits the `defaultMode` value change; the comment block lands only in the TOML emit. Documented in `README.md`'s Semi-autonomous subsection and the rendered `CLAUDE.md` / `AGENTS.md` disclosure embed.

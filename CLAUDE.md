@@ -127,10 +127,79 @@ DRY and reusability are critical principles — enforced without exception:
 
 The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. Codex per-user approvals accumulate in `~/.codex/rules/default.rules` on Unix and `%USERPROFILE%\.codex\rules\default.rules` on Windows - prune them quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
 
-- Codex on Windows-native hosts is intentionally unsupported by the strict deny rules — run Codex from WSL2 or a devcontainer (see README "Codex on Windows hosts: WSL2 or devcontainer required"). Claude Code on Windows-native is supported.
+## Host hardening (operator-side, applies on every OS)
 
-## Semi-autonomous non-interactive mode
+These complement the command-layer denies — see PRD §1.9.2 for full rationale. Each item lists OS-specific guidance; the **rule** itself applies regardless of OS.
 
-Guard order: deny/forbid rules fire first, then the approval stage, then the workspace-write sandbox. This mode is developer-assisted, feature-branch scope only — always run `git diff` and review changes before any commit or push. On Windows, the sandbox is unreliable; `.codex/rules/project.rules` is the primary guard (PRD §1.9.1 item 10.2). `agents-workflows init --non-interactive` emits `"defaultMode": "bypassPermissions"` in `.claude/settings.json` and `approval_policy = "never"` in `.codex/config.toml` only when the user opts in. See README "Semi-autonomous non-interactive mode" for invocations, the per-tool table, and the full disclosure.
+- **Avoid cross-OS / cross-volume access.** Run inside the native filesystem of whichever OS executes the agent. `workspace-write` does not restrict reads, so a prompt-injected agent reaching across mounts can read host secrets.
+  - WSL2: `~/Projects/...`, not `/mnt/c/`.
+  - macOS: local APFS, not `/Volumes/...` or SMB shares.
+  - Linux: local disk, not `/mnt/...`, `sshfs`, or NFS unless explicitly trusted.
+  - Windows-native: `%USERPROFILE%\Projects\...`, not UNC paths.
+  - Container hosts (Docker / Podman): bind-mount only the project subtree — never `$HOME`. Mounting `$HOME` into a sandboxed agent exposes SSH keys, cloud credentials, and browser profiles.
+- **Use sandboxing.** Prefer Claude Code's `/sandbox` for ad-hoc runs (cross-platform). For full sessions, prefer devcontainer / Docker / Podman / Codespaces. OS-native primitives where they apply: Linux seccomp / Landlock, macOS `sandbox-exec`, Windows AppContainer / WDAC. Kernel sandbox primitives do not apply on Windows-native hosts — rules and `/sandbox` are the available controls there. Trust ladder ordering (`/sandbox` < `workspace-write` < devcontainer < disposable VM) compares **write** isolation; for **read** isolation, `/sandbox` adds syscall-filtered read restriction that `workspace-write` does not, so combine the two when read-exfil is the threat.
+- **No privilege escalation, any OS.** Never run the harness under `sudo` / `doas` / `su` (Linux/macOS) or "Run as administrator" / elevated PowerShell / `runas /user:Administrator` (Windows). Use a non-privileged user account for daily development:
+  - WSL2 / Linux: non-root user with user-scope tooling (nvm / fnm / mise).
+  - macOS: standard (non-Admin) user; Homebrew installed once under that user. On Apple Silicon, the initial `/opt/homebrew` setup prompts for `sudo` once — subsequent `brew install` must not require `sudo`. If a later `brew install` prompts for `sudo`, stop and reinstall Homebrew under the correct user.
+  - Windows-native: standard (non-Administrator) user; user-scope installs (winget `--scope user`, fnm, Volta). If a UAC consent prompt appears during an agent session, decline and investigate before continuing — it is a red flag, not a routine confirmation.
+- **Enterprise endpoint monitoring.** Org-managed devices: install the org-mandated EDR for the host OS so the agent's process is observable alongside other workloads:
+  - Windows + WSL2: Microsoft Defender for Endpoint **plus the MDE WSL plug-in**.
+  - macOS: Defender for Endpoint for macOS, CrowdStrike Falcon, SentinelOne, etc.
+  - Linux: Defender for Endpoint for Linux, Falcon Sensor for Linux, auditd-based agents, etc.
+
+## Semi-autonomous non-interactive mode — security disclosure
+
+### What non-interactive mode does
+
+- Codex runs with `approval_policy = "never"`.
+- Claude runs with `defaultMode = "bypassPermissions"`.
+- Approval prompts are skipped.
+
+### What it does NOT relax
+
+- Deny rules in `.claude/settings.json` and forbid rules in `.codex/rules/project.rules`
+  still block destructive/forbidden commands.
+- The `workspace-write` sandbox still applies (subject to PRD §1.9.1 item 10.2 on Windows).
+
+### Known risks (PRD §1.9.1)
+
+1. **Claude sub-agent deny-bypass.** `Task` tool sub-agents ignore `permissions.deny`
+   (Anthropic #25000, #43142). Do not route destructive ops through sub-agents.
+
+2. **Codex Windows sandbox instability.** Workspace-write is unstable on Windows
+   (OpenAI #15850 + dupes). Rules are the primary guard there, not the sandbox.
+
+3. **PowerShell wrapper prefix_rule bypass.** `pwsh -Command` / `cmd /c` body is
+   opaque to prefix_rule (OpenAI #13502). Mitigated by E9.T12 forbid rules.
+
+4. **Claude `bypassPermissions` unreliability.** Settings-based flip is often ignored
+   (#34923 + dupes). Fails safe today — prompts rather than silent bypass.
+
+5. **Network exfiltration surface.** `network_access = true` plus prompt injection via
+   README / issue body / sourcemap can exfiltrate secrets via `curl` / `iwr`.
+   Mitigated by E9.T11 denies and E9.T13 `allowedDomains`; residual via `node -e`
+   raw sockets.
+
+### Recommendation — isolation environments
+
+Run the agent in an isolated environment when non-interactive mode is enabled:
+
+- devcontainer / Dev Containers / GitHub Codespaces
+- Docker / Podman container
+- Local VM (UTM / Parallels / Hyper-V / WSL2) or cloud VM / VPS
+- Clean dedicated workstation (no personal files, SSH keys, or browser profiles)
+
+### If you run on your primary OS
+
+A prompt-injected agent can read `~/.ssh/*`, `~/.aws/credentials`,
+`~/.config/gh/hosts.yml`, browser profile cookies, Windows `%APPDATA%`, etc.
+Workspace-write only restricts WRITES, not reads.
+
+Codex CLI is unsupported on Windows-native hosts — use WSL2 or a devcontainer (see README "Codex on Windows hosts").
+
+### Manual review is still required
+
+Always run `git diff` and review changes before committing. The deny list is
+defense-in-depth only — especially for sub-agent calls.
 
 <!-- agents-workflows:managed-end -->

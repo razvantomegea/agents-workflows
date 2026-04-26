@@ -213,6 +213,8 @@ codex exec --json --ephemeral "Read ./AGENTS.md and execute every step in order 
 
 **Windows caveat (PRD §1.9.1 item 10.2):** Codex `workspace-write` sandbox is unstable on Windows. Treat `.codex/rules/project.rules` as the PRIMARY guard. Prefer devcontainer / WSL2 / VM / GitHub Codespaces for higher trust.
 
+**Host hardening (PRD §1.9.2, all OSes).** Run from the native filesystem (no cross-mount work — no `/mnt/c`, `/Volumes`, or UNC paths), sandbox via `/sandbox` or devcontainer, never run elevated (no `sudo` / Administrator), and on enterprise devices install the org-mandated EDR (Microsoft Defender for Endpoint incl. the WSL plug-in, CrowdStrike Falcon, SentinelOne, etc.) for the host OS.
+
 #### Codex on Windows hosts: WSL2 or devcontainer required
 
 The strict deny rules forbid PowerShell wrappers (E9.T12 — see `.codex/rules/project.rules` and `.claude/settings.json`), and the Codex CLI Windows runtime spawns every command via `powershell.exe -NoProfile -Command '<inner>'`. Together this means **Codex on Windows-native is intentionally unsupported**: the wrapper deny fires before any inner command runs. Use WSL2 or a devcontainer where the Linux runtime invokes commands via direct `execve` and the deny rules apply to the actual command.
@@ -221,9 +223,16 @@ The strict deny rules forbid PowerShell wrappers (E9.T12 — see `.codex/rules/p
 # In Windows PowerShell (one-time, as administrator):
 wsl --install -d Ubuntu-22.04
 
-# Inside the Ubuntu shell:
-cd /mnt/c/Projects/agents-workflows
-curl -fsSL https://get.pnpm.io/install.sh | sh -
+# Inside the Ubuntu shell — clone into the Linux filesystem, NOT /mnt/c
+# (PRD §1.9.2 item 11.1: avoid cross-OS access; /mnt/c reads expose
+# Windows-side secrets to a prompt-injected agent).
+mkdir -p ~/Projects && cd ~/Projects
+git clone https://github.com/<your-org>/agents-workflows.git
+cd agents-workflows
+# Prefer corepack (ships with Node ≥16) over curl-pipe-to-shell — it
+# resolves pnpm to a registry-pinned version with integrity verification.
+corepack enable
+corepack prepare pnpm@latest --activate
 pnpm install
 # Codex CLI install: follow the Linux instructions from your Codex distribution.
 codex

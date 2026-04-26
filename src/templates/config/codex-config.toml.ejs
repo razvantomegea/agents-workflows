@@ -9,6 +9,8 @@
 #   shell rc files, system packages).
 # - sandbox_workspace_write.network_access = false blocks outbound
 #   network egress unless explicitly approved per command.
+#
+<%- include('../partials/host-hardening.md.ejs', { condense: true }) -%>
 <% if (security.nonInteractiveMode) { -%>
 # Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).
 <%- include('../partials/security-disclosure.md.ejs', { condense: true }) -%>
