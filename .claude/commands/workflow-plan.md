@@ -21,9 +21,9 @@ git checkout main && git pull origin main && git checkout -b <branch-name>
 
 ### Phase 2 — Research & plan
 
-Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md` and `PRD.md`. The architect agent will:
+Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md` and `README.md`. The architect agent will:
 
-1. Read `PRD.md`, `CLAUDE.md`, and any other project docs — the planner must read `PRD.md` **first** so the plan reflects documented requirements and non-goals.
+1. Read `README.md`, `CLAUDE.md`, and any other project docs — the planner must read `README.md` **first** so the plan reflects documented requirements and non-goals.
 2. Analyze the user's request: $ARGUMENTS
 3. Grep the codebase for existing components, hooks, utils, types — DRY is non-negotiable.
 4. Write a structured plan to `PLAN.md`:
@@ -90,7 +90,7 @@ After writing the plan, **immediately execute every task** in order:
 If the user's request referenced a documented epic in `PRD.md` (pattern: `## Epic N — <title>` with `[MUST]` / `[SHOULD]` / `[NICE]` tag, or a copy-pasted epic header):
 
 1. Locate the epic header in `PRD.md`.
-2. Mark only PRD checklist items or task headings that are confirmed complete by the completed `PLAN.md` tasks.
+2. Mark only `PRD.md` checklist items or task headings that are confirmed complete by the completed `PLAN.md` tasks.
 3. Leave incomplete or unmatched items unchanged and report the mismatch in the final summary.
 4. Append `[DONE YYYY-MM-DD]` (today's date) to the epic header only when every task item under that epic is confirmed complete.
 5. Add a one-line `**Landed on** \`<branch-name>\`.` note under the header only when it is not already present.

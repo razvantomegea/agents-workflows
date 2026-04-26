@@ -11,6 +11,9 @@
 #   network egress unless explicitly approved per command.
 #
 <%- include('../partials/host-hardening.md.ejs', { condense: true }) -%>
+<% if (security.runsIn !== null && !security.nonInteractiveMode) { -%>
+# Agent runs in: <%= security.runsIn %> (baseline isolation; non-interactive mode is OFF).
+<% } -%>
 <% if (security.nonInteractiveMode) { -%>
 # Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).
 <%- include('../partials/security-disclosure.md.ejs', { condense: true }) -%>

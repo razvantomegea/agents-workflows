@@ -947,7 +947,7 @@ flowchart LR
 **Prompt anatomy (sections that must render):**
 
 1. **Your mission** — one paragraph stating the agent's job: audit `.claude/agents/*.md` and `.codex/skills/**/SKILL.md` against this workspace and propose file-level changes.
-2. **Inputs to read first** — explicit list: `PRD.md`, `AGENTS.md`, `CLAUDE.md` (if present), `<%= project.docsFile %>` (if set), every file under `.claude/agents/` and `.codex/skills/`, plus representative source files from `<%= paths.sourceRoot %>`.
+2. **Inputs to read first** — explicit list: `PRD.md`, `AGENTS.md`, `CLAUDE.md` (if present), `<%= project.docsFile %>` (if set, intent reference for agents), `<%= project.roadmapFile %>` (if set, mutable epic checklist consumed only by `/workflow-plan` Phase 4 and `/workflow-fix` Phase 8), every file under `.claude/agents/` and `.codex/skills/`, plus representative source files from `<%= paths.sourceRoot %>`.
 3. **Audit targets** — the agent set emitted in this repo is the single canonical `implementer.md` (rendered from the matching variant per §1.19), plus `architect.md`, `code-reviewer.md`, `security-reviewer.md`, `code-optimizer.md`, `test-writer.md`, `reviewer.md`, optionally `ui-designer.md` (frontend only) and `e2e-tester.md`. For each generated agent file, check: (a) does the stack-context partial match the real primary modules? (b) do the DoD commands match what actually runs in CI? (c) are the cited paths present? (d) do the language/framework idioms match the codebase's conventions? (e) are domain-specific nouns and services named? For `implementer.md` specifically, verify the rendered variant matches the actual primary stack (e.g., if the repo is majority Go but the variant is `generic`, flag the mismatch).
 4. **Propose changes (do not edit yet)** — output format is a numbered list: `agent file path` → `section heading` → `proposed diff` (as a unified-diff or before/after block) → `rationale citing PRD § or code path`.
 5. **Stop conditions** — explicit rules: do not edit any file until the user replies "apply"; if more than ~15 change items accumulate, chunk by agent file; if uncertain about a domain term, ask the user per §1.3.
@@ -2247,17 +2247,15 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - **Change**: Do not emit any Windsurf configuration that enables Yolo mode, and explicitly forbid it in `.windsurf/rules/00-forbidden-commands.md`.
 - **Done when**: README documents the three Cascade modes, the Auto-mode requirement, and the Yolo prohibition; smoke test in E10.T5 extended to confirm Cascade in Auto mode still denies forbidden commands.
 
-### E10.T9 — `askNonInteractiveMode()` prompt with security disclosure — M
+### E10.T9 — `askIsolation()` baseline + `askNonInteractiveMode()` disclosure — M
 
-**Context.** Non-interactive mode is an informed-consent choice, not a default. The generator must surface the §1.9.1 risks before asking the user to opt in. The prompt also captures where the agent will run (devcontainer / VM / host OS) so the emitted config self-documents the trust baseline and the update command can round-trip the decision.
+**Context.** Two independent informed-consent questions. (a) **Where the agent runs** (`runsIn`) is documented as a baseline regardless of approval mode — knowing whether work happens in a devcontainer vs. host-OS shapes every other safety decision. (b) **Non-interactive mode** is the opt-in choice that flips approval prompts off; this still surfaces §1.9.1 risks before consent. Decoupling them means the emitted manifest always documents the trust baseline, even when non-interactive remains OFF.
 
-- **Files**: `src/prompt/questions.ts` (new `askNonInteractiveMode(options)` export), `src/prompt/prompt-flow.ts` (call site after `askTargets`), `src/prompt/types.ts` (extend `PromptAnswers`).
-- **Behaviour.**
-  1. If `options.yes === true` and neither `options.nonInteractive` nor `options.isolation` is set, skip the prompt and return `{ nonInteractiveMode: false, runsIn: null, disclosureAcknowledgedAt: null }`. `--yes` alone must never enable non-interactive.
-  2. If `options.nonInteractive` is explicitly set (`true` or `false`), honour it but still require `options.isolation` when `true`; if isolation is `host-os`, also require `options.acceptRisks` (matches E10.T12 CLI semantics).
-  3. Otherwise, print a short intro ("Non-interactive mode lets the agent run without asking for approval on each command. This is faster but carries risks — please read before choosing."), render the disclosure partial from E10.T14 to the terminal as plaintext, then prompt: `confirm({ message: 'Enable non-interactive mode for this project?', default: false })`.
-  4. If the user declines, return `{ nonInteractiveMode: false, runsIn: null, disclosureAcknowledgedAt: null }`.
-  5. If the user accepts, present the isolation selector:
+- **Files**: `src/prompt/ask-non-interactive.ts` (`askIsolation` and `askNonInteractiveMode` exports), `src/prompt/questions.ts` (re-exports), `src/prompt/prompt-flow.ts` (call sites after `askGovernance`).
+- **`askIsolation(options)` behaviour.**
+  1. If `options.isolation` is set explicitly, return it without prompting (explicit flag wins, including under `--yes`).
+  2. Else if `options.yes === true`, return `null` (CI-safe; no prompt fires).
+  3. Else render the isolation selector:
      ```text
      Where are you running the agent? (this affects risk)
        > devcontainer   (.devcontainer / Dev Containers / Codespaces)
@@ -2267,9 +2265,17 @@ These disable the last-line sandbox controls and are out of bounds for this proj
        > clean-machine  (dedicated workstation — no personal data)
        > host-os        (my primary OS, with personal files, SSH keys, browser profiles)
      ```
-  6. If the user selects `host-os`, print a stronger warning enumerating the readable-by-agent paths (`~/.ssh/*`, `~/.aws/credentials`, `~/.config/gh/hosts.yml`, browser cookie stores, Windows `%APPDATA%`) and require a second confirm with exact-match validation: `"Type 'yes, I accept the risks' to continue:"`. Any other input aborts non-interactive enablement and returns to step 4's safe-default response.
-  7. Return `{ nonInteractiveMode: true, runsIn: <choice>, disclosureAcknowledgedAt: <ISO-8601 now> }`.
-- **Done when**: interactive `init` on a fresh project renders the disclosure and offers the prompt; default OFF verified under `--yes`; host-os path requires two confirms with exact-match; other isolation paths require one; the ISO timestamp is captured; unit tests cover each branch (see E10.T15).
+     using `options.current` as the default when supplied (lets `update` re-prompt without nagging).
+  4. If the user picks `host-os`, print the read-exposure warning enumerating `~/.ssh/*`, `~/.aws/credentials`, `~/.config/gh/hosts.yml`, browser cookie stores, Windows `%APPDATA%` — but no exact-phrase gate fires here, since the user is only documenting a baseline.
+- **`askNonInteractiveMode(options)` behaviour.**
+  1. If `options.yes === true` and `options.nonInteractive` is not explicitly set, return `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, disclosureAcknowledgedAt: null }`. `--yes` alone never enables non-interactive.
+  2. If `options.nonInteractive` is explicitly set, honour it via the flag-driven path. When `nonInteractive === false`, return baseline `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, ... }`. When `nonInteractive === true`, also require `options.isolation`; for `host-os`, additionally require `options.acceptRisks` (matches E10.T12 CLI semantics) — failure modes return safe defaults.
+  3. Otherwise, print the intro ("Non-interactive mode lets the agent run without asking for approval on each command. …"), render the disclosure partial from E10.T14, then prompt: `confirm({ message: 'Enable non-interactive mode for this project?', default: false })`.
+  4. If the user declines, return baseline `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, disclosureAcknowledgedAt: null }`.
+  5. If the user accepts and `options.isolation` is null, fall back to inline `askIsolation` so the function still works standalone.
+  6. If the resolved isolation is `host-os`, require the exact-match `"yes, I accept the risks"` confirm. Any other input returns step 4's baseline shape.
+  7. Return `{ nonInteractiveMode: true, runsIn: <isolation>, disclosureAcknowledgedAt: <ISO-8601 now> }`.
+- **Done when**: interactive `init` always shows the isolation question, then conditionally the disclosure; `--yes` skips both but honours `--isolation`; host-os warning fires at isolation-time; host-os accept-phrase fires only when enabling non-interactive; the ISO timestamp is captured; unit tests cover each branch (see E10.T15).
 
 ### E10.T10 — `StackConfig.security` schema — S
 
@@ -2283,8 +2289,9 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   }).default({ nonInteractiveMode: false, runsIn: null, disclosureAcknowledgedAt: null }),
   ```
   Extend `PromptAnswers` with the same shape under a `security` key so the prompt flow can assemble it before passing to schema-construction. Backwards compatibility: an old manifest without `security` must parse with all safe defaults.
+- **`runsIn` independence.** `runsIn` may be set even when `nonInteractiveMode === false` — the field documents the trust baseline regardless of approval mode. `disclosureAcknowledgedAt` remains tied to non-interactive (set only when the disclosure is acknowledged during opt-in).
 - **Persistence.** The CLI already writes the full config into `.agents-workflows.json` on `init`, so no extra manifest plumbing is required — the new field auto-persists.
-- **Done when**: schema parse of an old manifest (no `security` key) succeeds with `nonInteractiveMode: false`; round-trip of a non-interactive manifest preserves every field including the ISO timestamp and `runsIn`.
+- **Done when**: schema parse of an old manifest (no `security` key) succeeds with `nonInteractiveMode: false`; round-trip of a non-interactive manifest preserves every field including the ISO timestamp and `runsIn`; round-trip of a baseline manifest (`runsIn: 'devcontainer'`, `nonInteractiveMode: false`) preserves `runsIn` with `disclosureAcknowledgedAt: null`.
 
 ### E10.T11 — Template branching for emitted configs — M
 
@@ -2308,33 +2315,43 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   network_access = false
   <% } %>
   ```
-- **settings.json.ejs:** Conditionally emit `"defaultMode"` inside `permissions`: `"acceptEdits"` when `security.nonInteractiveMode === true`, `"default"` otherwise. Never emit `"bypassPermissions"`. The `sandbox` block (from E9.T2) is emitted unconditionally; `allowedDomains` populates from E9.T13.
-- **Self-documenting header.** Both templates insert the `security.runsIn` + `disclosureAcknowledgedAt` comment block so the emitted file records the choice in-context; when `security.nonInteractiveMode === false`, the comment is omitted.
-- **Done when**: snapshot tests cover both branches of both files; emitted TOML and JSON parse under their respective validators; the non-interactive comment block references PRD §1.9.1.
+- **settings.json.ejs:** Conditionally emit `"defaultMode"` inside `permissions`: `"acceptEdits"` when `security.nonInteractiveMode === true`, `"default"` otherwise. Never emit `"bypassPermissions"`. The `sandbox` block (from E9.T2) is emitted unconditionally; `allowedDomains` populates from E9.T13. (No isolation-baseline comment in `settings.json` — strict JSON does not support comments; the baseline is captured in the manifest and in `.codex/config.toml`.)
+- **Self-documenting header (codex-config.toml).** Three states:
+  - `nonInteractiveMode === true`: emit the `# Non-interactive mode enabled (runsIn=…, acknowledged=…)` block plus the disclosure partial.
+  - `nonInteractiveMode === false && runsIn !== null`: emit a one-line `# Agent runs in: <runsIn> (baseline isolation; non-interactive mode is OFF).` comment.
+  - `nonInteractiveMode === false && runsIn === null`: no isolation comment at all.
+- **Done when**: snapshot tests cover all three branches of `codex-config.toml` and both branches of `settings.json`; emitted TOML and JSON parse under their respective validators; the non-interactive comment block references PRD §1.9.1.
 
 ### E10.T12 — CLI flags on `init` and `update` — S
 
 - **Files**: `src/cli/init-command.ts` (`InitCommandOptions`), `src/cli/update-command.ts` (`UpdateCommandOptions`), `src/cli/index.ts` (commander / yargs / minimist registrations — whichever the project uses).
 - **Flags.**
   - `--non-interactive` / `--no-non-interactive` — explicit opt-in or opt-out. Overrides the prompt when present.
-  - `--isolation=<devcontainer|docker|vm|vps|clean-machine|host-os>` — required when `--non-interactive` is passed in headless CLI contexts (CI, `--yes`).
-  - `--accept-risks` — required when `--non-interactive --isolation=host-os` is combined (matches the interactive second-confirm gate).
-- **Validation.**
-  - `--yes` alone never enables non-interactive — safe-by-default.
-  - `--non-interactive` without `--isolation` errors out with `Error: --non-interactive requires --isolation=<env>`.
-  - `--non-interactive --isolation=host-os` without `--accept-risks` errors out with `Error: --non-interactive --isolation=host-os requires --accept-risks (see PRD §1.9.1)`.
-  - `--no-non-interactive` forces `security.nonInteractiveMode = false` regardless of prompt / manifest.
-- **Done when**: flag-driven CI runs produce correct configs without prompting; `--yes` alone produces safe configs; host-os requires `--accept-risks`; the three error messages above are emitted with exit code 1.
+  - `--isolation=<devcontainer|docker|vm|vps|clean-machine|host-os>` — captures the isolation baseline. Required when `--non-interactive=true`; optional standalone (sets `runsIn` baseline without flipping non-interactive).
+  - `--accept-risks` — required when `--non-interactive --isolation=host-os` is combined (matches the interactive accept-phrase gate). Not required when `--isolation=host-os` is passed alone.
+- **Validation matrix.**
+  | Combination | Result |
+  |---|---|
+  | `--yes` alone | Safe defaults: `nonInteractiveMode: false`, `runsIn: null`. |
+  | `--yes --isolation=foo` | Honoured: `runsIn: foo`, `nonInteractiveMode: false`. Explicit flag wins. |
+  | `--isolation=foo` alone | OK: `runsIn: foo`, `nonInteractiveMode: false`. No prompt. |
+  | `--isolation=host-os` alone | OK: `runsIn: 'host-os'`, no `--accept-risks` required. |
+  | `--non-interactive` without `--isolation` | Error: `--non-interactive requires --isolation=<env>` (exit 1). |
+  | `--non-interactive --isolation=host-os` without `--accept-risks` | Error: `--non-interactive --isolation=host-os requires --accept-risks (see PRD §1.9.1)` (exit 1). |
+  | `--non-interactive --isolation=foo` | OK: NI on, `runsIn: foo`, no prompt. |
+  | `--no-non-interactive --isolation=foo` | OK: NI forced off, `runsIn: foo`. |
+  | `--no-non-interactive` alone | NI forced off; isolation prompted interactively (or null under `--yes`). |
+- **Done when**: flag-driven CI runs produce correct configs without prompting; `--yes` alone produces safe configs; `--isolation` alone documents the baseline without enabling NI; host-os requires `--accept-risks` only when also enabling NI; the two error messages above are emitted with exit code 1.
 
 ### E10.T13 — Update-command round-trip for security — S
 
-- **Files**: `src/cli/update-command.ts` (after the existing manifest parse).
-- **Change.** After reading the manifest and parsing into the `StackConfig` schema, branch on `parsed.data.config.security.nonInteractiveMode`:
-  - If currently `true` and not `options.yes`: print a one-line reminder (`"Non-interactive mode is enabled for this project (runsIn=<runsIn>, acknowledged=<ISO>). See PRD §1.9.1."`) and ask `confirm({ message: 'Keep non-interactive mode enabled?', default: true })`. If the user declines, flip to `false` and clear `runsIn` / `disclosureAcknowledgedAt`.
-  - If currently `false` and not `options.yes`: ask `confirm({ message: 'Enable non-interactive mode? (advanced — see security disclosure)', default: false })`. If yes, run the full E10.T9 disclosure flow.
-  - If `options.yes`: preserve the existing manifest value verbatim — no implicit changes.
-  - If `options.nonInteractive` / `options.isolation` / `options.acceptRisks` are set explicitly on the `update` command, honour them (same validation as E10.T12) and skip the prompt branches above.
-- **Done when**: `update --yes` preserves manifest security config; interactive `update` gives the user a chance to change it with disclosure; flipping on triggers the full E10.T9 disclosure; flipping off simply logs the change.
+- **Files**: `src/cli/update-command.ts`, `src/cli/resolve-security-update.ts` (extracted helper).
+- **Change.** After reading the manifest and parsing into the `StackConfig` schema, run `resolveSecurityUpdate` with four branches (priority order):
+  1. **Explicit flags** (`options.nonInteractive`, `options.isolation`, `options.acceptRisks`): validate via `parseNonInteractiveFlags` (E10.T12 semantics) and apply directly. `--isolation` alone returns `{ ...SECURITY_DEFAULTS, runsIn: <flag> }`.
+  2. **`options.yes` / `options.noPrompt`**: preserve `existing` verbatim — no implicit changes.
+  3. **Currently ON, interactive**: print the reminder (`"Non-interactive mode is enabled for this project (runsIn=<runsIn>, acknowledged=<ISO>). See PRD §1.9.1."`), `confirm({ message: 'Keep non-interactive mode enabled?', default: true })`, then `askIsolation({ current: existing.runsIn })` to re-confirm or change isolation. If the user declines NI but kept isolation, return baseline. If isolation unchanged AND NI kept, preserve `existing` verbatim. If isolation changed AND NI kept, re-run the disclosure flow (host-os transitions re-fire the accept-phrase gate, fresh `disclosureAcknowledgedAt` is captured).
+  4. **Currently OFF, interactive**: `askIsolation({ current: existing.runsIn })` first (always asked baseline), then `confirm({ message: 'Enable non-interactive mode? (advanced — see security disclosure)', default: false })`. If declined, return baseline `{ runsIn, … }`. If accepted, run the disclosure flow with the chosen isolation pre-set.
+- **Done when**: `update --yes` preserves manifest security config; interactive `update` always asks isolation as a baseline (currently-OFF case); `--isolation` alone updates `runsIn` without flipping NI; flipping NI on triggers the full E10.T9 disclosure; flipping off simply logs the change while keeping `runsIn`.
 
 ### E10.T14 — Security-disclosure partial — S
 

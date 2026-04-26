@@ -176,9 +176,13 @@ npx agents-workflows init --config ./agents-workflows.config.json
 npx agents-workflows init --yes
 ```
 
+### Isolation baseline (always asked)
+
+Interactive `init` and `update` always ask **where the agent runs** (devcontainer, docker, vm, vps, clean-machine, host-os) as a documented baseline. The choice is captured in `.agents-workflows.json` under `security.runsIn` even when non-interactive mode stays OFF — knowing whether work happens in a sandbox vs. host-OS shapes every other safety decision. `--isolation=<env>` works as a standalone flag (no `--non-interactive` required); `--yes --isolation=foo` honours the explicit flag.
+
 ### Semi-autonomous non-interactive mode
 
-This mode is **opt-in and off by default**. `--yes` alone does NOT enable it — you must also pass `--non-interactive`. Choosing `host-os` as the isolation environment additionally requires `--accept-risks`. See PRD §1.9.1 for the full risk disclosure before enabling.
+This mode is **opt-in and off by default**. `--yes` alone does NOT enable it — you must also pass `--non-interactive`. Choosing `host-os` as the isolation environment additionally requires `--accept-risks` **when enabling non-interactive** (selecting `host-os` as the baseline alone does not). See PRD §1.9.1 for the full risk disclosure before enabling.
 
 **Canonical invocations (no dangerous bypass flags):**
 

@@ -99,13 +99,13 @@ After writing the plan, **immediately execute every task** in order:
 
 5. Record final summary inputs: what was implemented, files changed, any open questions, and any external errors.
 
-<% if (docsFile) { -%>
-### Phase 4 — Mark epic done in `<%= docsFile %>` (if applicable)
+<% if (roadmapFile) { -%>
+### Phase 4 — Mark epic done in `<%= roadmapFile %>` (if applicable)
 
-If the user's request referenced a documented epic in `<%= docsFile %>` (pattern: `## Epic N — <title>` with `[MUST]` / `[SHOULD]` / `[NICE]` tag, or a copy-pasted epic header):
+If the user's request referenced a documented epic in `<%= roadmapFile %>` (pattern: `## Epic N — <title>` with `[MUST]` / `[SHOULD]` / `[NICE]` tag, or a copy-pasted epic header):
 
-1. Locate the epic header in `<%= docsFile %>`.
-2. Mark only PRD checklist items or task headings that are confirmed complete by the completed `PLAN.md` tasks.
+1. Locate the epic header in `<%= roadmapFile %>`.
+2. Mark only `<%= roadmapFile %>` checklist items or task headings that are confirmed complete by the completed `PLAN.md` tasks.
 3. Leave incomplete or unmatched items unchanged and report the mismatch in the final summary.
 4. Append `[DONE YYYY-MM-DD]` (today's date) to the epic header only when every task item under that epic is confirmed complete.
 5. Add a one-line `**Landed on** \`<branch-name>\`.` note under the header only when it is not already present.

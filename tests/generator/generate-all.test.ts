@@ -124,6 +124,34 @@ describe('generateAll', () => {
     }
   });
 
+  it('renders the roadmap epic phase in workflow commands when roadmapFile is set', async () => {
+    const config = makeConfig();
+    config.project.docsFile = 'README.md';
+    config.project.roadmapFile = 'PRD.md';
+    const files = await generateAll(config);
+
+    const workflowPlan = files.find((file) => file.path === '.claude/commands/workflow-plan.md');
+    const workflowFix = files.find((file) => file.path === '.claude/commands/workflow-fix.md');
+    expect(workflowPlan?.content).toContain('### Phase 4 — Mark epic done in `PRD.md`');
+    expect(workflowPlan?.content).toContain('### Phase 5 — Done');
+    expect(workflowFix?.content).toContain('Update `PRD.md` (if applicable)');
+  });
+
+  it('omits the roadmap epic phase and renumbers when roadmapFile is null', async () => {
+    const config = makeConfig();
+    config.project.docsFile = 'PRD.md';
+    config.project.roadmapFile = null;
+    const files = await generateAll(config);
+
+    const workflowPlan = files.find((file) => file.path === '.claude/commands/workflow-plan.md');
+    const workflowFix = files.find((file) => file.path === '.claude/commands/workflow-fix.md');
+    expect(workflowPlan?.content).not.toContain('Mark epic done');
+    expect(workflowPlan?.content).toContain('### Phase 4 — Done');
+    expect(workflowPlan?.content).not.toContain('### Phase 5 — Done');
+    expect(workflowFix?.content).not.toContain('Update `PRD.md`');
+    expect(workflowFix?.content).not.toContain('items marked done');
+  });
+
   it('emits tight SKILL.md frontmatter without blank lines after stripping model/color', async () => {
     const files = await generateAll(makeConfig());
     const skillFiles = files.filter((file) => file.path.startsWith('.codex/skills/') && file.path.endsWith('/SKILL.md'));

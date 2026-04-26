@@ -14,6 +14,7 @@ export function printDetected(detected: DetectedStack): void {
     ['Formatter', detected.formatter],
     ['Pkg Manager', detected.packageManager],
     ['Docs', detected.docsFile],
+    ['Roadmap', detected.roadmapFile],
   ] as const;
 
   for (const [label, detection] of entries) {

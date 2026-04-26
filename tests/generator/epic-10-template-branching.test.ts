@@ -104,6 +104,35 @@ describe('Epic 10 template branching — non-interactive mode', () => {
     });
   });
 
+  describe('runsIn-only baseline branch (security.runsIn !== null && !nonInteractiveMode)', () => {
+    const baselineConfig = makeStackConfig({
+      security: {
+        nonInteractiveMode: false,
+        runsIn: 'devcontainer',
+        disclosureAcknowledgedAt: null,
+      },
+    });
+
+    it('emits a baseline-isolation comment in .codex/config.toml without enabling non-interactive', async () => {
+      const files = await generateAll(baselineConfig);
+      const toml = getContent(files, CODEX_TOML_PATH);
+
+      expect(toml).toContain('# Agent runs in: devcontainer');
+      expect(toml).toContain('approval_policy = "on-request"');
+      expect(toml).toContain('network_access = false');
+      expect(toml).not.toContain('approval_policy = "never"');
+      expect(toml).not.toContain('Non-interactive mode enabled');
+    });
+
+    it('keeps defaultMode = "default" in .claude/settings.json regardless of runsIn', async () => {
+      const files = await generateAll(baselineConfig);
+      const json = getContent(files, SETTINGS_JSON_PATH);
+      const parsed = JSON.parse(json) as { permissions: { defaultMode: string } };
+
+      expect(parsed.permissions.defaultMode).toBe('default');
+    });
+  });
+
   describe('disclosure rendering — AGENTS.md and CLAUDE.md with nonInteractiveMode === true', () => {
     it('injects security disclosure into AGENTS.md when nonInteractiveMode is true', async () => {
       const files = await generateAll(NON_INTERACTIVE_CONFIG);

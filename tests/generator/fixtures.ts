@@ -67,6 +67,7 @@ export function makeDetectedStack(overrides: Partial<DetectedStack> = {}): Detec
     monorepo: { isMonorepo: false, tool: null, workspaces: [] },
     aiAgents: { agents: [], hasClaudeCode: false, hasCodexCli: false },
     docsFile: EMPTY_DETECTION,
+    roadmapFile: EMPTY_DETECTION,
     ...overrides,
   };
 }
@@ -85,7 +86,7 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
   const mergedAgents: StackConfig['agents'] = { ...baseAgents, ...overrides.agents };
 
   const baseConfig: StackConfig = {
-    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [], docsFile: null, mainBranch: 'main', ...overrides.project },
+    project: { name: 'test-app', description: 'A test app', locale: 'en', localeRules: [], docsFile: null, roadmapFile: null, mainBranch: 'main', ...overrides.project },
     stack: mergedStack,
     tooling: { packageManager: 'pnpm', packageManagerPrefix: 'pnpm', testFramework: 'jest', testLibrary: 'react-testing-library', e2eFramework: 'playwright', linter: 'eslint', formatter: 'prettier', ...overrides.tooling },
     paths: { sourceRoot: 'src/', componentsDir: 'src/components/', hooksDir: 'src/hooks/', utilsDir: 'src/utils/', testsDir: 'tests/', designTokensFile: null, i18nDir: null, testConfigFile: null, ...overrides.paths },

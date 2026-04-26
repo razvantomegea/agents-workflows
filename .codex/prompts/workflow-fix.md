@@ -41,8 +41,8 @@ Fix all QA issues listed in QA.md on the current feature branch.
 
 7. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
 
-8. **Update `PRD.md` (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching PRD checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched PRD items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
-9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, PRD items marked done, any unmatched PRD items, and any unresolved issues.
+8. **Update `PRD.md` (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching `PRD.md` checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched `PRD.md` items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
+9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, `PRD.md` items marked done, any unmatched `PRD.md` items, and any unresolved issues.
 
 ## Git rules
 

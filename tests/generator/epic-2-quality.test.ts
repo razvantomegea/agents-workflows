@@ -153,14 +153,15 @@ describe('Epic 2 quality partials', () => {
   it('workflow commands update only confirmed PRD task items', async () => {
     const config = makeStackConfig();
     config.project.docsFile = 'PRD.md';
+    config.project.roadmapFile = 'PRD.md';
     const commandFiles = await generateAll(config);
     const workflowPlan = getCommandContent(commandFiles, 'workflow-plan');
     const workflowFix = getCommandContent(commandFiles, 'workflow-fix');
 
-    expect(workflowPlan).toContain('Mark only PRD checklist items or task headings');
+    expect(workflowPlan).toContain('Mark only `PRD.md` checklist items or task headings');
     expect(workflowPlan).toContain('only when every task item under that epic is confirmed complete');
-    expect(workflowFix).toContain('mark only the matching PRD checklist items or task headings');
-    expect(workflowFix).toContain('Leave incomplete or unmatched PRD items unchanged');
+    expect(workflowFix).toContain('mark only the matching `PRD.md` checklist items or task headings');
+    expect(workflowFix).toContain('Leave incomplete or unmatched `PRD.md` items unchanged');
     expect(workflowPlan).not.toContain('Append `— [DONE]` to every sub-task heading');
     expect(workflowFix).not.toContain('append `— [DONE]` to each sub-task heading');
   });

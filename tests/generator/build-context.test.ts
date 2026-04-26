@@ -90,12 +90,23 @@ describe('buildContext', () => {
 
   it('propagates docsFile from project config onto the context', () => {
     const withDocs = buildContext(makeConfig({
-      project: { name: 'x', description: 'x', locale: 'en', localeRules: [], docsFile: 'PRD.md', mainBranch: 'main' },
+      project: { name: 'x', description: 'x', locale: 'en', localeRules: [], docsFile: 'PRD.md', roadmapFile: null, mainBranch: 'main' },
     }));
     expect(withDocs.docsFile).toBe('PRD.md');
 
     const withoutDocs = buildContext(makeConfig());
     expect(withoutDocs.docsFile).toBeNull();
+  });
+
+  it('propagates roadmapFile from project config onto the context independently of docsFile', () => {
+    const withRoadmap = buildContext(makeConfig({
+      project: { name: 'x', description: 'x', locale: 'en', localeRules: [], docsFile: 'README.md', roadmapFile: 'PRD.md', mainBranch: 'main' },
+    }));
+    expect(withRoadmap.docsFile).toBe('README.md');
+    expect(withRoadmap.roadmapFile).toBe('PRD.md');
+
+    const withoutRoadmap = buildContext(makeConfig());
+    expect(withoutRoadmap.roadmapFile).toBeNull();
   });
 
   it('propagates mainBranch from project config onto the context', () => {
@@ -106,6 +117,7 @@ describe('buildContext', () => {
         locale: 'en',
         localeRules: [],
         docsFile: null,
+        roadmapFile: null,
         mainBranch: 'trunk',
       },
     }));

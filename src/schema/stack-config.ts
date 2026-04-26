@@ -45,6 +45,7 @@ export const stackConfigSchema = z.object({
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),
     docsFile: z.string().nullable().default(null),
+    roadmapFile: z.string().nullable().default(null),
     mainBranch: safeBranch.default('main'),
   }),
 

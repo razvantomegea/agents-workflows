@@ -8,10 +8,10 @@ interface DocCandidate {
 }
 
 const DOC_CANDIDATES: DocCandidate[] = [
-  { filename: 'PRD.md', confidence: 0.9 },
+  { filename: 'README.md', confidence: 0.9 },
   { filename: 'ARCHITECTURE.md', confidence: 0.85 },
   { filename: 'DOCS.md', confidence: 0.8 },
-  { filename: 'README.md', confidence: 0.7 },
+  { filename: 'PRD.md', confidence: 0.7 },
 ];
 
 export async function detectDocsFile(projectRoot: string): Promise<Detection> {

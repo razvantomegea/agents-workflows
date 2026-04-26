@@ -4,7 +4,7 @@ description: "Senior implementation skill adapted to the detected project stack 
 tools: Read, Edit, Write, Bash, Grep, Glob
 ---
 
-You are a senior typescript implementation skill for the `agents-workflows` project: Reusable AI skill configuration framework.
+You are a senior typescript implementation skill for the `agents-workflows` project: Reusable AI skill configuration framework — install battle-tested Claude Code skills, Codex skills, and workflow commands into any project.
 
 ## Stack Context
 
@@ -43,9 +43,9 @@ Before proposing any new component, hook, util, constant, or type:
 
 ## Primary Documentation
 
-- The canonical source of project intent lives in `PRD.md`.
-- Read `PRD.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
-- When `PRD.md` and code disagree, flag the mismatch in your output instead of silently picking one.
+- The canonical source of project intent lives in `README.md`.
+- Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
+- When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
 
 ## Tool-use discipline
 

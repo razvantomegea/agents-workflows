@@ -11,6 +11,7 @@ import { detectAuth } from './detect-auth.js';
 import { detectI18n } from './detect-i18n.js';
 import { detectAiAgents } from './detect-ai-agents.js';
 import { detectDocsFile } from './detect-docs-file.js';
+import { detectRoadmapFile } from './detect-roadmap-file.js';
 import { detectMonorepo } from './detect-monorepo.js';
 import type { DetectedStack } from './types.js';
 
@@ -23,7 +24,7 @@ import type { DetectedStack } from './types.js';
  * - `auth`, `i18n`
  * - `testFramework`, `testLibrary`, `e2eFramework`
  * - `linter`, `formatter`, `packageManager`
- * - `monorepo`, `aiAgents`, and `docsFile`
+ * - `monorepo`, `aiAgents`, `docsFile`, and `roadmapFile`
  *
  * Each field holds the detector's result (typically a `value` and a `confidence` score) where applicable.
  */
@@ -44,6 +45,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     i18n,
     aiAgents,
     docsFile,
+    roadmapFile,
   ] = await Promise.all([
     detectLanguage(projectRoot),
     detectFramework(projectRoot),
@@ -60,6 +62,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     detectI18n(projectRoot),
     detectAiAgents(),
     detectDocsFile(projectRoot),
+    detectRoadmapFile(projectRoot),
   ]);
 
   const runtime = resolveRuntime(language.value, framework.value);
@@ -83,6 +86,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
     monorepo,
     aiAgents,
     docsFile,
+    roadmapFile,
   };
 }
 

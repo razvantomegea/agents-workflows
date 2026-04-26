@@ -48,4 +48,5 @@ export interface DetectedStack {
   monorepo: MonorepoInfo;
   aiAgents: DetectedAiAgents;
   docsFile: Detection;
+  roadmapFile: Detection;
 }
