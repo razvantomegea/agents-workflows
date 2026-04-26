@@ -6,18 +6,18 @@ const SETTINGS_JSON_PATH = '.claude/settings.json';
 const AGENTS_MD_PATH = 'AGENTS.md';
 const CLAUDE_MD_PATH = 'CLAUDE.md';
 
+const NON_INTERACTIVE_CONFIG = makeStackConfig({
+  security: {
+    nonInteractiveMode: true,
+    runsIn: 'docker',
+    disclosureAcknowledgedAt: '2026-04-25T12:00:00.000Z',
+  },
+});
+
 describe('Epic 10 template branching — non-interactive mode', () => {
   describe('non-interactive branch (security.nonInteractiveMode === true)', () => {
-    const nonInteractiveConfig = makeStackConfig({
-      security: {
-        nonInteractiveMode: true,
-        runsIn: 'docker',
-        disclosureAcknowledgedAt: '2026-04-25T12:00:00.000Z',
-      },
-    });
-
     it('emits approval_policy = "never" and network_access = true in .codex/config.toml', async () => {
-      const files = await generateAll(nonInteractiveConfig);
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const toml = getContent(files, CODEX_TOML_PATH);
 
       expect(toml).toContain('approval_policy = "never"');
@@ -28,7 +28,7 @@ describe('Epic 10 template branching — non-interactive mode', () => {
     });
 
     it('includes runsIn, acknowledged, and PRD §1.9.1 in .codex/config.toml', async () => {
-      const files = await generateAll(nonInteractiveConfig);
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const toml = getContent(files, CODEX_TOML_PATH);
 
       expect(toml).toMatch(/^# Non-interactive mode enabled \(runsIn=docker, acknowledged=20\d{2}-\d{2}-\d{2}T/m);
@@ -36,7 +36,7 @@ describe('Epic 10 template branching — non-interactive mode', () => {
     });
 
     it('emits defaultMode = "bypassPermissions" in .claude/settings.json', async () => {
-      const files = await generateAll(nonInteractiveConfig);
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const json = getContent(files, SETTINGS_JSON_PATH);
       const parsed = JSON.parse(json) as {
         permissions: { defaultMode: string };
@@ -93,16 +93,8 @@ describe('Epic 10 template branching — non-interactive mode', () => {
   });
 
   describe('disclosure rendering — AGENTS.md and CLAUDE.md with nonInteractiveMode === true', () => {
-    const nonInteractiveConfig = makeStackConfig({
-      security: {
-        nonInteractiveMode: true,
-        runsIn: 'docker',
-        disclosureAcknowledgedAt: '2026-04-25T12:00:00.000Z',
-      },
-    });
-
     it('injects security disclosure into AGENTS.md when nonInteractiveMode is true', async () => {
-      const files = await generateAll(nonInteractiveConfig);
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const agentsMd = getContent(files, AGENTS_MD_PATH);
 
       expect(agentsMd).toContain('Semi-autonomous non-interactive mode — security disclosure');
@@ -110,7 +102,7 @@ describe('Epic 10 template branching — non-interactive mode', () => {
     });
 
     it('injects security disclosure into CLAUDE.md when nonInteractiveMode is true', async () => {
-      const files = await generateAll(nonInteractiveConfig);
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const claudeMd = getContent(files, CLAUDE_MD_PATH);
 
       expect(claudeMd).toContain('Semi-autonomous non-interactive mode — security disclosure');

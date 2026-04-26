@@ -104,6 +104,6 @@ export function createDefaultConfig(
     governance: { enabled: false },
     detectedAiAgents: toDetectedAiAgentFlags(detected),
     monorepo: null,
-    security: SECURITY_DEFAULTS,
+    security: { ...SECURITY_DEFAULTS },
   };
 }

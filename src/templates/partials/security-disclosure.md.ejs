@@ -55,6 +55,8 @@ A prompt-injected agent can read `~/.ssh/*`, `~/.aws/credentials`,
 `~/.config/gh/hosts.yml`, browser profile cookies, Windows `%APPDATA%`, etc.
 Workspace-write only restricts WRITES, not reads.
 
+Codex CLI is unsupported on Windows-native hosts — use WSL2 or a devcontainer (see README "Codex on Windows hosts").
+
 ### Manual review is still required
 
 Always run `git diff` and review changes before committing. The deny list is

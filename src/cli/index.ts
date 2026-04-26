@@ -9,6 +9,16 @@ import { handleSafetyErrors } from './safety-flags.js';
 import type { MergeStrategy } from '../generator/index.js';
 import type { IsolationChoice } from '../schema/stack-config.js';
 
+function addNonInteractiveOptions(command: Command): Command {
+  return command
+    .option('--non-interactive', 'Enable non-interactive (headless) mode — requires --isolation')
+    .addOption(
+      new Option('--isolation <env>', 'Isolation environment for non-interactive mode')
+        .choices([...ISOLATION_CHOICES]),
+    )
+    .option('--accept-risks', 'Accept host-OS risks when --isolation=host-os is used');
+}
+
 export function createCli(): Command {
   const program = new Command();
 
@@ -17,23 +27,19 @@ export function createCli(): Command {
     .description('Reusable AI agent configuration framework')
     .version('0.1.0');
 
-  program
-    .command('init')
-    .description('Detect your project stack and generate agent configurations')
-    .option('-d, --dir <path>', 'Project root directory', process.cwd())
-    .option('-c, --config <path>', 'Path to a StackConfig JSON file for non-interactive init')
-    .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
-    .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
-    .addOption(
-      new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
-        .choices(['keep', 'overwrite', 'merge']),
-    )
-    .option('--non-interactive', 'Enable non-interactive (headless) mode — requires --isolation')
-    .addOption(
-      new Option('--isolation <env>', 'Isolation environment for non-interactive mode')
-        .choices([...ISOLATION_CHOICES]),
-    )
-    .option('--accept-risks', 'Accept host-OS risks when --isolation=host-os is used')
+  addNonInteractiveOptions(
+    program
+      .command('init')
+      .description('Detect your project stack and generate agent configurations')
+      .option('-d, --dir <path>', 'Project root directory', process.cwd())
+      .option('-c, --config <path>', 'Path to a StackConfig JSON file for non-interactive init')
+      .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
+      .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
+      .addOption(
+        new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
+          .choices(['keep', 'overwrite', 'merge']),
+      ),
+  )
     .action(async (options: {
       dir: string;
       config?: string;
@@ -57,22 +63,18 @@ export function createCli(): Command {
       });
     });
 
-  program
-    .command('update')
-    .description('Re-generate agent configurations from .agents-workflows.json')
-    .option('-d, --dir <path>', 'Project root directory', process.cwd())
-    .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
-    .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
-    .addOption(
-      new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
-        .choices(['keep', 'overwrite', 'merge']),
-    )
-    .option('--non-interactive', 'Enable non-interactive (headless) mode — requires --isolation')
-    .addOption(
-      new Option('--isolation <env>', 'Isolation environment for non-interactive mode')
-        .choices([...ISOLATION_CHOICES]),
-    )
-    .option('--accept-risks', 'Accept host-OS risks when --isolation=host-os is used')
+  addNonInteractiveOptions(
+    program
+      .command('update')
+      .description('Re-generate agent configurations from .agents-workflows.json')
+      .option('-d, --dir <path>', 'Project root directory', process.cwd())
+      .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
+      .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
+      .addOption(
+        new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
+          .choices(['keep', 'overwrite', 'merge']),
+      ),
+  )
     .action(async (options: {
       dir: string;
       yes: boolean;

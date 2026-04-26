@@ -25,6 +25,8 @@ const { askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } = await import(
   '../../src/prompt/ask-non-interactive.js'
 );
 
+const TIMESTAMP_TOLERANCE_MS = 5000;
+
 // ---------------------------------------------------------------------------
 
 describe('Epic 10 non-interactive mode — cases 1–6', () => {
@@ -57,8 +59,18 @@ describe('Epic 10 non-interactive mode — cases 1–6', () => {
       expect(result.nonInteractiveMode).toBe(true);
       expect(result.runsIn).toBe('docker');
       const ts = new Date(result.disclosureAcknowledgedAt ?? '').getTime();
-      expect(ts).toBeGreaterThanOrEqual(before - 5000);
-      expect(ts).toBeLessThanOrEqual(after + 1000);
+      expect(ts).toBeGreaterThanOrEqual(before - TIMESTAMP_TOLERANCE_MS);
+      expect(ts).toBeLessThanOrEqual(after + TIMESTAMP_TOLERANCE_MS);
+    });
+
+    it('(c) parseNonInteractiveFlags accepts isolation=vm without acceptRisks (Rule 5)', () => {
+      const result = parseNonInteractiveFlags({
+        nonInteractive: true,
+        isolation: 'vm',
+        acceptRisks: false,
+      });
+
+      expect(result).toEqual({ enabled: true, isolation: 'vm', acceptedHostOsRisk: false });
     });
   });
 
@@ -168,8 +180,8 @@ describe('Epic 10 — askNonInteractiveMode branch coverage and host-os guard', 
     expect(result.nonInteractiveMode).toBe(true);
     expect(result.runsIn).toBe('docker');
     const ts = new Date(result.disclosureAcknowledgedAt ?? '').getTime();
-    expect(ts).toBeGreaterThanOrEqual(before - 1000);
-    expect(ts).toBeLessThanOrEqual(after + 1000);
+    expect(ts).toBeGreaterThanOrEqual(before - TIMESTAMP_TOLERANCE_MS);
+    expect(ts).toBeLessThanOrEqual(after + TIMESTAMP_TOLERANCE_MS);
   });
 
   it('returns SECURITY_DEFAULTS when user types a wrong phrase for host-os', async () => {

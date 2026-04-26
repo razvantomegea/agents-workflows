@@ -46,7 +46,14 @@ export async function runPromptFlow(
   const pkg = await readPackageJson(projectRoot);
 
   if (options.yes) {
-    return createDefaultConfig(detected, pkg?.scripts ?? {}, pkg);
+    const baseConfig = createDefaultConfig(detected, pkg?.scripts ?? {}, pkg);
+    const security = await askNonInteractiveMode({
+      yes: options.yes,
+      nonInteractive: options.nonInteractive,
+      isolation: options.isolation,
+      acceptRisks: options.acceptRisks,
+    });
+    return { ...baseConfig, security };
   }
 
   const identity = await askProjectIdentity(detected, pkg);

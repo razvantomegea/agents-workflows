@@ -240,6 +240,8 @@ Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key
 
 Guard order: deny/forbid rules fire first, then the approval stage, then the workspace-write sandbox. This mode is developer-assisted, feature-branch scope only — always run `git diff` and review changes before any commit or push. On Windows, the sandbox is unreliable; `.codex/rules/project.rules` is the primary guard (PRD §1.9.1 item 10.2). `agents-workflows init --non-interactive` emits `"defaultMode": "bypassPermissions"` in `.claude/settings.json` and `approval_policy = "never"` in `.codex/config.toml` only when the user opts in. See README "Semi-autonomous non-interactive mode" for invocations, the per-tool table, and the full disclosure.
 
+- Codex on Windows-native hosts is intentionally unsupported by the strict deny rules — run Codex from WSL2 or a devcontainer (see README "Codex on Windows hosts: WSL2 or devcontainer required"). Claude Code on Windows-native is supported.
+
 ## Deployment Rules
 
 See `AGENTS-DEPLOYMENT.md` for deployment checklist and rules.

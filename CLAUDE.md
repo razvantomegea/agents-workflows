@@ -127,6 +127,8 @@ DRY and reusability are critical principles — enforced without exception:
 
 The shared, committed policy lives in `.claude/settings.json`, `.codex/config.toml`, and `.codex/rules/project.rules` — every contributor inherits them. `.claude/settings.local.json` is a per-developer cache and stays gitignored. Codex per-user approvals accumulate in `~/.codex/rules/default.rules` on Unix and `%USERPROFILE%\.codex\rules\default.rules` on Windows - prune them quarterly. On Windows hosts, permission rules are the primary guard; kernel sandbox primitives (Linux seccomp / macOS sandbox-exec) do not apply.
 
+- Codex on Windows-native hosts is intentionally unsupported by the strict deny rules — run Codex from WSL2 or a devcontainer (see README "Codex on Windows hosts: WSL2 or devcontainer required"). Claude Code on Windows-native is supported.
+
 ## Semi-autonomous non-interactive mode
 
 Guard order: deny/forbid rules fire first, then the approval stage, then the workspace-write sandbox. This mode is developer-assisted, feature-branch scope only — always run `git diff` and review changes before any commit or push. On Windows, the sandbox is unreliable; `.codex/rules/project.rules` is the primary guard (PRD §1.9.1 item 10.2). `agents-workflows init --non-interactive` emits `"defaultMode": "bypassPermissions"` in `.claude/settings.json` and `approval_policy = "never"` in `.codex/config.toml` only when the user opts in. See README "Semi-autonomous non-interactive mode" for invocations, the per-tool table, and the full disclosure.

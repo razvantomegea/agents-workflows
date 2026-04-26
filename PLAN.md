@@ -66,7 +66,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - Re-export the new function from `src/prompt/questions.ts` so existing imports (e.g. `import { askMainBranch } from '../prompt/questions.js'`) stay grouped.
 
 **Notes**
-- Depends on Task 1 (schema/types) and Task 4 (partial body). Wire the partial render via the existing EJS render util used by `src/generator/` (read template, render with `{}` context, strip leading `# ` heading lines for terminal display); document the helper in this task so Task 5 reuses the same render call.
+- Depends on Task 1 (schema/types) and Task 4 (partial body). Wire the partial render via the existing EJS render util used by `src/generator/` (read template, render with `{}` context, strip leading `#` heading lines for terminal display); document the helper in this task so Task 5 reuses the same render call.
 - DRY: the exact-match string `"yes, I accept the risks"` and the host-os warning text appear in BOTH this prompt AND the `security-disclosure.md.ejs` partial (Task 4). Define the constant once in `src/prompt/ask-non-interactive.ts` as `HOST_OS_ACCEPT_PHRASE` and import it from `src/cli/non-interactive-flags.ts` (Task 3) so error messages stay in lockstep.
 - `prompt-flow.ts` is currently 142 lines — adding ~6 lines for the call + assembly stays under 200. Do NOT inline the prompt logic there.
 - File-size watch: target `ask-non-interactive.ts` ≤120 lines.

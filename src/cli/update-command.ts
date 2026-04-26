@@ -52,7 +52,7 @@ export async function updateCommand(
     process.exit(1);
   }
 
-  const nonInteractive = options.yes || options.noPrompt;
+  const promptsSuppressed = options.yes || options.noPrompt;
 
   const securityResolved = await resolveSecurityUpdate({
     existing: parsed.data.config.security,
@@ -67,7 +67,7 @@ export async function updateCommand(
     ...parsed.data.config,
     project: {
       ...parsed.data.config.project,
-      mainBranch: nonInteractive
+      mainBranch: promptsSuppressed
         ? parsed.data.config.project.mainBranch
         : await askMainBranch(parsed.data.config.project.mainBranch),
     },
@@ -102,7 +102,7 @@ export async function updateCommand(
   }
 
   logger.blank();
-  const proceed = nonInteractive || await confirm({ message: 'Apply changes?', default: true });
+  const proceed = promptsSuppressed || await confirm({ message: 'Apply changes?', default: true });
 
   if (!proceed) {
     logger.info('Aborted.');

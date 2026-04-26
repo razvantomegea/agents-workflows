@@ -466,6 +466,7 @@ Do not edit or remove feature entries — only flip the passes field.
 - **Impact.** On Windows 10/11, `workspace-write` sandbox fails with `CreateProcessWithLogonW 1056` / exit `0xC0000142` in recent CLI versions. Sandbox may fall through or produce persistent write failures.
 - **Mitigation.** On Windows, treat `.codex/rules/project.rules` as the **primary** guard, not secondary (E9.T10–E9.T12). Re-run the E9.T15 smoke suite on every Codex CLI upgrade. For high-trust sessions, run inside a devcontainer or remote VM.
 - **Residual.** Sandbox enforcement is best-effort on Windows.
+- **Codex on Windows-native is intentionally unsupported.** The wrapper-deny rules for `pwsh*` / `powershell*` / `cmd /c|/k` (E9.T12) make Codex unusable on Windows-native hosts because the Codex CLI runtime spawns every command via `powershell.exe -NoProfile -Command '<inner>'`, which the wrapper deny rejects before the inner command is inspected. WSL2 or a devcontainer is the supported path for Codex on Windows — the Linux runtime uses direct `execve` so the deny rules apply to the actual command. Claude Code uses direct bash and is unaffected; it remains supported on Windows-native.
 
 ### 10.3 Codex PowerShell / cmd wrapper prefix_rule bypass
 

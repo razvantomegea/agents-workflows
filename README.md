@@ -213,6 +213,26 @@ codex exec --json --ephemeral "Read ./AGENTS.md and execute every step in order 
 
 **Windows caveat (PRD §1.9.1 item 10.2):** Codex `workspace-write` sandbox is unstable on Windows. Treat `.codex/rules/project.rules` as the PRIMARY guard. Prefer devcontainer / WSL2 / VM / GitHub Codespaces for higher trust.
 
+#### Codex on Windows hosts: WSL2 or devcontainer required
+
+The strict deny rules forbid PowerShell wrappers (E9.T12 — see `.codex/rules/project.rules` and `.claude/settings.json`), and the Codex CLI Windows runtime spawns every command via `powershell.exe -NoProfile -Command '<inner>'`. Together this means **Codex on Windows-native is intentionally unsupported**: the wrapper deny fires before any inner command runs. Use WSL2 or a devcontainer where the Linux runtime invokes commands via direct `execve` and the deny rules apply to the actual command.
+
+```sh
+# In Windows PowerShell (one-time, as administrator):
+wsl --install -d Ubuntu-22.04
+
+# Inside the Ubuntu shell:
+cd /mnt/c/Projects/agents-workflows
+curl -fsSL https://get.pnpm.io/install.sh | sh -
+pnpm install
+# Codex CLI install: follow the Linux instructions from your Codex distribution.
+codex
+```
+
+Devcontainer alternative: scaffold `.devcontainer/devcontainer.json` based on `mcr.microsoft.com/devcontainers/typescript-node:22` and reopen the workspace in a container. The project does not commit a `.devcontainer/` today.
+
+**Claude Code on Windows-native is supported as-is.** Claude's bash tool calls bash directly (Git Bash / WSL bash), not via a PowerShell wrapper, so the `Bash(powershell:*)` / `Bash(cmd /c:*)` denies cost Claude nothing functionally and remain free defense-in-depth. WSL2 / devcontainer is recommended for Claude when you want the strongest posture, but it is not required to make Claude work.
+
 ## What gets written
 
 | Target | Output paths |
