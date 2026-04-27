@@ -15,6 +15,7 @@ import {
   askGovernance,
   askNonInteractiveMode,
 } from './questions.js';
+import { askIsolation } from './ask-isolation.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
@@ -44,16 +45,16 @@ export async function runPromptFlow(
   options: PromptFlowOptions = {},
 ): Promise<StackConfig> {
   const pkg = await readPackageJson(projectRoot);
-  const nonInteractiveOptions: PromptFlowOptions = {
-    yes: options.yes,
-    nonInteractive: options.nonInteractive,
-    isolation: options.isolation,
-    acceptRisks: options.acceptRisks,
-  };
 
   if (options.yes) {
     const baseConfig = createDefaultConfig(detected, pkg?.scripts ?? {}, pkg);
-    const security = await askNonInteractiveMode(nonInteractiveOptions);
+    const isolation = await askIsolation({ yes: true, isolation: options.isolation });
+    const security = await askNonInteractiveMode({
+      yes: true,
+      nonInteractive: options.nonInteractive,
+      isolation,
+      acceptRisks: options.acceptRisks,
+    });
     return { ...baseConfig, security };
   }
 
@@ -69,7 +70,12 @@ export async function runPromptFlow(
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets(detected.aiAgents);
   const governance = await askGovernance();
-  const security = await askNonInteractiveMode(nonInteractiveOptions);
+  const isolation = await askIsolation({ isolation: options.isolation });
+  const security = await askNonInteractiveMode({
+    nonInteractive: options.nonInteractive,
+    isolation,
+    acceptRisks: options.acceptRisks,
+  });
 
   const commands = resolveCommands(
     tooling.packageManager,
@@ -86,6 +92,8 @@ export async function runPromptFlow(
       locale: identity.locale,
       localeRules: identity.localeRules,
       docsFile: identity.docsFile,
+      // roadmapFile is detection-only — no interactive override (mirrors i18nLibrary).
+      roadmapFile: detected.roadmapFile.value,
       mainBranch: identity.mainBranch,
     },
     stack: {

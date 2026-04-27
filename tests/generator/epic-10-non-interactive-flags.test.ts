@@ -50,6 +50,38 @@ describe('Epic 10 non-interactive mode flags and schema — cases 2–6', () => 
     });
   });
 
+  describe('Case 4b — --isolation alone without --non-interactive', () => {
+    it('returns enabled=false but propagates the isolation baseline', () => {
+      const result = parseNonInteractiveFlags({ isolation: 'devcontainer' });
+
+      expect(result).toEqual({
+        enabled: false,
+        isolation: 'devcontainer',
+        acceptedHostOsRisk: false,
+      });
+    });
+
+    it('allows --isolation=host-os alone without --accept-risks (no NI gate)', () => {
+      const result = parseNonInteractiveFlags({ isolation: 'host-os' });
+
+      expect(result).toEqual({
+        enabled: false,
+        isolation: 'host-os',
+        acceptedHostOsRisk: false,
+      });
+    });
+
+    it('--no-non-interactive --isolation=foo propagates isolation baseline', () => {
+      const result = parseNonInteractiveFlags({ nonInteractive: false, isolation: 'vm' });
+
+      expect(result).toEqual({
+        enabled: false,
+        isolation: 'vm',
+        acceptedHostOsRisk: false,
+      });
+    });
+  });
+
   describe('Case 5 — stackConfigSchema round-trip with nonInteractiveMode===true preserves all fields', () => {
     it('security fields survive JSON serialize → parse intact', () => {
       const config = makeStackConfig({

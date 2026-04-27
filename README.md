@@ -67,7 +67,11 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 
 ### CI usage
 
-For CI, use `--yes` to accept all changes or `--no-prompt` to only create new files and skip existing ones; both exit 0 without reading stdin.
+- `--yes` — non-interactive, **overwrites every conflicting file** with the latest template output. Use this in CI that wants to refresh generated artefacts on every run.
+- `--no-prompt` — non-interactive, **only creates new files**; existing files are left untouched. Use this in CI that bootstraps missing artefacts without disturbing local edits.
+- Both exit 0 without reading stdin and are safe for trusted CI on a clean checkout.
+
+> `--non-interactive` (the semi-autonomous mode flag, see [Semi-autonomous non-interactive mode](#semi-autonomous-non-interactive-mode)) is a different feature and is **not** recommended for unattended CI — it is scoped to developer-assisted feature-branch runs only.
 
 ## Supported stacks
 
@@ -99,6 +103,8 @@ For CI, use `--yes` to accept all changes or `--no-prompt` to only create new fi
 | `reviewer` | 5-step review loop orchestrator (review, fix, type-check, test, lint) | Sonnet |
 | `ui-designer` | UI/UX design system enforcement (frontend only) | Sonnet |
 
+> **Model routing.** The `Model` column above lists Claude defaults that ship today. Where multiple model families are available, the templates are designed to pair the **implementer and reviewer in different families** so each acts as an independent check on the other. Stack-by-stack pairings (TS/React, Python, C++, etc.) are specified in [PRD §1.7 Cross-model external review](./PRD.md#17-cross-model-external-review) and [§1.7.1 Claude + GPT pairing (stack-aware defaults)](./PRD.md#171-claude--gpt-pairing-stack-aware-defaults).
+
 ## Workflow patterns
 
 ### End-to-end workflow
@@ -107,27 +113,27 @@ For CI, use `--yes` to accept all changes or `--no-prompt` to only create new fi
 flowchart TD
     A[1. Author PRD.md / README.md<br/>goals, roadmap, epics] --> B
 
-    B["2. /workflow-plan &quot;epic description&quot;"]
-    B --> B1[architect &rarr; PLAN.md<br/>max 8 tagged tasks]
+    B["2. /workflow-plan 'epic description'"]
+    B --> B1[architect → PLAN.md<br/>max 8 tagged tasks]
     B1 --> B2[Per-task loop:<br/>implementer / test-writer<br/>+ code-reviewer + security-reviewer]
     B2 --> B3[code-optimizer pass]
-    B3 --> B4[Final review loop:<br/>check-types &bull; test &bull; lint]
+    B3 --> B4[Final review loop:<br/>check-types • test • lint]
     B4 --> C
 
-    C[3. Manual review<br/>+ /external-review &#40;CodeRabbit&#41;]
+    C[3. Manual review<br/>+ /external-review<br/>default: CodeRabbit CLI]
     C --> C1[QA.md<br/>critical / warning / suggestion]
     C1 --> D
 
     D[4. /workflow-fix]
     D --> D1[Verify each QA finding<br/>against actual code]
     D1 --> D2[implementer applies fixes<br/>marks QA.md items &#91;x&#93;]
-    D2 --> D3[Mandatory review loop:<br/>code-reviewer + security-reviewer<br/>check-types &bull; test &bull; lint]
+    D2 --> D3[Mandatory review loop:<br/>code-reviewer + security-reviewer<br/>check-types • test • lint]
     D3 --> D4[Mark epic &#91;DONE YYYY-MM-DD&#93;<br/>in PRD.md]
 ```
 
 1. **Author `PRD.md`** (or `README.md`) with project description, roadmap, goals, and epics — the canonical source of intent that every agent reads before planning.
 2. **Run `/workflow-plan "<epic description>"`** — `architect` produces `PLAN.md` (max 8 tagged tasks); each task runs through `implementer` or `test-writer`, then `code-reviewer` + `security-reviewer` in parallel; `code-optimizer` runs once across all modified files; a final loop enforces `pnpm check-types` / `pnpm test` / `pnpm lint` until clean.
-3. **Review the code manually, and run `/external-review`** — CodeRabbit writes findings to `QA.md`, grouped by file with `[critical]` / `[warning]` / `[suggestion]` tags.
+3. **Review the code manually, and run `/external-review`** — the configured external review tool (default: CodeRabbit CLI) writes findings to `QA.md`, grouped by file with `[critical]` / `[warning]` / `[suggestion]` tags.
 4. **Run `/workflow-fix`** — each `QA.md` item is verified against the actual code, applied by `implementer`, and marked `[x]`; the mandatory review loop (reviewers + `check-types` / `test` / `lint`) runs again; once everything is clean the matching epic in `PRD.md` is stamped `[DONE YYYY-MM-DD]`.
 
 ### `/workflow-plan`: End-to-end feature development
@@ -170,9 +176,13 @@ npx agents-workflows init --config ./agents-workflows.config.json
 npx agents-workflows init --yes
 ```
 
+### Isolation baseline (always asked)
+
+Interactive `init` and `update` always ask **where the agent runs** (devcontainer, docker, vm, vps, clean-machine, host-os) as a documented baseline. The choice is captured in `.agents-workflows.json` under `security.runsIn` even when non-interactive mode stays OFF — knowing whether work happens in a sandbox vs. host-OS shapes every other safety decision. `--isolation=<env>` works as a standalone flag (no `--non-interactive` required); `--yes --isolation=foo` honours the explicit flag.
+
 ### Semi-autonomous non-interactive mode
 
-This mode is **opt-in and off by default**. `--yes` alone does NOT enable it — you must also pass `--non-interactive`. Choosing `host-os` as the isolation environment additionally requires `--accept-risks`. See PRD §1.9.1 for the full risk disclosure before enabling.
+This mode is **opt-in and off by default**. `--yes` alone does NOT enable it — you must also pass `--non-interactive`. Choosing `host-os` as the isolation environment additionally requires `--accept-risks` **when enabling non-interactive** (selecting `host-os` as the baseline alone does not). See PRD §1.9.1 for the full risk disclosure before enabling.
 
 **Canonical invocations (no dangerous bypass flags):**
 
@@ -191,7 +201,7 @@ codex exec --json --ephemeral "Read ./AGENTS.md and execute every step in order 
 ```
 
 > **`--full-auto` is NOT equivalent to `approval_policy = "never"`.**
-> `--full-auto` is a CLI flag with different semantics. This repo only supports config-driven non-interactive mode via `approval_policy = "never"` in `.codex/config.toml` and `"defaultMode": "bypassPermissions"` in `.claude/settings.json`, both emitted by `agents-workflows init --non-interactive`.
+> `--full-auto` is a CLI flag with different semantics. This repo only supports config-driven non-interactive mode via `approval_policy = "never"` in `.codex/config.toml` and `"defaultMode": "acceptEdits"` in `.claude/settings.json`, both emitted by `agents-workflows init --non-interactive`. `acceptEdits` auto-approves file edits and the FS commands `mkdir`/`touch`/`mv`/`cp`; **Bash commands still prompt** unless explicitly listed in `permissions.allow`. `bypassPermissions` and `--dangerously-skip-permissions` are forbidden — per the Claude Code permission docs they are the same dangerous mode in two delivery surfaces, blocked together by the managed kill-switch `disableBypassPermissionsMode`.
 
 **Three-stage guard order:**
 
@@ -205,7 +215,7 @@ codex exec --json --ephemeral "Read ./AGENTS.md and execute every step in order 
 
 | Tool | Headless invocation | Precondition | Forbidden |
 |---|---|---|---|
-| Claude Code | `claude -p "..."` | `.claude/settings.json` deny rules present (Epic 9) | `--dangerously-skip-permissions` |
+| Claude Code | `claude -p "..."` | `.claude/settings.json` deny rules present (Epic 9); `defaultMode: "acceptEdits"` | `--dangerously-skip-permissions`, `defaultMode: "bypassPermissions"` (same dangerous mode, two surfaces) |
 | Codex CLI | `codex exec "..."` | `.codex/rules/project.rules` forbid rules present (Epic 9) | `--dangerously-bypass-approvals-and-sandbox`, `sandbox_mode = "danger-full-access"` |
 | Cursor | `cursor-agent --prompt "..."` (or Background Agents) | `.cursor/rules/00-deny-destructive-ops.mdc` present (Epic 9 E9.T6) | `--yolo` |
 | VSCode + Copilot | `/workflow-plan` from chat (executes `.github/prompts/workflow-plan.prompt.md`) or assign issue to Copilot coding agent | `tools:` allow-list in prompt frontmatter; GitHub branch protection on `main` | Do NOT set any auto-approve setting |

@@ -45,9 +45,9 @@ You are an expert jest test engineer for the `agents-workflows` project. You wri
 
 ## Primary Documentation
 
-- The canonical source of project intent lives in `PRD.md`.
-- Read `PRD.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
-- When `PRD.md` and code disagree, flag the mismatch in your output instead of silently picking one.
+- The canonical source of project intent lives in `README.md`.
+- Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
+- When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
 
 ## Fail-safe behaviors
 
@@ -68,7 +68,8 @@ failed attempts.
 ## TDD discipline
 
 <tdd_discipline>
-- Read PRD.md before planning, implementing, reviewing, or writing tests.
+- Read `README.md` before planning, implementing, reviewing, or writing tests.
+- Treat `PRD.md` / roadmap files as secondary planning context. If `README.md` and roadmap content disagree, flag the mismatch instead of silently choosing one.
 - For bug fixes: write a failing test that reproduces the bug first. Confirm it fails for the right reason, then fix.
 - For new features: if tests exist, implement against them; if not, write one integration test plus unit tests for pure logic.
 - NEVER delete or weaken an existing test to make the build pass. If a test is wrong, say so and ask the user before changing it.

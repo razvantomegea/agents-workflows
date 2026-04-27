@@ -9,13 +9,19 @@ import { makeStackConfig } from './fixtures.js';
 import { assertSettingsJsonShape } from './settings-json-shape.helper.js';
 
 interface SandboxBlock {
+  enabled: boolean;
   mode: string;
   autoAllowBashIfSandboxed: boolean;
   allowedDomains: string[];
 }
 
 interface SettingsJson {
-  permissions: { defaultMode: string; allow: string[]; deny: string[] };
+  permissions: {
+    defaultMode: string;
+    disableBypassPermissionsMode: string;
+    allow: string[];
+    deny: string[];
+  };
   sandbox: SandboxBlock;
   hooks: {
     PreToolUse: PreToolUseHook[];
@@ -71,8 +77,16 @@ describe('Epic 5 — settings.json top-level fields (E9.T2)', () => {
     expect(parsedSettings.sandbox.mode).toBe('workspace-write');
   });
 
-  it('has sandbox.autoAllowBashIfSandboxed set to true', () => {
-    expect(parsedSettings.sandbox.autoAllowBashIfSandboxed).toBe(true);
+  it('has sandbox.enabled set to true', () => {
+    expect(parsedSettings.sandbox.enabled).toBe(true);
+  });
+
+  it('has permissions.disableBypassPermissionsMode set to "disable"', () => {
+    expect(parsedSettings.permissions.disableBypassPermissionsMode).toBe('disable');
+  });
+
+  it('has sandbox.autoAllowBashIfSandboxed set to false', () => {
+    expect(parsedSettings.sandbox.autoAllowBashIfSandboxed).toBe(false);
   });
 
   it('has sandbox.allowedDomains with exactly 7 entries', () => {

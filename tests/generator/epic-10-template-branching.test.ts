@@ -35,17 +35,37 @@ describe('Epic 10 template branching — non-interactive mode', () => {
       expect(toml).toContain('PRD §1.9.1');
     });
 
-    it('emits defaultMode = "bypassPermissions" in .claude/settings.json', async () => {
+    it('emits defaultMode = "acceptEdits" in .claude/settings.json', async () => {
       const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const json = getContent(files, SETTINGS_JSON_PATH);
       const parsed = JSON.parse(json) as {
-        permissions: { defaultMode: string };
-        sandbox: { mode: string; allowedDomains: string[] };
+        permissions: { defaultMode: string; disableBypassPermissionsMode: string };
+        sandbox: {
+          enabled: boolean;
+          mode: string;
+          autoAllowBashIfSandboxed: boolean;
+          allowedDomains: string[];
+        };
       };
 
-      expect(parsed.permissions.defaultMode).toBe('bypassPermissions');
+      expect(parsed.permissions.defaultMode).toBe('acceptEdits');
+      expect(parsed.permissions.disableBypassPermissionsMode).toBe('disable');
+      expect(json).not.toContain('bypassPermissions');
+      expect(parsed.sandbox.enabled).toBe(true);
       expect(parsed.sandbox.mode).toBe('workspace-write');
+      expect(parsed.sandbox.autoAllowBashIfSandboxed).toBe(false);
       expect(parsed.sandbox.allowedDomains.length).toBeGreaterThan(0);
+    });
+
+    it('renders the acceptEdits Bash-still-prompts caveat in CLAUDE.md and AGENTS.md', async () => {
+      const files = await generateAll(NON_INTERACTIVE_CONFIG);
+      const claudeMd = getContent(files, CLAUDE_MD_PATH);
+      const agentsMd = getContent(files, AGENTS_MD_PATH);
+
+      expect(claudeMd).toContain('defaultMode = "acceptEdits"');
+      expect(claudeMd).toContain('Bash commands still prompt');
+      expect(agentsMd).toContain('defaultMode = "acceptEdits"');
+      expect(agentsMd).toContain('Bash commands still prompt');
     });
   });
 
@@ -66,12 +86,20 @@ describe('Epic 10 template branching — non-interactive mode', () => {
       const files = await generateAll(safeConfig);
       const json = getContent(files, SETTINGS_JSON_PATH);
       const parsed = JSON.parse(json) as {
-        permissions: { defaultMode: string };
-        sandbox: { mode: string; allowedDomains: string[] };
+        permissions: { defaultMode: string; disableBypassPermissionsMode: string };
+        sandbox: {
+          enabled: boolean;
+          mode: string;
+          autoAllowBashIfSandboxed: boolean;
+          allowedDomains: string[];
+        };
       };
 
       expect(parsed.permissions.defaultMode).toBe('default');
+      expect(parsed.permissions.disableBypassPermissionsMode).toBe('disable');
+      expect(parsed.sandbox.enabled).toBe(true);
       expect(parsed.sandbox.mode).toBe('workspace-write');
+      expect(parsed.sandbox.autoAllowBashIfSandboxed).toBe(false);
       expect(parsed.sandbox.allowedDomains.length).toBeGreaterThan(0);
     });
 
@@ -89,6 +117,35 @@ describe('Epic 10 template branching — non-interactive mode', () => {
 
       expect(claudeMd).not.toContain('Semi-autonomous non-interactive mode — security disclosure');
       expect(claudeMd).not.toContain('bypassPermissions');
+    });
+  });
+
+  describe('runsIn-only baseline branch (security.runsIn !== null && !nonInteractiveMode)', () => {
+    const baselineConfig = makeStackConfig({
+      security: {
+        nonInteractiveMode: false,
+        runsIn: 'devcontainer',
+        disclosureAcknowledgedAt: null,
+      },
+    });
+
+    it('emits a baseline-isolation comment in .codex/config.toml without enabling non-interactive', async () => {
+      const files = await generateAll(baselineConfig);
+      const toml = getContent(files, CODEX_TOML_PATH);
+
+      expect(toml).toContain('# Agent runs in: devcontainer');
+      expect(toml).toContain('approval_policy = "on-request"');
+      expect(toml).toContain('network_access = false');
+      expect(toml).not.toContain('approval_policy = "never"');
+      expect(toml).not.toContain('Non-interactive mode enabled');
+    });
+
+    it('keeps defaultMode = "default" in .claude/settings.json regardless of runsIn', async () => {
+      const files = await generateAll(baselineConfig);
+      const json = getContent(files, SETTINGS_JSON_PATH);
+      const parsed = JSON.parse(json) as { permissions: { defaultMode: string } };
+
+      expect(parsed.permissions.defaultMode).toBe('default');
     });
   });
 

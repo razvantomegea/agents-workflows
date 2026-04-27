@@ -18,3 +18,84 @@ Supplemental deployment guidance for agents working in this repository.
   drop-old), each phase a separate deploy. `CREATE INDEX CONCURRENTLY`
   on Postgres. `pt-online-schema-change` / `gh-ost` on MySQL.
   `strong_migrations` / `django-safemigrate` / `pgroll` in CI.
+
+## Observability and SLOs
+
+- Structured JSON logs with correlation IDs (request-id, trace-id, span-id)
+  propagated across services. OpenTelemetry SDK + OTLP exporter is the
+  default; back ends are interchangeable (Tempo, Honeycomb, Datadog,
+  New Relic, Grafana Cloud).
+- Per-endpoint SLOs with explicit error budgets. Alert on burn-rate, not
+  raw thresholds (multi-window, multi-burn-rate alerts per the SRE
+  workbook). Keep page-noise low: alert only on user-visible breaches.
+- The four golden signals (latency, traffic, errors, saturation) are
+  always exported. RED for request-driven services, USE for resource
+  pools. Add domain-specific business metrics next to them.
+- Distributed tracing covers every cross-service hop. Sample at the edge,
+  not per-service, so traces stay coherent. Always tag traces with
+  release version and feature-flag exposures.
+
+## Secrets management
+
+- Never commit secrets. `.env*` patterns belong in `.gitignore`. Agents
+  must refuse to read `.env` files (project rule already enforces this).
+- Production secrets live in a managed store: HashiCorp Vault, AWS
+  Secrets Manager, GCP Secret Manager, Azure Key Vault, Doppler, or
+  1Password Secrets Automation. Local development uses the OS keychain
+  (macOS Keychain, Windows Credential Manager, libsecret) or `direnv`
+  + an excluded `.envrc.local`.
+- Rotate quarterly at minimum; rotate immediately on departure or
+  suspected leak. Short-lived credentials (OIDC-issued, STS, IAM Roles
+  Anywhere) beat long-lived API keys when the platform supports them.
+- Pre-commit secret scanning is mandatory (gitleaks or trufflehog).
+  CI runs the same scan on every push so a bypassed local hook still
+  fails the build.
+
+## Rollback and disaster recovery
+
+- Every deploy is reversible in ≤5 minutes. Argo Rollouts / Flagger
+  metric-gated automated rollback on SLO breach is the default for
+  stateless services. Stateful services use blue/green with a documented
+  cutover plan.
+- Tag every release artifact (container image, binary, helm chart) with
+  the immutable git SHA plus the semver tag. Never re-tag `:latest` for
+  production traffic.
+- Document RTO and RPO per service in a one-line table inside the
+  service README. Test recovery quarterly: restore from backup into a
+  scratch environment and verify integrity.
+- Backups follow 3-2-1 (three copies, two media, one off-site).
+  Encryption at rest + in transit; backup restore is rehearsed, not
+  hoped-for.
+
+## Networking, edge, and rate limits
+
+- TLS only — terminate at the edge with HSTS, modern ciphers, and
+  certificate pinning where the client is also under your control.
+  Certificates auto-renew (cert-manager / ACM / Let's Encrypt).
+- Rate-limit at the edge per IP and per token. Burst-tolerant token
+  buckets. 429 with `Retry-After` is the contract; never silently drop.
+- CORS allowlist is explicit. No `*` in production. Same applies to
+  CSP — write a real policy, not `unsafe-inline` everywhere.
+- Egress controls: restrict outbound network from runtime to the
+  domains the service actually needs. Block outbound by default at the
+  network policy / security-group layer; add exceptions per dependency.
+
+## Autoscaling and capacity
+
+- Autoscaling targets a leading indicator (CPU + RPS + queue depth),
+  never a single metric. HPA + KEDA on Kubernetes; managed equivalents
+  on Lambda / Cloud Run / App Runner.
+- Cost guardrails: max-replicas cap, budget alerts on cloud spend,
+  scale-to-zero for non-customer-facing async workers.
+- Capacity load-tests precede every major release. Use `k6` / `Locust`
+  / `wrk2` against a staging environment that mirrors prod sizing.
+
+## On-call and incident response
+
+- Every service has a named owner team and a documented runbook in
+  `docs/runbooks/<service>.md`. Runbooks cover: how to wake up, how to
+  triage, how to roll back, who to escalate to.
+- Pages route to the owning team's on-call rotation. Severity matrix
+  is documented and matches the alerting tier.
+- Post-incident: blameless review within 5 business days. Action items
+  tracked to closure with explicit owners and deadlines.

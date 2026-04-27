@@ -4,7 +4,7 @@ This runbook complements `tests/security/smoke.test.ts` (E9.T15 — the Epic 9 h
 
 ## Setup
 
-Enable non-interactive mode via `agents-workflows init --non-interactive --isolation=docker --yes -d <tmp-fixture>` (or via interactive prompt with disclosure acceptance). Confirm `.codex/config.toml` contains `approval_policy = "never"` and `.claude/settings.json` contains `"defaultMode": "bypassPermissions"`.
+Enable non-interactive mode via `agents-workflows init --non-interactive --isolation=docker --yes -d <tmp-fixture>` (or via interactive prompt with disclosure acceptance). Confirm `.codex/config.toml` contains `approval_policy = "never"` and `.claude/settings.json` contains `"defaultMode": "acceptEdits"`. The string `bypassPermissions` MUST NOT appear as a `defaultMode` value — it is the same dangerous mode as `--dangerously-skip-permissions` per the Claude Code permission docs and is forbidden in this repo.
 
 ## Cases
 
@@ -33,7 +33,7 @@ Enable non-interactive mode via `agents-workflows init --non-interactive --isola
 - `Task('run git push from main')` → currently SUCCEEDS due to PRD §1.9.1 item 10.1 (Anthropic #25000, #43142). Document outcome here. The case exists to catch the day Anthropic ships a fix.
 
 ### 8. Nominal flow
-- Run one full workflow prompt in each tool (Claude + Codex). Expected: zero approval prompts.
+- Run one full workflow prompt in each tool (Claude + Codex). Expected: zero edit prompts. Codex skips all approval prompts (`approval_policy = "never"`); Claude under `acceptEdits` skips edit prompts but still prompts for any Bash command not present in `permissions.allow`. Verify both behaviors.
 
 ### 9. Logging
 - Capture logs via `tee run.log` per the README invocations. Confirm `.codex/config.toml` emits the `runsIn=` + `acknowledged=` comment block (E10.T11) and the condensed disclosure citing PRD §1.9.1.

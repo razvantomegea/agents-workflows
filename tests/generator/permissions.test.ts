@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { generateAll } from '../../src/generator/index.js';
 import {
   buildPermissions,
   buildDenyList,
@@ -6,6 +8,7 @@ import {
   TOOLCHAIN_ALLOWS,
   DENY_PATTERNS,
 } from '../../src/generator/permissions.js';
+import { manifestSchema } from '../../src/schema/manifest.js';
 
 const PNPM_INPUT = {
   tooling: { packageManagerPrefix: 'pnpm' },
@@ -97,10 +100,50 @@ describe('buildPermissions', () => {
     expect(perms).not.toContain('Bash(npx:*)');
   });
 
-  it('does not auto-allow opaque cross-model subprocess handoffs', () => {
+  it('auto-allows the cross-model subprocess handoffs (PRD §1.7.2)', () => {
     const perms = buildPermissions(PNPM_INPUT);
-    expect(perms).not.toContain('Bash(codex exec:*)');
-    expect(perms).not.toContain('Bash(claude -p:*)');
+    expect(perms).toContain('Bash(codex exec:*)');
+    expect(perms).toContain('Bash(claude -p:*)');
+  });
+
+  it('auto-allows sandbox-wrapped forms of pnpm / git-readonly / toolchain / handoff binaries', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    // wsl
+    expect(perms).toContain('Bash(wsl pnpm:*)');
+    expect(perms).toContain('Bash(wsl * pnpm:*)');
+    expect(perms).toContain('Bash(wsl git status:*)');
+    expect(perms).toContain('Bash(wsl git branch --list:*)');
+    expect(perms).toContain('Bash(wsl tsc:*)');
+    expect(perms).toContain('Bash(wsl codex exec:*)');
+    expect(perms).toContain('Bash(wsl claude -p:*)');
+    // docker exec
+    expect(perms).toContain('Bash(docker exec pnpm:*)');
+    expect(perms).toContain('Bash(docker exec * pnpm:*)');
+    // docker compose exec
+    expect(perms).toContain('Bash(docker compose exec pnpm:*)');
+    expect(perms).toContain('Bash(docker compose exec * pnpm:*)');
+    // podman exec
+    expect(perms).toContain('Bash(podman exec pnpm:*)');
+    expect(perms).toContain('Bash(podman exec * pnpm:*)');
+    // devcontainer exec
+    expect(perms).toContain('Bash(devcontainer exec pnpm:*)');
+    expect(perms).toContain('Bash(devcontainer exec * pnpm:*)');
+  });
+
+  it('does NOT broaden the wrapper allow to opaque -c/-Command forms', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).not.toContain('Bash(wsl bash -c:*)');
+    expect(perms).not.toContain('Bash(wsl pwsh:*)');
+    expect(perms).not.toContain('Bash(docker exec bash -c:*)');
+    expect(perms).not.toContain('Bash(podman exec bash -c:*)');
+  });
+
+  it('does not emit broad git branch allow entries', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).toContain('Bash(git branch --list:*)');
+    expect(perms).not.toContain('Bash(git branch:*)');
+    expect(perms).not.toContain('Bash(wsl git branch:*)');
+    expect(perms).not.toContain('Bash(docker exec git branch:*)');
   });
 });
 
@@ -158,8 +201,46 @@ describe('DENY_PATTERNS — E9.T1 + E9.T11 required entries', () => {
     'Bash(wget* | sh)', 'Bash(wget* | bash)',
   ];
 
-  it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern) => {
+  it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern: string) => {
     expect(DENY_PATTERNS).toContain(pattern);
+  });
+});
+
+describe('DENY_PATTERNS — sandbox-wrapper bypass guards', () => {
+  const SANDBOX_WRAPPER_BYPASS_REQUIRED: readonly string[] = [
+    // wsl
+    'Bash(wsl pwsh:*)', 'Bash(wsl * pwsh:*)',
+    'Bash(wsl powershell:*)', 'Bash(wsl * powershell:*)',
+    'Bash(wsl cmd /c:*)', 'Bash(wsl * cmd /c:*)',
+    'Bash(wsl bash -c:*)', 'Bash(wsl * bash -c:*)',
+    'Bash(wsl sh -c:*)', 'Bash(wsl * sh -c:*)',
+    'Bash(wsl node -e:*)', 'Bash(wsl * node -e:*)',
+    'Bash(wsl python -c:*)', 'Bash(wsl * python -c:*)',
+    // docker exec
+    'Bash(docker exec pwsh:*)', 'Bash(docker exec * pwsh:*)',
+    'Bash(docker exec bash -c:*)', 'Bash(docker exec * bash -c:*)',
+    // docker compose exec
+    'Bash(docker compose exec bash -c:*)',
+    'Bash(docker compose exec * bash -c:*)',
+    // podman exec
+    'Bash(podman exec bash -c:*)', 'Bash(podman exec * bash -c:*)',
+    // devcontainer exec
+    'Bash(devcontainer exec bash -c:*)', 'Bash(devcontainer exec * bash -c:*)',
+  ];
+
+  it.each(SANDBOX_WRAPPER_BYPASS_REQUIRED)(
+    'DENY_PATTERNS contains %s (sandbox-wrapper bypass guard)',
+    (pattern: string) => {
+      expect(DENY_PATTERNS).toContain(pattern);
+    },
+  );
+
+  it('mirrors host Bash deny patterns under sandbox wrappers', () => {
+    expect(DENY_PATTERNS).toContain('Bash(wsl rm -rf:*)');
+    expect(DENY_PATTERNS).toContain('Bash(wsl * git push:*)');
+    expect(DENY_PATTERNS).toContain('Bash(docker exec npm publish:*)');
+    expect(DENY_PATTERNS).toContain('Bash(podman exec * terraform apply:*)');
+    expect(DENY_PATTERNS).toContain('Bash(devcontainer exec kubectl delete:*)');
   });
 });
 
@@ -198,5 +279,20 @@ describe('buildPostToolUseHooks', () => {
   it('appends --fix even when command contains fix as a substring without flag', () => {
     const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm prefix-fix' });
     expect(hooks[0].hooks[0].command).toBe('pnpm prefix-fix --fix || true');
+  });
+});
+
+describe('root .claude/settings.json parity', () => {
+  it('matches the generator output from .agents-workflows.json', async () => {
+    const manifestJson = JSON.parse(readFileSync('.agents-workflows.json', 'utf8')) as unknown;
+    const manifest = manifestSchema.parse(manifestJson);
+    const files = await generateAll(manifest.config);
+    const generatedSettings = files.find((file) => file.path === '.claude/settings.json');
+    if (!generatedSettings) {
+      throw new Error('Expected generated .claude/settings.json');
+    }
+
+    const rootSettings = readFileSync('.claude/settings.json', 'utf8');
+    expect(JSON.parse(rootSettings) as unknown).toEqual(JSON.parse(generatedSettings.content) as unknown);
   });
 });

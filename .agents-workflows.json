@@ -1,20 +1,21 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-26T16:10:42.154Z",
-  "stackConfigHash": "82c3eb389e2f04cb",
+  "generatedAt": "2026-04-26T17:40:56.526Z",
+  "stackConfigHash": "f4536c4c2bb09290",
   "config": {
     "project": {
       "name": "agents-workflows",
-      "description": "Reusable AI agent configuration framework",
+      "description": "Reusable AI agent configuration framework — install battle-tested Claude Code agents, Codex skills, and workflow commands into any project",
       "locale": "en",
       "localeRules": [],
-      "docsFile": "PRD.md",
+      "docsFile": "README.md",
+      "roadmapFile": "PRD.md",
       "mainBranch": "main"
     },
     "stack": {
       "language": "typescript",
       "runtime": "node",
-      "framework": "none",
+      "framework": null,
       "uiLibrary": null,
       "stateManagement": null,
       "database": null,
@@ -78,6 +79,9 @@
       "claudeCode": true,
       "codexCli": true
     },
+    "governance": {
+      "enabled": false
+    },
     "detectedAiAgents": {
       "claudeCode": true,
       "codexCli": true,
@@ -88,14 +92,11 @@
       "windsurf": false,
       "gemini": true
     },
-    "governance": {
-      "enabled": false
-    },
     "monorepo": null,
     "security": {
-      "nonInteractiveMode": true,
+      "nonInteractiveMode": false,
       "runsIn": "vm",
-      "disclosureAcknowledgedAt": "2026-04-26T14:25:24.831Z"
+      "disclosureAcknowledgedAt": null
     }
   },
   "files": [

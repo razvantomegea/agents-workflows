@@ -188,4 +188,6 @@ export async function askCommandSelection(): Promise<string[]> {
 
 export { askTargets } from './ask-targets.js';
 export { askGovernance } from './ask-governance.js';
+export { askIsolation } from './ask-isolation.js';
 export { askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } from './ask-non-interactive.js';
+export { enableNonInteractiveWithIsolation } from './enable-non-interactive-with-isolation.js';

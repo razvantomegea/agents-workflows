@@ -41,6 +41,7 @@ export function createDefaultConfig(
       locale: 'en',
       localeRules: [],
       docsFile: detected.docsFile.value,
+      roadmapFile: detected.roadmapFile.value,
       mainBranch: 'main',
     },
     stack: {

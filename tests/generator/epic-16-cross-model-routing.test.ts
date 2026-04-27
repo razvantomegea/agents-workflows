@@ -123,10 +123,18 @@ describe('Epic 16 — Claude + GPT cross-model routing', () => {
       expect(content).toContain('supplements it');
     });
 
-    it('.claude/settings.json does not allow opaque cross-model subprocess fallback commands', () => {
+    it('.claude/settings.json allows the cross-model subprocess fallback commands (PRD §1.7.2)', () => {
       const settings = getRootFileContent(files, '.claude/settings.json');
-      expect(settings).not.toContain('Bash(codex exec:*)');
-      expect(settings).not.toContain('Bash(claude -p:*)');
+      expect(settings).toContain('Bash(codex exec:*)');
+      expect(settings).toContain('Bash(claude -p:*)');
+    });
+
+    it('.claude/settings.json allows the wsl-wrapped cross-model handoff forms', () => {
+      const settings = getRootFileContent(files, '.claude/settings.json');
+      expect(settings).toContain('Bash(wsl codex exec:*)');
+      expect(settings).toContain('Bash(wsl * codex exec:*)');
+      expect(settings).toContain('Bash(wsl claude -p:*)');
+      expect(settings).toContain('Bash(wsl * claude -p:*)');
     });
   });
 

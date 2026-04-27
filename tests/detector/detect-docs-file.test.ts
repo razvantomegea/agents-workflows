@@ -37,27 +37,34 @@ describe('detectDocsFile', () => {
     const root = await setup(['README.md']);
     const result = await detectDocsFile(root);
     expect(result.value).toBe('README.md');
-    expect(result.confidence).toBeCloseTo(0.7);
-  });
-
-  it('prefers PRD.md over README.md', async () => {
-    const root = await setup(['README.md', 'PRD.md']);
-    const result = await detectDocsFile(root);
-    expect(result.value).toBe('PRD.md');
     expect(result.confidence).toBeCloseTo(0.9);
   });
 
-  it('prefers ARCHITECTURE.md over DOCS.md and README.md', async () => {
-    const root = await setup(['README.md', 'DOCS.md', 'ARCHITECTURE.md']);
+  it('prefers README.md over PRD.md', async () => {
+    const root = await setup(['README.md', 'PRD.md']);
+    const result = await detectDocsFile(root);
+    expect(result.value).toBe('README.md');
+    expect(result.confidence).toBeCloseTo(0.9);
+  });
+
+  it('prefers ARCHITECTURE.md over DOCS.md and PRD.md when README is absent', async () => {
+    const root = await setup(['PRD.md', 'DOCS.md', 'ARCHITECTURE.md']);
     const result = await detectDocsFile(root);
     expect(result.value).toBe('ARCHITECTURE.md');
     expect(result.confidence).toBeCloseTo(0.85);
   });
 
-  it('prefers DOCS.md over README.md when PRD/ARCHITECTURE are absent', async () => {
-    const root = await setup(['README.md', 'DOCS.md']);
+  it('prefers DOCS.md over PRD.md when README and ARCHITECTURE are absent', async () => {
+    const root = await setup(['PRD.md', 'DOCS.md']);
     const result = await detectDocsFile(root);
     expect(result.value).toBe('DOCS.md');
     expect(result.confidence).toBeCloseTo(0.8);
+  });
+
+  it('falls back to PRD.md when no other doc file exists', async () => {
+    const root = await setup(['PRD.md']);
+    const result = await detectDocsFile(root);
+    expect(result.value).toBe('PRD.md');
+    expect(result.confidence).toBeCloseTo(0.7);
   });
 });

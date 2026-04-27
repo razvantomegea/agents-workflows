@@ -3,7 +3,7 @@ _Branch: `feature/epic-10-non-interactive-mode` | Date: 2026-04-25_
 
 ## Context
 
-Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/project.rules`, Windows-native + exfil + shell-wrapper denies, sandbox block with `allowedDomains`). Epic 10 layers an **opt-in** non-interactive posture on top: when the user explicitly accepts the §1.9.1 risks via prompt or CLI flag, the generator emits Codex `approval_policy = "never"` + `network_access = true` and Claude `permissions.defaultMode = "bypassPermissions"`; otherwise the safe Epic 9 defaults (`on-request` / `default` / `network_access = false`) stay in force. `--yes` alone never enables non-interactive; the host-OS isolation choice requires a second confirmation. The deny / forbid layers and the workspace-write sandbox remain unchanged in both branches.
+Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/project.rules`, Windows-native + exfil + shell-wrapper denies, sandbox block with `allowedDomains`). Epic 10 layers an **opt-in** non-interactive posture on top: when the user explicitly accepts the §1.9.1 risks via prompt or CLI flag, the generator emits Codex `approval_policy = "never"` + `network_access = true` and Claude `permissions.defaultMode = "acceptEdits"`; otherwise the safe Epic 9 defaults (`on-request` / `default` / `network_access = false`) stay in force. `acceptEdits` auto-approves file edits and basic FS commands but Bash still gates against `permissions.allow` — `bypassPermissions` is forbidden because the Claude Code permission docs treat it as the same dangerous mode as `--dangerously-skip-permissions`. `--yes` alone never enables non-interactive; the host-OS isolation choice requires a second confirmation. The deny / forbid layers and the workspace-write sandbox remain unchanged in both branches.
 
 ## Pre-implementation checklist
 
@@ -112,7 +112,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - New EJS partial rendering canonical Markdown with these sections in this exact order:
   1. **What non-interactive mode does.**
   2. **What it does NOT relax.**
-  3. **Known risks (5 items, cite PRD §1.9.1)** — one paragraph each for sub-agent deny-bypass, Windows sandbox, PowerShell wrappers, `bypassPermissions` unreliability, network exfiltration.
+  3. **Known risks (4 items, cite PRD §1.9.1)** — one paragraph each for sub-agent deny-bypass, Windows sandbox, PowerShell wrappers, network exfiltration. (The earlier `bypassPermissions` unreliability risk is dropped because `bypassPermissions` is forbidden in this repo per the Claude Code permission docs — it is the same dangerous mode as `--dangerously-skip-permissions`.)
   4. **Recommendation** — list devcontainer / docker / VM / clean-machine isolation options.
   5. **If you run on your primary OS** — enumerate readable paths (`~/.ssh/*`, `~/.aws/credentials`, `~/.config/gh/hosts.yml`, browser cookie stores, Windows `%APPDATA%`).
   6. **Manual review is still required.** sentence about `git diff`.
@@ -125,7 +125,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - DRY: this partial is the ONLY copy of the §1.9.1 disclosure language; if the partial changes, all three consumers update simultaneously. Tasks 2, 5, and 7 must NOT inline duplicate text.
 - No JSX/HTML; use plain Markdown so terminal rendering preserves structure.
 
-### Task 5 — Template branching for `.codex/config.toml` and `.claude/settings.json` [SCHEMA] [LOGIC]
+### Task 5 — Template branching for `.codex/config.toml` and `.claude/settings.json` [SCHEMA] [LOGIC] [TEST]
 **Files**
 - `src/templates/config/codex-config.toml.ejs`
 - `src/templates/config/settings.json.ejs`
@@ -140,9 +140,9 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 
 **Output**
 - `codex-config.toml.ejs` rewritten with `<% if (security.nonInteractiveMode) { %>` / `<% } else { %>` branches:
-  - Non-interactive branch: leading comment block `# Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).` + `# See PRD §1.9.1 ...` (5 short risk titles from the condensed partial) + `approval_policy = "never"`, `sandbox_mode = "workspace-write"`, `[sandbox_workspace_write]`, `network_access = true`.
+  - Non-interactive branch: leading comment block `# Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).` + `# See PRD §1.9.1 ...` (4 short risk titles from the condensed partial) + `approval_policy = "never"`, `sandbox_mode = "workspace-write"`, `[sandbox_workspace_write]`, `network_access = true`.
   - Safe branch: existing comment + `approval_policy = "on-request"` + `network_access = false` (preserves current Epic 9 behaviour byte-for-byte when `nonInteractiveMode === false`).
-- `settings.json.ejs` line 3 changes from `"defaultMode": "default"` to `"defaultMode": <%- jsonString(security.nonInteractiveMode ? 'bypassPermissions' : 'default') %>`. The `sandbox` block (lines 15–22) emits unconditionally — no change.
+- `settings.json.ejs` line 3 changes from `"defaultMode": "default"` to `"defaultMode": <%- jsonString(security.nonInteractiveMode ? 'acceptEdits' : 'default') %>`. The `sandbox` block (lines 15–22) emits unconditionally — no change.
 - `buildContext` extended:
   - Add `security: config.security` passthrough to the returned context.
   - Add `disclosureCommentLines: string[]` — a pre-rendered short-form comment-stripped version of `security-disclosure.md.ejs` for the TOML header (Task 4 partial called with `condense: true`). Empty array when `nonInteractiveMode === false`.
@@ -232,7 +232,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
   6. Manifest round-trip legacy: parse a manifest JSON literal with NO `security` key (simulating an old install), assert `manifestSchema.safeParse` succeeds with `security.nonInteractiveMode === false` defaults and the result re-serializes cleanly.
   7. Snapshot non-interactive `.codex/config.toml`: build `security.nonInteractiveMode === true` config, run `generateAll`, find `.codex/config.toml`, assert `.toContain('approval_policy = "never"')`, `.toContain('network_access = true')`, `.toContain('runsIn=')`, `.toContain('acknowledged=')`, `.toContain('PRD §1.9.1')`.
   8. Snapshot safe-default `.codex/config.toml`: same but `security.nonInteractiveMode === false`, assert `.toContain('approval_policy = "on-request"')`, `.toContain('network_access = false')`, and `.not.toContain('runsIn=')` and `.not.toContain('approval_policy = "never"')`.
-  9. Snapshot `.claude/settings.json` both branches: parse with `JSON.parse`, assert `permissions.defaultMode === 'bypassPermissions'` for the non-interactive branch and `'default'` for the safe branch; assert `sandbox.mode === 'workspace-write'` and `sandbox.allowedDomains.length > 0` in BOTH branches.
+  9. Snapshot `.claude/settings.json` both branches: parse with `JSON.parse`, assert `permissions.defaultMode === 'acceptEdits'` for the non-interactive branch and `'default'` for the safe branch; assert the JSON string never contains `bypassPermissions`; assert `sandbox.mode === 'workspace-write'` and `sandbox.allowedDomains.length > 0` in BOTH branches.
 - Reuse `makeStackConfig` fixture from `tests/generator/fixtures.ts` and extend it (or add a sibling `makeStackConfigNonInteractive(overrides?)`) so the new tests stay declarative.
 
 **Notes**
@@ -249,7 +249,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - [ ] `pnpm test` — all suites pass; the new `tests/generator/epic-10-non-interactive.test.ts` is green; `tests/generator/epic-1-safety.test.ts` and every other Epic 1–9 suite still green (no regression on safe defaults).
 - [ ] `pnpm lint` — zero warnings.
 - [ ] Manual: run `pnpm dev init --yes -d /tmp/fixture-default` on a fresh fixture, confirm `.agents-workflows.json` has `"security":{"nonInteractiveMode":false,"runsIn":null,"disclosureAcknowledgedAt":null}`, `.codex/config.toml` contains `approval_policy = "on-request"`, `.claude/settings.json` contains `"defaultMode":"default"`.
-- [ ] Manual: run `pnpm dev init --non-interactive --isolation=docker -d /tmp/fixture-noninteractive`, confirm `security.nonInteractiveMode === true` + `runsIn === 'docker'` + ISO timestamp in manifest, `.codex/config.toml` contains `approval_policy = "never"` + `network_access = true` + the `runsIn=docker, acknowledged=...` comment block, `.claude/settings.json` contains `"defaultMode":"bypassPermissions"`.
+- [ ] Manual: run `pnpm dev init --non-interactive --isolation=docker -d /tmp/fixture-noninteractive`, confirm `security.nonInteractiveMode === true` + `runsIn === 'docker'` + ISO timestamp in manifest, `.codex/config.toml` contains `approval_policy = "never"` + `network_access = true` + the `runsIn=docker, acknowledged=...` comment block, `.claude/settings.json` contains `"defaultMode":"acceptEdits"`.
 - [ ] Manual: run `pnpm dev init --non-interactive --isolation=host-os` (no `--accept-risks`) and confirm exit code 1 + the exact PRD error message.
 - [ ] Manual: run `pnpm dev update --yes` on the non-interactive fixture and confirm the manifest's `security` block is preserved byte-for-byte.
 - [ ] Run `code-reviewer` agent on all modified files — fix every critical and warning finding.

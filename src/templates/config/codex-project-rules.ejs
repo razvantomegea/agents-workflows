@@ -155,7 +155,13 @@ prefix_rule(
 # --- Allow: Local / read-only git subcommands -----------------------------
 
 prefix_rule(
-  pattern = ["git", ["status", "diff", "log", "branch"]],
+  pattern = ["git", ["status", "diff", "log"]],
   decision = "allow",
   justification = "Read-only git inspection (symmetric with Claude LOCAL_GIT_ALLOWS)",
+)
+
+prefix_rule(
+  pattern = ["git", "branch", "--list"],
+  decision = "allow",
+  justification = "Read-only branch listing (symmetric with Claude LOCAL_GIT_ALLOWS)",
 )

@@ -41,6 +41,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   utilsDir: string;
   localeRules: string[];
   docsFile: string | null;
+  roadmapFile: string | null;
   mainBranch: string;
 
   reviewChecklist: ReviewChecklistItem[];

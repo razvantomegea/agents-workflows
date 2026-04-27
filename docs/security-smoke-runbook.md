@@ -72,11 +72,11 @@ This runbook covers the cases that cannot be fully automated by `tests/security/
 - **Expected today:** Sandbox may produce `CreateProcessWithLogonW 1056` / `0xC0000142` failures (OpenAI #15850). Rely on `project.rules` as primary guard.
 - **Mitigation:** Use `project.rules` forbid rules as the primary defence layer.
 
-### 10.4 — Claude settings-based bypassPermissions unreliability
+### 10.4 — `acceptEdits` Bash gating verification
 
-- **Test:** Set `defaultMode: "bypassPermissions"` in `settings.json` and verify no prompt appears for allowlisted commands.
-- **Expected today:** Anthropic #34923 and dupes — prompts still appear. Fails safe.
-- **Mitigation:** Keep `defaultMode: "default"` in the committed `settings.json`.
+- **Test:** Set `defaultMode: "acceptEdits"` in `settings.json` (the non-interactive default emitted by this repo). Drive Claude to (a) make a file edit and (b) run two Bash commands: one that matches `permissions.allow` (e.g. `pnpm test`) and one that does not (e.g. `dig example.com`).
+- **Expected today:** The file edit and the allow-listed Bash command run without prompting; the unlisted Bash command still prompts. This is by design — `acceptEdits` does NOT auto-approve Bash. Per the Claude Code permission docs, only `bypassPermissions` (forbidden in this repo, equivalent to `--dangerously-skip-permissions`) skips Bash prompts.
+- **Mitigation:** To eliminate Bash prompts for known-safe commands, extend `permissions.allow` in `.claude/settings.json`. Never switch to `bypassPermissions`; it bypasses the deny list as the only remaining check.
 
 ## Updating this runbook
 

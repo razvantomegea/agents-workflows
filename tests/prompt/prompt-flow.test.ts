@@ -37,6 +37,7 @@ function makeDetectedStack(): DetectedStack {
       hasCodexCli: false,
     },
     docsFile: emptyDetection,
+    roadmapFile: emptyDetection,
   };
 }
 
@@ -117,6 +118,21 @@ describe('createDefaultConfig', () => {
     const config = createDefaultConfig(makeDetectedStack());
 
     expect(config.project.docsFile).toBeNull();
+  });
+
+  it('propagates detected roadmapFile onto project.roadmapFile', () => {
+    const detected = makeDetectedStack();
+    detected.roadmapFile = { value: 'PRD.md', confidence: 0.9 };
+
+    const config = createDefaultConfig(detected);
+
+    expect(config.project.roadmapFile).toBe('PRD.md');
+  });
+
+  it('leaves project.roadmapFile null when detection is empty', () => {
+    const config = createDefaultConfig(makeDetectedStack());
+
+    expect(config.project.roadmapFile).toBeNull();
   });
 
   it('round-trips detected AI agent booleans through the schema', () => {

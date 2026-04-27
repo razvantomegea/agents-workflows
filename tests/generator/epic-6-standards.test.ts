@@ -184,8 +184,8 @@ describe('E6.T7+T8 — tooling and deployment', () => {
     expect(await partialLines('tooling.md.ejs')).toBeLessThanOrEqual(40);
   });
 
-  it('deployment partial is within 40 lines', async () => {
-    expect(await partialLines('deployment.md.ejs')).toBeLessThanOrEqual(40);
+  it('deployment partial is within 130 lines', async () => {
+    expect(await partialLines('deployment.md.ejs')).toBeLessThanOrEqual(130);
   });
 });
 
