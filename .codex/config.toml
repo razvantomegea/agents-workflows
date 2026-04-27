@@ -16,9 +16,14 @@
 # 3. Sandbox via /sandbox or devcontainer / Docker / Podman / VM.
 # 4. Non-elevated user — never sudo / doas / su / runas / "Run as administrator".
 # 5. Enterprise: install org EDR (MDE / Falcon / SentinelOne) on the host OS.
-# Agent runs in: vm (baseline isolation; non-interactive mode is OFF).
-approval_policy = "on-request"
+# Non-interactive mode enabled (runsIn=vm, acknowledged=2026-04-27T17:59:00.953Z).
+# Known risks (PRD §1.9.1):
+# 1. Claude sub-agent deny-bypass (Anthropic #25000, #43142)
+# 2. Codex Windows sandbox instability (OpenAI #15850)
+# 3. PowerShell wrapper prefix_rule bypass (OpenAI #13502)
+# 4. Network exfiltration surface (mitigated by E9.T11 + E9.T13)
+approval_policy = "never"
 sandbox_mode = "workspace-write"
 
 [sandbox_workspace_write]
-network_access = false
+network_access = true

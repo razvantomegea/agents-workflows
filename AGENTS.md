@@ -253,6 +253,63 @@ These complement the command-layer denies — see PRD §1.9.2 for full rationale
   - macOS: Defender for Endpoint for macOS, CrowdStrike Falcon, SentinelOne, etc.
   - Linux: Defender for Endpoint for Linux, Falcon Sensor for Linux, auditd-based agents, etc.
 
+## Semi-autonomous non-interactive mode — security disclosure
+
+### What non-interactive mode does
+
+- Codex runs with `approval_policy = "never"`. All approval prompts are skipped.
+- Claude runs with `defaultMode = "acceptEdits"`. File edits and basic
+  filesystem ops (`mkdir`, `touch`, `mv`, `cp`) auto-approve in the working
+  directory; **Bash commands still prompt** unless they match a rule in
+  `permissions.allow`. To get truly headless Claude sessions, pair
+  `acceptEdits` with the Epic 9 Bash allow-list — never with
+  `bypassPermissions` or `--dangerously-skip-permissions`, which are the
+  same dangerous mode in two delivery surfaces.
+
+### What it does NOT relax
+
+- Deny rules in `.claude/settings.json` and forbid rules in `.codex/rules/project.rules`
+  still block destructive/forbidden commands.
+- The `workspace-write` sandbox still applies (subject to PRD §1.9.1 item 10.2 on Windows).
+
+### Known risks (PRD §1.9.1)
+
+1. **Claude sub-agent deny-bypass.** `Task` tool sub-agents ignore `permissions.deny`
+   (Anthropic #25000, #43142). Do not route destructive ops through sub-agents.
+
+2. **Codex Windows sandbox instability.** Workspace-write is unstable on Windows
+   (OpenAI #15850 + dupes). Rules are the primary guard there, not the sandbox.
+
+3. **PowerShell wrapper prefix_rule bypass.** `pwsh -Command` / `cmd /c` body is
+   opaque to prefix_rule (OpenAI #13502). Mitigated by E9.T12 forbid rules.
+
+4. **Network exfiltration surface.** `network_access = true` plus prompt injection via
+   README / issue body / sourcemap can exfiltrate secrets via `curl` / `iwr`.
+   Mitigated by E9.T11 denies and E9.T13 `allowedDomains`; residual via `node -e`
+   raw sockets.
+
+### Recommendation — isolation environments
+
+Run the agent in an isolated environment when non-interactive mode is enabled:
+
+- devcontainer / Dev Containers / GitHub Codespaces
+- Docker / Podman container
+- Local VM (UTM / Parallels / Hyper-V / WSL2) or cloud VM / VPS
+- Clean dedicated workstation (no personal files, SSH keys, or browser profiles)
+
+### If you run on your primary OS
+
+A prompt-injected agent can read `~/.ssh/*`, `~/.aws/credentials`,
+`~/.config/gh/hosts.yml`, browser profile cookies, Windows `%APPDATA%`, etc.
+Workspace-write only restricts WRITES, not reads.
+
+Codex CLI is unsupported on Windows-native hosts — use WSL2 or a devcontainer (see README "Codex on Windows hosts").
+
+### Manual review is still required
+
+Always run `git diff` and review changes before committing. The deny list is
+defense-in-depth only — especially for sub-agent calls.
+
 ## Deployment Rules
 
 See `AGENTS-DEPLOYMENT.md` for deployment checklist and rules.

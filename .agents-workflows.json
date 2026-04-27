@@ -1,7 +1,7 @@
 {
   "version": "0.1.0",
-  "generatedAt": "2026-04-26T17:40:56.526Z",
-  "stackConfigHash": "f4536c4c2bb09290",
+  "generatedAt": "2026-04-27T17:59:05.356Z",
+  "stackConfigHash": "6492cef006f9a584",
   "config": {
     "project": {
       "name": "agents-workflows",
@@ -79,9 +79,6 @@
       "claudeCode": true,
       "codexCli": true
     },
-    "governance": {
-      "enabled": false
-    },
     "detectedAiAgents": {
       "claudeCode": true,
       "codexCli": true,
@@ -92,11 +89,14 @@
       "windsurf": false,
       "gemini": true
     },
+    "governance": {
+      "enabled": false
+    },
     "monorepo": null,
     "security": {
-      "nonInteractiveMode": false,
+      "nonInteractiveMode": true,
       "runsIn": "vm",
-      "disclosureAcknowledgedAt": null
+      "disclosureAcknowledgedAt": "2026-04-27T17:59:00.953Z"
     }
   },
   "files": [
