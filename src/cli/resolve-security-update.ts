@@ -1,9 +1,7 @@
 import { confirm } from '@inquirer/prompts';
-import {
-  askIsolation,
-  askNonInteractiveMode,
-  enableNonInteractiveWithIsolation,
-} from '../prompt/ask-non-interactive.js';
+import { askIsolation } from '../prompt/ask-isolation.js';
+import { askNonInteractiveMode } from '../prompt/ask-non-interactive.js';
+import { enableNonInteractiveWithIsolation } from '../prompt/enable-non-interactive-with-isolation.js';
 import {
   SECURITY_DEFAULTS,
   type SecurityConfig,

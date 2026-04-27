@@ -40,6 +40,26 @@ describe('detectRoadmapFile', () => {
     expect(result.confidence).toBeCloseTo(0.9);
   });
 
+  it('falls back to ROADMAP.md when PRD.md is absent', async () => {
+    const root = await setup(['ROADMAP.md']);
+    const result = await detectRoadmapFile(root);
+    expect(result.value).toBe('ROADMAP.md');
+    expect(result.confidence).toBeCloseTo(0.9);
+  });
+
+  it('falls back to EPICS.md when PRD.md and ROADMAP.md are absent', async () => {
+    const root = await setup(['EPICS.md']);
+    const result = await detectRoadmapFile(root);
+    expect(result.value).toBe('EPICS.md');
+    expect(result.confidence).toBeCloseTo(0.9);
+  });
+
+  it('prefers PRD.md over other roadmap candidates', async () => {
+    const root = await setup(['EPICS.md', 'ROADMAP.md', 'PRD.md']);
+    const result = await detectRoadmapFile(root);
+    expect(result.value).toBe('PRD.md');
+  });
+
   it('does not pick README.md as a roadmap fallback', async () => {
     const root = await setup(['README.md']);
     const result = await detectRoadmapFile(root);

@@ -2269,7 +2269,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   4. If the user picks `host-os`, print the read-exposure warning enumerating `~/.ssh/*`, `~/.aws/credentials`, `~/.config/gh/hosts.yml`, browser cookie stores, Windows `%APPDATA%` — but no exact-phrase gate fires here, since the user is only documenting a baseline.
 - **`askNonInteractiveMode(options)` behaviour.**
   1. If `options.yes === true` and `options.nonInteractive` is not explicitly set, return `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, disclosureAcknowledgedAt: null }`. `--yes` alone never enables non-interactive.
-  2. If `options.nonInteractive` is explicitly set, honour it via the flag-driven path. When `nonInteractive === false`, return baseline `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, ... }`. When `nonInteractive === true`, also require `options.isolation`; for `host-os`, additionally require `options.acceptRisks` (matches E10.T12 CLI semantics) — failure modes return safe defaults.
+  2. If `options.nonInteractive` is explicitly set, honour it via the flag-driven path. When `nonInteractive === false`, return baseline `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, ... }`. When `nonInteractive === true`, also require `options.isolation`; for `host-os`, additionally require `options.acceptRisks` (matches E10.T12 CLI semantics). Direct helper calls that bypass CLI validation return safe defaults while preserving `runsIn`; CLI entrypoints treat the same invalid flag combinations as fatal before this helper runs.
   3. Otherwise, print the intro ("Non-interactive mode lets the agent run without asking for approval on each command. …"), render the disclosure partial from E10.T14, then prompt: `confirm({ message: 'Enable non-interactive mode for this project?', default: false })`.
   4. If the user declines, return baseline `{ nonInteractiveMode: false, runsIn: options.isolation ?? null, disclosureAcknowledgedAt: null }`.
   5. If the user accepts and `options.isolation` is null, fall back to inline `askIsolation` so the function still works standalone.
@@ -2329,9 +2329,10 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   - `--non-interactive` / `--no-non-interactive` — explicit opt-in or opt-out. Overrides the prompt when present.
   - `--isolation=<devcontainer|docker|vm|vps|clean-machine|host-os>` — captures the isolation baseline. Required when `--non-interactive=true`; optional standalone (sets `runsIn` baseline without flipping non-interactive).
   - `--accept-risks` — required when `--non-interactive --isolation=host-os` is combined (matches the interactive accept-phrase gate). Not required when `--isolation=host-os` is passed alone.
-- **Validation matrix.**
-  | Combination | Result |
-  |---|---|
+- **Validation matrix.** CLI entrypoints validate these combinations with `parseNonInteractiveFlags` before prompt helpers run. Invalid explicit flag combinations are fatal and exit 1; the prompt helper safe-default fallback is only for direct internal use.
+
+| Combination | Result |
+|---|---|
   | `--yes` alone | Safe defaults: `nonInteractiveMode: false`, `runsIn: null`. |
   | `--yes --isolation=foo` | Honoured: `runsIn: foo`, `nonInteractiveMode: false`. Explicit flag wins. |
   | `--isolation=foo` alone | OK: `runsIn: foo`, `nonInteractiveMode: false`. No prompt. |
@@ -2339,8 +2340,9 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   | `--non-interactive` without `--isolation` | Error: `--non-interactive requires --isolation=<env>` (exit 1). |
   | `--non-interactive --isolation=host-os` without `--accept-risks` | Error: `--non-interactive --isolation=host-os requires --accept-risks (see PRD §1.9.1)` (exit 1). |
   | `--non-interactive --isolation=foo` | OK: NI on, `runsIn: foo`, no prompt. |
-  | `--no-non-interactive --isolation=foo` | OK: NI forced off, `runsIn: foo`. |
-  | `--no-non-interactive` alone | NI forced off; isolation prompted interactively (or null under `--yes`). |
+| `--no-non-interactive --isolation=foo` | OK: NI forced off, `runsIn: foo`. |
+| `--no-non-interactive` alone | NI forced off; isolation prompted interactively (or null under `--yes`). |
+
 - **Done when**: flag-driven CI runs produce correct configs without prompting; `--yes` alone produces safe configs; `--isolation` alone documents the baseline without enabling NI; host-os requires `--accept-risks` only when also enabling NI; the two error messages above are emitted with exit code 1.
 
 ### E10.T13 — Update-command round-trip for security — S

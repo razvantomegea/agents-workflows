@@ -107,7 +107,10 @@ describe('Epic 2 quality partials', () => {
   it('wires tdd-discipline into implementer and test-writer only', () => {
     assertInclusion({ files, included: AGENTS_WITH_TDD, anchor: '<tdd_discipline>' });
     expect(getAgentContent(files, 'implementer')).toContain(
-      'Read PRD.md before planning, implementing, reviewing, or writing tests',
+      'Read `README.md` before planning, implementing, reviewing, or writing tests',
+    );
+    expect(getAgentContent(files, 'implementer')).toContain(
+      'roadmap files as secondary planning context',
     );
     expect(getAgentContent(files, 'test-writer')).toContain(
       'NEVER delete or weaken an existing test',

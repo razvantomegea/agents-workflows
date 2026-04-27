@@ -13,9 +13,9 @@ import {
   askCommandSelection,
   askTargets,
   askGovernance,
-  askIsolation,
   askNonInteractiveMode,
 } from './questions.js';
+import { askIsolation } from './ask-isolation.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';

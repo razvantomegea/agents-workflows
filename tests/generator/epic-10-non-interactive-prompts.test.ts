@@ -14,7 +14,8 @@ jest.unstable_mockModule('@inquirer/prompts', () => ({
 }));
 
 const { runPromptFlow } = await import('../../src/prompt/index.js');
-const { askIsolation, askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } = await import(
+const { askIsolation } = await import('../../src/prompt/ask-isolation.js');
+const { askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } = await import(
   '../../src/prompt/ask-non-interactive.js'
 );
 
@@ -108,6 +109,16 @@ describe('Epic 10 non-interactive mode prompts — case 1 and branch coverage', 
       before,
       after,
       timestamp: result.disclosureAcknowledgedAt,
+    });
+  });
+
+  it('preserves host-os runsIn baseline when flag path lacks acceptRisks', async () => {
+    const result = await askNonInteractiveMode({ nonInteractive: true, isolation: 'host-os' });
+
+    expect(result).toEqual({
+      nonInteractiveMode: false,
+      runsIn: 'host-os',
+      disclosureAcknowledgedAt: null,
     });
   });
 
