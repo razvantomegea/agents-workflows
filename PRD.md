@@ -462,6 +462,8 @@ Both invocations MUST be on the permission allowlist — `Bash(codex exec:*)` in
 
 **Why not file watching / heartbeat.** File-watch or heartbeat polling between two CLIs is strictly worse than MCP tool calls: (a) polling overhead burns tokens and wall-clock time; (b) race conditions on the handoff file require locking; (c) no structured result schema — the receiver parses freeform Markdown; (d) no native cancellation or error propagation; (e) no streaming of intermediate tokens. MCP tool calls solve all five with a single synchronous request/response. File-watch remains appropriate for long-horizon harnesses (§1.8) where sessions span hours or restart — but not for intra-workflow handoff inside a single `/workflow-plan` run.
 
+**Plan-time review uses the same primitives.** These mechanisms also serve plan-time review of `PLAN.md` (not just diff review) — see §1.13.1 for the trigger criteria and prompt scaffolding the architect uses to ask the opposite family for a second opinion before implementation starts.
+
 **Where to wire.** Epic 16 task E16.T9 threads the plugin install steps into the emitted `AGENTS.md` setup block and allowlists `Bash(codex exec:*)` / `Bash(claude -p:*)` in the generated `.claude/settings.json` and `.codex/rules/project.rules` for the subprocess fallback. `/workflow-plan`, `/workflow-fix`, and `/external-review` templates name the plugin commands (`/codex:delegate`, `/codex:review`) so the orchestrator invokes the handoff explicitly rather than from memory.
 
 ## 1.8 Long-horizon harness (initializer + coder + progress.txt + feature_list.json)
@@ -720,6 +722,43 @@ Skip planning only if (a) you can state the diff in one sentence AND
 (b) it touches a single file. Otherwise always plan first.
 </planning_protocol>
 ```
+
+## 1.13.1 Architect second-opinion (cross-model plan review)
+
+**Rule.** When the architect (Claude or GPT-5.x) finishes `PLAN.md` and the plan is non-trivial, the **opposite model family** SHOULD review the plan **before** implementation starts. This mirrors the §1.7 cross-model reviewer rule (which today only fires on the diff after code is written) and applies it to the planning phase, where the cost of catching a wrong decomposition is one prompt versus an entire Phase 3 of misdirected work.
+
+**Verdict.** Missing. §1.13 codifies `EXPLORE → CLARIFY → PLAN → HANDOFF` with no second-opinion checkpoint between PLAN and HANDOFF. §1.7 enforces the family swap only on the diff. The architect agent template (`src/templates/agents/architect.md.ejs`) and the workflow command templates (`src/templates/commands/workflow-plan.md.ejs` and the Codex mirror) have no plan-time review step.
+
+**Priority.** [SHOULD]. The skip rule is identical to §1.13's planning skip rule — see the Skip criteria block below for the single source of truth.
+
+**Skip criteria** (verbatim mirror of §1.13's skip rule — only skip the second opinion when **both** hold): (a) the diff fits in one sentence AND (b) it touches a single file. Anything else — multi-file (including 2-file), multi-sentence single-file, cross-stack, or schema-touching — triggers the second opinion.
+
+**Mechanism — reuse §1.7.2 primitives, do NOT introduce new commands.** The mechanisms named in §1.7.2 (`/codex:review`, `claude -p`, the subprocess fallbacks) accept any prompt and any text payload — pointing them at `PLAN.md` is a different *trigger* for the same tool, not new infrastructure.
+
+- **From Claude Code, architect sub-agent path (primary in this workflow):** the `architect` runs as a Claude Code sub-agent (`tools: Read, Edit, Write, Bash, Grep, Glob, Agent`) and therefore cannot invoke MCP slash commands like `/codex:review` directly — the slash-command surface is a top-level harness feature. The architect's primary invocation is the subprocess form: `Bash(codex exec "Review the plan in PLAN.md per PRD §1.13.1: ...")`, allowlisted via `CROSS_MODEL_HANDOFF_ALLOWS` in `src/generator/permission-constants.ts`.
+- **From Claude Code, top-level orchestrator path:** when the user drives `/workflow-plan` directly (rather than spawning the architect sub-agent), `/codex:review PLAN.md` with the same prompt body is available and preferred — it streams structured results back through the Codex Plugin for Claude Code.
+- **From Codex CLI (architect just wrote `PLAN.md`):** invoke `claude -p "Review the plan in PLAN.md per PRD §1.13.1: ..."` — Claude returns structured feedback on stdout. Allowlisted in `.codex/rules/project.rules`. Codex's planning skill runs as a prompt rather than a sub-agent, so the same invocation works at both the architect and orchestrator level.
+
+**What the reviewer evaluates** (the second-opinion prompt SHOULD ask specifically for these — generic "review this plan" prompts produce generic feedback):
+
+- **Completeness:** Are there obvious tasks missing? Edge cases not covered? Required test coverage absent?
+- **Decomposition:** Are tasks the right size? Should one task be two? Are two tasks really one?
+- **File targeting:** Are the named file paths correct and exhaustive? Are there files the plan should touch but does not?
+- **PRD / CLAUDE.md alignment:** Does the plan respect documented non-goals, conventions, and rules? Does it conflict with any other in-progress epic?
+- **Risk:** What is the most likely failure mode? Is there a cheaper path?
+- **Better alternative:** Is there a structurally different approach the architect missed?
+
+**What the reviewer MUST NOT do.** The reviewer returns *feedback*, not a rewritten plan. The architect (the writer) decides what to incorporate; the reviewer never silently overwrites `PLAN.md`. This preserves single-author intent on the plan document, the same way §1.6 keeps the writer accountable for the diff.
+
+**Loop bound.** One round trip per plan. If the reviewer raises critical issues, the architect revises `PLAN.md` and proceeds — there is no second second-opinion round, because that path leads to plan-revision tar pits. If the reviewer disagrees on direction (not correctness), the architect notes the disagreement in `PLAN.md` under a new `## Plan-review notes` heading and proceeds — the user breaks the tie at plan-approval time.
+
+**Family swap rule** (per §1.7.1). Architect (Claude) invokes Codex / GPT-5.x; architect (GPT-5.x via Codex) invokes Claude. Same opposite-family table as the implementer/reviewer split — see §1.7.1 for the stack-aware defaults. UI/UX plans are an exception: Claude Opus (`ui-designer`) writes the design notes per §1.7.1's two-phase UI exception, then GPT-5.x reviews the implementation plan; do NOT invert this for UI work.
+
+**Where to add.**
+
+- `src/templates/agents/architect.md.ejs`: insert step `4. ASK_SECOND_OPINION` between current step 3 (PLAN) and step 4 (HANDOFF) in the `<planning_protocol>` block. Reference §1.7.2 for the invocation primitive and §1.13.1 (this subsection) for the trigger criteria.
+- `src/templates/commands/workflow-plan.md.ejs`: in Phase 2, after step 5 ("Print the plan summary table") and before Phase 3, add a step 6 instructing the architect to invoke the opposite family for plan review per §1.13.1, unless the §1.13 skip criteria apply. The same edit lands in the Codex mirror via the shared template.
+- Generator tests under `tests/generator/`: pin the new strings so regressions trip CI (per Epic 16's E16.T7 pattern).
 
 ## 1.14 TDD discipline for agents
 
@@ -2793,7 +2832,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - `src/templates/config/AGENTS.md.ejs` routing table matches the PRD §1.7 schema (Claude / GPT-5.x naming; writer-vs-reviewer rule preserved) and is followed by a "Stack-aware writer/reviewer defaults" block that dispatches on `stack.language` (Claude-primary: Python, Ruby, Rust, Java · GPT-primary: TS, JS, Go, C#/.NET, PHP, Swift, Kotlin) plus the existing `isReact` / `isFrontend` / `isTypescript` context flags from `src/generator/build-context.ts`. No new context flag is introduced. A "Cross-stack primary / secondary map" table covering all mainstream stacks (JS/TS, React, Three.js, Vue/Svelte/Solid/Angular, Python, C++, Java, C#/.NET, Go, Rust, PHP, Ruby, Swift, Kotlin) renders on every fixture as an always-on reference.
 - `src/templates/commands/workflow-plan.md.ejs`, `workflow-fix.md.ejs`, and `external-review.md.ejs` each include a short **Model selection when both Claude and GPT are available** block naming Claude for architect / reviewer by default, GPT-5.x for TS/React implementation, and the opposite-family rule for the reviewer and `/external-review` passes. The same blocks name the concrete §1.7.2 handoff commands (`/codex:delegate`, `/codex:review`) and the subprocess fallbacks (`codex exec`, `claude -p`) so the orchestrator never needs to improvise the invocation.
 - Generated `AGENTS.md` includes a **Cross-model handoff setup** block pointing operators at the `openai/codex-plugin-cc` install commands from §1.7.2 and makes clear that subprocess fallbacks require explicit operator approval.
-- Generated `.claude/settings.json` (from `src/generator/permissions.ts`) does **not** allowlist opaque subprocess fallbacks such as `Bash(codex exec:*)` or `Bash(claude -p:*)`; generated `.codex/rules/project.rules` likewise avoids broad `claude -p` / `claude --print` allow entries. The Codex plugin handoff remains the primary mechanism because MCP handoffs are policy-visible, while subprocess prompts are opaque to prefix rules.
+- Generated `.claude/settings.json` (from `src/generator/permissions.ts`) **does** allowlist `Bash(codex exec:*)` and `Bash(claude -p:*)` via `CROSS_MODEL_HANDOFF_ALLOWS` in `src/generator/permission-constants.ts`, and the generated `.codex/rules/project.rules` carries the symmetric `claude -p` / `claude --print` allow entries — this is intentional, not drift. The Codex Plugin for Claude Code remains the **preferred** mechanism (MCP handoffs are policy-visible and stream structured results), but the subprocess fallback ships allowlisted because the Epic 16 flow (Claude plan → Codex execute → Claude review, or its symmetric variant) cannot run if the handoff itself is gated behind a per-command approval prompt. Deny-first posture is preserved by `SANDBOX_WRAPPER_DENIES` in the same file, which blocks wrapper-chained interpreters (`wsl bash -c "codex exec ..."`, `docker exec myc pwsh -Command "claude -p ..."`, etc.) before the allow rules run. Any future test asserting these allow entries are absent is drift — fix the test, not the allowlist (per the user's 2026-04-26 decision recorded in the Epic 16 follow-on memory).
 - Generator tests under `tests/generator/` pin the new strings so regressions trip CI: each rendered template contains both `Claude` and `GPT-5.x`, the "different FAMILY" rule is preserved verbatim, the stack-aware block renders the correct branch for a TS/React fixture, a Claude-primary fixture (Python / Rust), and a GPT-primary fixture (Go), and the cross-stack map row headers are all present.
 - `pnpm check-types`, `pnpm lint`, and `pnpm test` are green; the reviewer 5-step gate (§1.6) passes on the Epic 16 branch.
 - Non-goals (this epic): no vendor model-ID constants in TypeScript code; no new generator, CLI flag, or schema field; no changes to sub-agent permissions (§1.9 / Epic 9) or non-interactive posture (Epic 10); no rewrite of §1.7 — only the routing table inside it changes.
@@ -2854,7 +2893,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   - `workflow-plan.md.ejs`: in the existing "Model selection when both Claude and GPT are available" block, add a bullet pointing at `/codex:delegate` for Phase 3 TS/React implementation when Claude is the orchestrator, and note that any `codex exec "<task>"` subprocess fallback requires explicit operator approval because prompt bodies are opaque to prefix rules.
   - `workflow-fix.md.ejs`: in the matching block, name `/codex:review` as the Codex-initiated review pass and note that `claude -p "<prompt>"` for the reverse direction requires explicit operator approval.
   - `external-review.md.ejs`: in the **Cross-model requirement** section, name `/codex:review` as an allowlisted alternative to CodeRabbit CLI when the operator overrides the default — with the existing terminal-override token-validation rules still applying verbatim (no weakening of the Epic 9 allowlist).
-  - Permission wiring: do **not** add broad `Bash(codex exec:*)`, `Bash(claude -p:*)`, or Codex `claude -p` / `claude --print` allow entries. Preserve every existing deny verbatim.
+  - Permission wiring: `Bash(codex exec:*)` and `Bash(claude -p:*)` **are** allowlisted via `CROSS_MODEL_HANDOFF_ALLOWS` in `src/generator/permission-constants.ts`, and the symmetric Codex `claude -p` / `claude --print` allow entries are emitted to `.codex/rules/project.rules` — both are required for the Epic 16 cross-model flow to run without per-command approval prompts. Preserve every existing deny verbatim, and rely on `SANDBOX_WRAPPER_DENIES` to block wrapper-chained interpreters.
   - Tests: assert that the rendered `AGENTS.md` contains the plugin install commands, the rendered `workflow-plan.md` / `workflow-fix.md` / `external-review.md` name `/codex:delegate` and/or `/codex:review`, and the generated `.claude/settings.json` allow list does **not** contain `Bash(codex exec:*)` or `Bash(claude -p:*)`.
 - **Done when**: `pnpm test` is green; `pnpm lint` clean; rendering against a default fixture shows the plugin commands in the workflow templates, settings do not include opaque subprocess fallback Bash allow entries, and no existing deny-list entry is removed.
 
@@ -3046,6 +3085,68 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 
 ---
 
+## Epic 19 — Architect second-opinion (pre-implementation plan review) [SHOULD]
+
+**Goal.** Implement PRD §1.13.1: add a plan-time cross-model review checkpoint to the architect agent and the `/workflow-plan` command for both Claude Code and Codex CLI, reusing the §1.7.2 handoff primitives (`/codex:review`, `claude -p`, the `CROSS_MODEL_HANDOFF_ALLOWS` allowlist). No new commands, no new generator, no new permission rules.
+
+**Rationale.** §1.7 enforces the writer/reviewer family swap on the diff after code is written. §1.13 codifies the planning protocol but has no parallel second-opinion checkpoint, so a plan that starts on the wrong track burns Phase 3 cycles before any other family sees it. §1.13.1 closes the gap by reusing the §1.7.2 mechanisms at a different trigger point. Epic 19 wires the trigger into the templates so the behaviour ships with every generated `agents-workflows init`.
+
+**Acceptance.**
+
+- PRD §1.13.1 exists between §1.13 and §1.14 (already landed in E19.T1).
+- `src/templates/agents/architect.md.ejs` `<planning_protocol>` block contains a new step `4. ASK_SECOND_OPINION` between PLAN and HANDOFF, citing §1.7.2 for the mechanism and §1.13.1 for the trigger criteria. The skip rule from §1.13 (single-file + one-sentence-diff) is named verbatim as the only skip path.
+- `src/templates/commands/workflow-plan.md.ejs` Phase 2 contains a new step (numbered between the existing "Print the plan summary table" step and the start of Phase 3) instructing the architect to invoke `/codex:review` (from Claude) or `claude -p` (from Codex) on `PLAN.md` per §1.13.1, with explicit prompt scaffolding asking for completeness / decomposition / file-targeting / PRD-alignment / risk / alternative critiques. The Codex mirror template emits the symmetric step.
+- Phase 2 explicitly states the loop bound (one round trip per plan), the skip rule, and the rule that the reviewer returns feedback only — never rewrites `PLAN.md`. The architect MAY add a `## Plan-review notes` section to `PLAN.md` recording disagreements the user will break at approval time.
+- No new permission rules. `CROSS_MODEL_HANDOFF_ALLOWS` already covers both invocations; verify the Epic 19 template edits do not reintroduce a deny that conflicts with the existing allowlist.
+- Generator snapshot tests under `tests/generator/` (extend `epic-16-cross-model-routing.test.ts` or add `epic-19-second-opinion.test.ts`) assert: (a) every rendered `architect.md` contains the `ASK_SECOND_OPINION` step heading exactly once and the §1.13 skip-rule sentence verbatim; (b) every rendered `workflow-plan.md` contains the new Phase 2 step heading exactly once, names both `/codex:review` and `claude -p`, and names §1.13.1; (c) the Codex `workflow-plan.md` mirror contains the symmetric instruction; (d) the rendered `architect.md` does NOT instruct the reviewer to rewrite `PLAN.md` (regex check on the negative case).
+- `pnpm check-types && pnpm lint && pnpm test` green; reviewer 5-step gate (§1.6) passes on the Epic 19 branch.
+- **Non-goals (this epic):** no new slash commands; no MCP server changes; no schema field; no changes to `CROSS_MODEL_HANDOFF_ALLOWS` itself (the allowlist already covers the invocations); no enforcement that the second opinion ran (it remains SHOULD, not MUST — the architect skips per the §1.13 / §1.13.1 skip rule and notes the skip in `PLAN.md`).
+
+### E19.T1 — PRD §1.13.1 subsection [§1.13] — S
+
+- **Files**: [PRD.md](PRD.md) (insert new subsection between current §1.13 and §1.14).
+- **Change**: Add §1.13.1 with the Rule / Verdict / Priority / Skip criteria / Mechanism / Reviewer evaluation criteria / Loop bound / Family swap rule / Where-to-add structure.
+- **Done when**: `grep -n "^## 1.13.1" PRD.md` returns exactly one hit, located between the existing `## 1.13` and `## 1.14` headings; §1.7.2 and §1.7.1 are each cited at least once; the §1.13 skip rule is named verbatim.
+
+### E19.T2 — Cross-link from §1.7.2 [§1.7.2] — S
+
+- **Files**: [PRD.md](PRD.md) (one-sentence insert in §1.7.2, after the "Why not file watching" paragraph).
+- **Change**: Add one sentence: "These mechanisms also serve plan-time review of `PLAN.md` (not just diff review) — see §1.13.1 for the trigger criteria and prompt scaffolding."
+- **Done when**: §1.7.2 contains exactly one forward reference to §1.13.1; the surrounding paragraph structure is unchanged.
+
+### E19.T3 — Fix Epic 16 stale prose [§1.7.2] — S
+
+- **Files**: [PRD.md](PRD.md) (the two Epic 16 bullets that previously asserted `Bash(codex exec:*)` / `Bash(claude -p:*)` were not allowlisted).
+- **Change**: Replace the stale "do not allowlist" prose with language matching the actual `CROSS_MODEL_HANDOFF_ALLOWS` reality (allowlisted intentionally; deny-first posture preserved by `SANDBOX_WRAPPER_DENIES`). Cite the user's 2026-04-26 decision.
+- **Done when**: PRD prose, code (`src/generator/permission-constants.ts:232-234`), and the project memory record agree; the Epic 16 acceptance criteria no longer contradict the shipped behaviour.
+
+### E19.T4 — `architect.md.ejs` planning_protocol step [§1.13.1] — S
+
+- **Files**: [src/templates/agents/architect.md.ejs](src/templates/agents/architect.md.ejs).
+- **Change**: Insert a new step `4. ASK_SECOND_OPINION` between current step 3 (PLAN) and step 4 (HANDOFF). Cite §1.7.2 for the mechanism and §1.13.1 for the trigger criteria. Renumber HANDOFF to step 5. Preserve the skip rule sentence verbatim. **Mechanism wording**: name the subprocess form (`Bash(codex exec "...")` from Claude; `Bash(claude -p "...")` from Codex) as the architect's primary invocation, because the architect runs as a sub-agent (`tools:` line on architect.md.ejs:4 omits MCP tools). Mention `/codex:review` only as the orchestrator-level alternative when the user drives `/workflow-plan` directly.
+- **Pre-flight check**: before writing the template step, verify the architect's `tools:` declaration on architect.md.ejs:4 — confirm whether MCP slash commands are reachable from a Claude Code sub-agent in the current harness version. If MCP slash commands ARE reachable from sub-agents, swap the primary/alternative ordering above. Either way, both paths must be documented.
+- **Done when**: rendered `architect.md` against any fixture contains the five-step protocol with `ASK_SECOND_OPINION` as step 4; the architect's primary invocation matches the verified harness reality; `pnpm test` snapshot suite from E19.T6 passes.
+
+### E19.T5 — `workflow-plan.md.ejs` Phase 2 step [§1.13.1] — S
+
+- **Files**: [src/templates/commands/workflow-plan.md.ejs](src/templates/commands/workflow-plan.md.ejs) (after current Phase 2 step "Print the plan summary table", before the "Model selection" block).
+- **Change**: Insert a new Phase 2 step instructing the architect to invoke `/codex:review PLAN.md` (from Claude) or `claude -p "<prompt>"` (from Codex) per §1.13.1, with explicit prompt scaffolding for the six evaluation criteria. State the skip rule (single-file + one-sentence-diff) and the loop bound (one round trip). Preserve the existing Phase numbering for Phases 3, 4, 5.
+- **Done when**: rendered `workflow-plan.md` (both `.claude/commands/` and `.codex/prompts/`) contains the new step exactly once; Phase 3 still starts immediately after Phase 2; the existing Model-selection block is unchanged.
+
+### E19.T6 — Generator snapshot tests [§1.13.1] — S
+
+- **Files**: extend [tests/generator/epic-16-cross-model-routing.test.ts](tests/generator/epic-16-cross-model-routing.test.ts) OR add new `tests/generator/epic-19-second-opinion.test.ts`.
+- **Change**: Assert across the existing fixture set (TS/React, Python, Rust, Go) that: (a) `architect.md` contains the `ASK_SECOND_OPINION` step heading exactly once; (b) `architect.md` cites both §1.7.2 and §1.13.1; (c) `workflow-plan.md` (Claude and Codex mirrors) contains the new Phase 2 step naming both `/codex:review` and `claude -p`; (d) the §1.13 skip-rule sentence is present verbatim; (e) negative case: `architect.md` does NOT instruct the reviewer to rewrite `PLAN.md` (regex check).
+- **Done when**: `pnpm test` green; temporarily reverting E19.T4 or E19.T5 causes the matching assertion to fail.
+
+### E19.T7 — Delivery-plan row [§1.13.1] — S
+
+- **Files**: [PRD.md](PRD.md) (Delivery plan table, before the `Backlog` row).
+- **Change**: Insert `| 14 | Architect second-opinion plan review | Epic 19 (depends on Epic 16 cross-model routing) |`.
+- **Done when**: the delivery-plan table renders with Epic 19 called out; the per-epic exit-gate paragraph is unchanged.
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -3063,6 +3164,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 | 11 | Core logic docstrings | Epic 15 (depends on the current src/ surface — no other epic blocks it) |
 | 12 | Cross-model Claude + GPT routing | Epic 16 (depends on Epic 3 review-depth templates + Epic 7 safe-writes) |
 | 13 | Framework-agnostic implementer variants + multi-framework UI/UX designer | Epic 17 + Epic 18 (both depend on Epic 13's variant infrastructure + Epic 7 safe-writes) |
+| 14 | Architect second-opinion plan review | Epic 19 (depends on Epic 16 cross-model routing) |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 5-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.
