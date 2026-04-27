@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { generateAll } from '../../src/generator/index.js';
 import {
   buildPermissions,
   buildDenyList,
@@ -6,6 +8,7 @@ import {
   TOOLCHAIN_ALLOWS,
   DENY_PATTERNS,
 } from '../../src/generator/permissions.js';
+import { manifestSchema } from '../../src/schema/manifest.js';
 
 const PNPM_INPUT = {
   tooling: { packageManagerPrefix: 'pnpm' },
@@ -109,6 +112,7 @@ describe('buildPermissions', () => {
     expect(perms).toContain('Bash(wsl pnpm:*)');
     expect(perms).toContain('Bash(wsl * pnpm:*)');
     expect(perms).toContain('Bash(wsl git status:*)');
+    expect(perms).toContain('Bash(wsl git branch --list:*)');
     expect(perms).toContain('Bash(wsl tsc:*)');
     expect(perms).toContain('Bash(wsl codex exec:*)');
     expect(perms).toContain('Bash(wsl claude -p:*)');
@@ -132,6 +136,14 @@ describe('buildPermissions', () => {
     expect(perms).not.toContain('Bash(wsl pwsh:*)');
     expect(perms).not.toContain('Bash(docker exec bash -c:*)');
     expect(perms).not.toContain('Bash(podman exec bash -c:*)');
+  });
+
+  it('does not emit broad git branch allow entries', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).toContain('Bash(git branch --list:*)');
+    expect(perms).not.toContain('Bash(git branch:*)');
+    expect(perms).not.toContain('Bash(wsl git branch:*)');
+    expect(perms).not.toContain('Bash(docker exec git branch:*)');
   });
 });
 
@@ -189,7 +201,7 @@ describe('DENY_PATTERNS — E9.T1 + E9.T11 required entries', () => {
     'Bash(wget* | sh)', 'Bash(wget* | bash)',
   ];
 
-  it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern) => {
+  it.each(E9_REQUIRED)('DENY_PATTERNS contains %s', (pattern: string) => {
     expect(DENY_PATTERNS).toContain(pattern);
   });
 });
@@ -218,10 +230,18 @@ describe('DENY_PATTERNS — sandbox-wrapper bypass guards', () => {
 
   it.each(SANDBOX_WRAPPER_BYPASS_REQUIRED)(
     'DENY_PATTERNS contains %s (sandbox-wrapper bypass guard)',
-    (pattern) => {
+    (pattern: string) => {
       expect(DENY_PATTERNS).toContain(pattern);
     },
   );
+
+  it('mirrors host Bash deny patterns under sandbox wrappers', () => {
+    expect(DENY_PATTERNS).toContain('Bash(wsl rm -rf:*)');
+    expect(DENY_PATTERNS).toContain('Bash(wsl * git push:*)');
+    expect(DENY_PATTERNS).toContain('Bash(docker exec npm publish:*)');
+    expect(DENY_PATTERNS).toContain('Bash(podman exec * terraform apply:*)');
+    expect(DENY_PATTERNS).toContain('Bash(devcontainer exec kubectl delete:*)');
+  });
 });
 
 describe('buildPostToolUseHooks', () => {
@@ -259,5 +279,20 @@ describe('buildPostToolUseHooks', () => {
   it('appends --fix even when command contains fix as a substring without flag', () => {
     const hooks = buildPostToolUseHooks({ lintCommand: 'pnpm prefix-fix' });
     expect(hooks[0].hooks[0].command).toBe('pnpm prefix-fix --fix || true');
+  });
+});
+
+describe('root .claude/settings.json parity', () => {
+  it('matches the generator output from .agents-workflows.json', async () => {
+    const manifestJson = JSON.parse(readFileSync('.agents-workflows.json', 'utf8')) as unknown;
+    const manifest = manifestSchema.parse(manifestJson);
+    const files = await generateAll(manifest.config);
+    const generatedSettings = files.find((file) => file.path === '.claude/settings.json');
+    if (!generatedSettings) {
+      throw new Error('Expected generated .claude/settings.json');
+    }
+
+    const rootSettings = readFileSync('.claude/settings.json', 'utf8');
+    expect(JSON.parse(rootSettings) as unknown).toEqual(JSON.parse(generatedSettings.content) as unknown);
   });
 });

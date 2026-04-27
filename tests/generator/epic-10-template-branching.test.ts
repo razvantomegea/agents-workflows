@@ -39,13 +39,21 @@ describe('Epic 10 template branching — non-interactive mode', () => {
       const files = await generateAll(NON_INTERACTIVE_CONFIG);
       const json = getContent(files, SETTINGS_JSON_PATH);
       const parsed = JSON.parse(json) as {
-        permissions: { defaultMode: string };
-        sandbox: { mode: string; allowedDomains: string[] };
+        permissions: { defaultMode: string; disableBypassPermissionsMode: string };
+        sandbox: {
+          enabled: boolean;
+          mode: string;
+          autoAllowBashIfSandboxed: boolean;
+          allowedDomains: string[];
+        };
       };
 
       expect(parsed.permissions.defaultMode).toBe('acceptEdits');
+      expect(parsed.permissions.disableBypassPermissionsMode).toBe('disable');
       expect(json).not.toContain('bypassPermissions');
+      expect(parsed.sandbox.enabled).toBe(true);
       expect(parsed.sandbox.mode).toBe('workspace-write');
+      expect(parsed.sandbox.autoAllowBashIfSandboxed).toBe(false);
       expect(parsed.sandbox.allowedDomains.length).toBeGreaterThan(0);
     });
 
@@ -78,12 +86,20 @@ describe('Epic 10 template branching — non-interactive mode', () => {
       const files = await generateAll(safeConfig);
       const json = getContent(files, SETTINGS_JSON_PATH);
       const parsed = JSON.parse(json) as {
-        permissions: { defaultMode: string };
-        sandbox: { mode: string; allowedDomains: string[] };
+        permissions: { defaultMode: string; disableBypassPermissionsMode: string };
+        sandbox: {
+          enabled: boolean;
+          mode: string;
+          autoAllowBashIfSandboxed: boolean;
+          allowedDomains: string[];
+        };
       };
 
       expect(parsed.permissions.defaultMode).toBe('default');
+      expect(parsed.permissions.disableBypassPermissionsMode).toBe('disable');
+      expect(parsed.sandbox.enabled).toBe(true);
       expect(parsed.sandbox.mode).toBe('workspace-write');
+      expect(parsed.sandbox.autoAllowBashIfSandboxed).toBe(false);
       expect(parsed.sandbox.allowedDomains.length).toBeGreaterThan(0);
     });
 

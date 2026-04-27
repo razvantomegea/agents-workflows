@@ -125,7 +125,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 - DRY: this partial is the ONLY copy of the §1.9.1 disclosure language; if the partial changes, all three consumers update simultaneously. Tasks 2, 5, and 7 must NOT inline duplicate text.
 - No JSX/HTML; use plain Markdown so terminal rendering preserves structure.
 
-### Task 5 — Template branching for `.codex/config.toml` and `.claude/settings.json` [SCHEMA] [LOGIC]
+### Task 5 — Template branching for `.codex/config.toml` and `.claude/settings.json` [SCHEMA] [LOGIC] [TEST]
 **Files**
 - `src/templates/config/codex-config.toml.ejs`
 - `src/templates/config/settings.json.ejs`
@@ -140,7 +140,7 @@ Epic 9 hardening shipped (deny-first `.claude/settings.json`, `.codex/rules/proj
 
 **Output**
 - `codex-config.toml.ejs` rewritten with `<% if (security.nonInteractiveMode) { %>` / `<% } else { %>` branches:
-  - Non-interactive branch: leading comment block `# Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).` + `# See PRD §1.9.1 ...` (5 short risk titles from the condensed partial) + `approval_policy = "never"`, `sandbox_mode = "workspace-write"`, `[sandbox_workspace_write]`, `network_access = true`.
+  - Non-interactive branch: leading comment block `# Non-interactive mode enabled (runsIn=<%= security.runsIn %>, acknowledged=<%= security.disclosureAcknowledgedAt %>).` + `# See PRD §1.9.1 ...` (4 short risk titles from the condensed partial) + `approval_policy = "never"`, `sandbox_mode = "workspace-write"`, `[sandbox_workspace_write]`, `network_access = true`.
   - Safe branch: existing comment + `approval_policy = "on-request"` + `network_access = false` (preserves current Epic 9 behaviour byte-for-byte when `nonInteractiveMode === false`).
 - `settings.json.ejs` line 3 changes from `"defaultMode": "default"` to `"defaultMode": <%- jsonString(security.nonInteractiveMode ? 'acceptEdits' : 'default') %>`. The `sandbox` block (lines 15–22) emits unconditionally — no change.
 - `buildContext` extended:

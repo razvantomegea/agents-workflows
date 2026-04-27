@@ -127,13 +127,15 @@ const SANDBOX_WRAPPER_PREFIXES: readonly string[] = [
 
 /**
  * Inner-command shapes that, when reachable through any sandbox wrapper,
- * would let a caller bypass the prefix_rule deny list (raw interpreters and
- * shell `-c` evaluators). Block both the bare and flag-prefixed forms so
- * e.g. `wsl bash -c "rm -rf /"` and `docker exec myc pwsh -Command "iwr ..."`
- * are both denied before allow rules are checked.
+ * would let a caller bypass the host deny list. This includes the complete
+ * Bash deny surface plus shell `-c` evaluators that are only meaningful after
+ * a wrapper prefix. Block both the bare and flag-prefixed forms so e.g.
+ * `wsl rm -rf /`, `wsl bash -c "rm -rf /"`, and
+ * `docker exec myc pwsh -Command "iwr ..."` are all denied before allow rules
+ * are checked.
  */
 const SANDBOX_INNER_DENIES: readonly string[] = [
-  ...RAW_INTERPRETER_PATTERNS,
+  ...BASH_DENY_COMMAND_PATTERNS,
   // -c / -Command-style interpreters not in RAW_INTERPRETER_PATTERNS
   'bash -c',
   'sh -c',
@@ -207,7 +209,7 @@ export const LOCAL_GIT_ALLOWS: readonly string[] = [
   'Bash(git status:*)',
   'Bash(git diff:*)',
   'Bash(git log:*)',
-  'Bash(git branch:*)',
+  'Bash(git branch --list:*)',
 ];
 
 /**
@@ -247,8 +249,9 @@ export const CROSS_MODEL_HANDOFF_ALLOWS: readonly string[] = [
  *                                     `docker exec -i myc pnpm test`)
  *
  * The SANDBOX_WRAPPER_DENIES above run first, so a wrapper invocation that
- * targets a raw interpreter (`wsl pwsh`, `docker exec myc bash -c "..."`,
- * etc.) is blocked before allow rules are evaluated.
+ * targets a denied host command or raw interpreter (`wsl rm -rf`,
+ * `wsl pwsh`, `docker exec myc bash -c "..."`, etc.) is blocked before allow
+ * rules are evaluated.
  */
 const SANDBOX_INNER_ALLOWED: readonly string[] = [
   'pnpm',
@@ -258,7 +261,7 @@ const SANDBOX_INNER_ALLOWED: readonly string[] = [
   'git status',
   'git diff',
   'git log',
-  'git branch',
+  'git branch --list',
   'tsc',
   'jest',
   'eslint',
