@@ -10,8 +10,13 @@ interface SettingsShape {
   };
 }
 
-export function assertSettingsJsonShape(settings: SettingsShape): void {
-  expect(settings.permissions.defaultMode).toBe('default');
+export type ExpectedDefaultMode = 'default' | 'acceptEdits';
+
+export function assertSettingsJsonShape(
+  settings: SettingsShape,
+  expectedDefaultMode: ExpectedDefaultMode = 'default',
+): void {
+  expect(settings.permissions.defaultMode).toBe(expectedDefaultMode);
   expect(settings.permissions.disableBypassPermissionsMode).toBe('disable');
   expect(settings.sandbox.enabled).toBe(true);
   expect(settings.sandbox.mode).toBe('workspace-write');

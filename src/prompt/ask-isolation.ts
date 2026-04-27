@@ -1,6 +1,7 @@
 import { select } from '@inquirer/prompts';
 import type { IsolationChoice } from '../schema/stack-config.js';
 import { ISOLATION_CHOICES } from '../schema/stack-config.js';
+import { printHostOsWarning } from './host-os-disclosure.js';
 
 const ISOLATION_NAME_PAD = Math.max(...ISOLATION_CHOICES.map((choice: IsolationChoice) => choice.length)) + 1;
 
@@ -12,16 +13,6 @@ const ISOLATION_LABELS: Record<IsolationChoice, string> = {
   'clean-machine': 'dedicated workstation — no personal data',
   'host-os': 'my primary OS, with personal files, SSH keys, browser profiles',
 };
-
-const HOST_OS_WARNING = [
-  'WARNING: Running on your primary OS exposes the following to a prompt-injected agent:',
-  '  - ~/.ssh/*',
-  '  - ~/.aws/credentials',
-  '  - ~/.config/gh/hosts.yml',
-  '  - Browser cookie stores',
-  '  - Windows %APPDATA%',
-  'The workspace-write sandbox restricts WRITES only — reads are unrestricted.',
-].join('\n');
 
 export interface AskIsolationOptions {
   yes?: boolean;
@@ -36,21 +27,18 @@ function buildIsolationChoices(): { value: IsolationChoice; name: string }[] {
   }));
 }
 
-function printHostOsWarning(): void {
-  process.stdout.write('\n' + HOST_OS_WARNING + '\n\n');
-}
-
 /**
  * Always-asked isolation prompt — captures where the agent runs as a baseline,
  * independent of whether non-interactive mode is enabled.
  *
  * Under `--yes` or when `options.isolation` is set explicitly, returns without prompting.
+ * `--yes` preserves `options.current` (existing baseline) so silent reruns don't drop it.
  * When the user picks `host-os`, the read-exposure warning prints (no exact-phrase gate
  * here — that gate fires only when enabling non-interactive mode).
  */
 export async function askIsolation(options: AskIsolationOptions): Promise<IsolationChoice | null> {
   if (options.isolation !== undefined) return options.isolation;
-  if (options.yes === true) return null;
+  if (options.yes === true) return options.current ?? null;
 
   const choice = await select<IsolationChoice>({
     message: 'Where are you running the agent? (this affects risk)',
