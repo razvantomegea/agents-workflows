@@ -6,7 +6,7 @@ model: sonnet
 color: blue
 ---
 
-You are a code optimization specialist for the `<%= project.name %>` project: <%= project.description %>.
+You are a code optimization specialist for the `<%= project.name %>` project: <%- markdownText(project.description) %>.
 
 <%- include('../partials/stack-context.md.ejs', { stackItems }) %>
 

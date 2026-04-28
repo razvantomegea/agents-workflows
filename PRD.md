@@ -84,9 +84,9 @@ This snapshot captures epic-level status as of the latest stamped date in this d
 | 6 | Extended Code Standards | SHOULD | shipped 2026-04-22 |
 | 7 | CLI Generator Safe File Handling | MUST | shipped 2026-04-23 |
 | 8 | Situational Enhancements | NICE | shipped 2026-04-23 |
-| 9 | Agent Permission & Sandbox Hardening | MUST | mostly shipped — E9.T1–T5 and T10–T15 done; E9.T6–T8 (Cursor / Copilot / Windsurf rule emission) blocked on Epic 11 generator plumbing |
+| 9 | Agent Permission & Sandbox Hardening | MUST | shipped 2026-04-28 — E9.T1–T8 and T10–T15 done (E9.T6/T7/T8 landed alongside Epic 11) |
 | 10 | Semi-Autonomous Non-Interactive Workflow Mode | MUST | shipped 2026-04-26 |
-| 11 | Multi-IDE Target Outputs (Cursor / Copilot / Windsurf) | MUST | planned — generator does not yet emit `.cursor/rules/*`, `.github/prompts/*`, or `.windsurf/rules/*` |
+| 11 | Multi-IDE Target Outputs (Cursor / Copilot / Windsurf) | MUST | shipped 2026-04-28 |
 | 12 | Polyglot Monorepo Support | SHOULD | planned |
 | 13 | Stack-Aware Implementer Variants | MUST | planned — `react-ts-senior.md.ejs` remains in templates until variants ship |
 | 14 | Post-Init Workspace Refinement Prompt (`AGENTS_REFINE.md`) | SHOULD | planned — no template or generator yet |
@@ -2026,7 +2026,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ## Epic 9 — Agent Permission & Sandbox Hardening [MUST]
 
-**Landed on** `feature/epic-9-permission-sandbox-hardening` (E9.T1–T5, T10–T15 complete; E9.T6–T8 blocked on missing Cursor/Copilot/Windsurf emission plumbing in the generator — tracked for the epic that introduces that pipeline). The Epic 9/10 safe posture now consistently uses `approval_policy = "on-request"` with `network_access = false`.
+**Landed on** `feature/epic-9-permission-sandbox-hardening` for E9.T1–T5 and T10–T15; E9.T6–T8 landed on `feature/epic-11-multi-ide-targets` once the Cursor/Copilot/Windsurf emission plumbing existed. The Epic 9/10 safe posture now consistently uses `approval_policy = "on-request"` with `network_access = false`.
 
 **Goal.** Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. Deny-first rules and the sandbox are complementary layers; neither is trusted alone.
 
@@ -2074,7 +2074,16 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Change**: One paragraph noting (a) `.claude/settings.json` + `.codex/config.toml` + `.codex/rules/project.rules` are the shared, committed policy; (b) `.claude/settings.local.json` is a per-developer cache and stays gitignored; (c) `~/.codex/rules/default.rules` accumulates approved prompts over sessions and should be pruned periodically; (d) on Windows hosts, permission rules are the primary guard since kernel sandbox primitives do not apply.
 - **Done when**: one paragraph exists pointing to the three shared files and the prune reminder; total added lines ≤ 8.
 
-### E9.T6 — Cursor permission hardening [§1.9] — M
+### E9.T6 — Cursor permission hardening [§1.9] — M [DONE 2026-04-28]
+
+**Landed on** `feature/epic-11-multi-ide-targets` alongside Epic 11. The shared
+`src/templates/partials/deny-destructive-ops.md.ejs` renders into
+`.cursor/rules/00-deny-destructive-ops.mdc` with `alwaysApply: true`, enumerating
+the §1.4 deny list verbatim plus the Windows-shell wrapper bypass (`pwsh
+-Command`, `cmd /c`) and network-egress (`iwr`, `curl.exe`) entries hardened in
+E9.T11/E9.T12. The "no kernel sandbox" caveat is in the partial body. Cursor 2.x
+plugin manifest emission deferred — pending stable schema.
+
 
 **Context.** Cursor has no kernel-level sandbox and no Claude-style allow/deny JSON. Its primary guards are (a) VSCode workspace trust, (b) project rules (`.cursor/rules/`), and (c) Cursor's per-command approval prompts in Agent mode. Guard-rail parity is therefore achieved via `alwaysApply: true` rules that instruct the agent not to run forbidden commands, plus optional plugin-manifest `allowedTools` on Cursor 2.x.
 
@@ -2083,7 +2092,19 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Change**: When Cursor 2.x plugin manifests ship with an `allowedTools` / `allowedCommands` schema, emit it alongside; until then, rule-level guidance is the ceiling.
 - **Done when**: `.cursor/rules/00-deny-destructive-ops.mdc` renders with `alwaysApply: true`; rule body enumerates every §1.4 deny line verbatim; PR body documents the "no sandbox" caveat.
 
-### E9.T7 — VSCode + Copilot permission hardening [§1.9] — M
+### E9.T7 — VSCode + Copilot permission hardening [§1.9] — M [DONE 2026-04-28]
+
+**Landed on** `feature/epic-11-multi-ide-targets` alongside Epic 11.
+`.github/copilot-instructions.md` renders the shared
+`deny-destructive-ops.md.ejs` partial (§1.4 verbatim) plus a one-paragraph
+GitHub branch-protection note. Per-prompt `tools:` arrays in
+`src/generator/copilot/prompt-tool-allowlist.ts` are tightly scoped:
+`workflow-plan` is read-only (no `editFiles`), `workflow-fix` may edit but no
+unbounded shell, `external-review` is fully read-only.
+`COPILOT_FORBIDDEN_TOOLS` is the negative-list constant the test suite asserts
+against. README "Supported targets" table documents branch protection as the
+server-side backstop.
+
 
 **Context.** GitHub Copilot has three complementary guards: (a) `.github/copilot-instructions.md` is advisory (agent-behavior, not kernel); (b) prompt-file `tools:` frontmatter restricts which tools Copilot Agent may invoke for a given prompt; (c) GitHub branch protection rules block force-pushes and unreviewed merges at the server side. VSCode workspace trust is also in play.
 
@@ -2093,7 +2114,17 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 - **Change**: Document in `README.md` (Epic 11 E11.T7 table) that GitHub branch protection on `main` — disallow force-push, require review — is the server-side backstop for Copilot coding agent, since client-side guards are advisory.
 - **Done when**: `.github/copilot-instructions.md` renders §1.4 verbatim; three prompt files ship with minimal `tools:` arrays; README documents branch-protection dependency; no prompt frontmatter includes an unbounded shell tool.
 
-### E9.T8 — Windsurf permission hardening [§1.9] — M
+### E9.T8 — Windsurf permission hardening [§1.9] — M [DONE 2026-04-28]
+
+**Landed on** `feature/epic-11-multi-ide-targets` alongside Epic 11. The shared
+`deny-destructive-ops.md.ejs` partial renders into
+`.windsurf/rules/00-deny-destructive-ops.md` with `activation: always_on`,
+enumerating the §1.4 deny list verbatim. Filename deviates from the PRD's
+illustrative `00-forbidden-commands.md` — single shared partial slug
+(`deny-destructive-ops`) yields parity filenames between Cursor and Windsurf.
+README §"Headless invocation" now documents the Cascade Manual-or-Auto
+requirement (Yolo forbidden) and pairs it with branch protection on `main`.
+
 
 **Context.** Windsurf Cascade has three approval modes: Manual (ask every command), Auto (ask on destructive patterns), Yolo (never ask). Rules enforced via `.windsurf/rules/` are advisory — they instruct Cascade but do not block at kernel level. For committed repo policy, the target posture is **Manual default** with a `00-forbidden-commands.md` Always-On rule.
 
@@ -2433,7 +2464,9 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 ---
 
-## Epic 11 — Multi-IDE Target Outputs [MUST]
+## Epic 11 — Multi-IDE Target Outputs [MUST] [DONE 2026-04-28]
+
+**Landed on** `feature/epic-11-multi-ide-targets`.
 
 **Goal.** Make `agents-workflows` emit native agent configurations for **five** tools instead of two: Claude Code + Codex CLI (existing) plus Cursor, VSCode + GitHub Copilot, and Windsurf. One shared partial library under `src/templates/partials/` feeds every target so content stays DRY and behaviour is consistent across tools.
 
@@ -2451,7 +2484,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - `pnpm test` covers target-selection defaults, per-target snapshot rendering, and partial parity across targets.
 - `README.md` ships a "Supported targets" table mapping each tool to its output paths.
 
-### E11.T1 — Extend `askTargets()` with three new targets [S]
+### E11.T1 — Extend `askTargets()` with three new targets [S] [DONE 2026-04-28]
 
 - **Files**: [src/prompt/questions.ts](src/prompt/questions.ts), [src/prompt/types.ts](src/prompt/types.ts), [src/prompt/defaults.ts](src/prompt/defaults.ts).
 - **Change**: Replace the current two-confirm `askTargets()` with a single `checkbox({ ... })` prompt offering:
@@ -2463,7 +2496,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - **Change**: Update the `Targets` interface in `src/prompt/types.ts` to include `cursor`, `copilot`, `windsurf` booleans, propagate through `StackConfig`, and default selection in `src/prompt/defaults.ts`.
 - **Done when**: running `agents-workflows init` on a system with Cursor + Windsurf installed pre-checks those boxes; unit test for defaults covers all 2^5 combinations sampled at representative points.
 
-### E11.T2 — Cursor target generator [M]
+### E11.T2 — Cursor target generator [M] [DONE 2026-04-28]
 
 - **Files**: `src/generator/generate-cursor-config.ts` (new), `src/templates/cursor/rule.mdc.ejs` (new), `src/templates/cursor/command.md.ejs` (new), `src/generator/index.ts` (wire-in).
 - **Change**: For each partial in `src/templates/partials/` emit one `.cursor/rules/NN-<slug>.mdc` file:
@@ -2477,7 +2510,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
   - `description:` only (Model-Decision mode) — `docs-reference`, `stack-context`, `code-style`, `file-organization`, `workspaces`
 - **Done when**: rendered `.cursor/rules/` has one file per partial, each parses as MDC, snapshot test in `tests/generate-cursor-config.test.ts` passes; rendered rule count equals partial count.
 
-### E11.T3 — VSCode + GitHub Copilot target generator [M]
+### E11.T3 — VSCode + GitHub Copilot target generator [M] [DONE 2026-04-28]
 
 - **Files**: `src/generator/generate-copilot-config.ts` (new), `src/templates/copilot/copilot-instructions.md.ejs` (new), `src/templates/copilot/prompt.md.ejs` (new), `src/generator/index.ts` (wire-in).
 - **Change**: Emit a **single** `.github/copilot-instructions.md` that concatenates: project header + context budget + dangerous ops + git discipline + security defaults + Definition of Done + AI-complacency guard + MCP policy + memory discipline. This file does not support YAML frontmatter, so flatten into Markdown sections.
@@ -2485,7 +2518,7 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - **Change**: Since Copilot also reads repo-root `AGENTS.md` natively, document that the copilot surface is additive (not a replacement for) `AGENTS.md`. When the user selects *only* the Copilot target and does not already have `AGENTS.md`, still emit `AGENTS.md` alongside `copilot-instructions.md` as the universal fallback.
 - **Done when**: `.github/copilot-instructions.md` ≤ 300 lines, contains every safety section; three prompt files render with valid frontmatter; snapshot test asserts `tools:` array matches Epic 9 allow-list for each prompt.
 
-### E11.T4 — Windsurf target generator [M]
+### E11.T4 — Windsurf target generator [M] [DONE 2026-04-28]
 
 - **Files**: `src/generator/generate-windsurf-config.ts` (new), `src/templates/windsurf/rule.md.ejs` (new), `src/templates/windsurf/workflow.md.ejs` (new), `src/generator/index.ts` (wire-in).
 - **Change**: For each partial emit one `.windsurf/rules/NN-<slug>.md` with activation metadata header (Windsurf's in-body activation block or plugin metadata per current docs):
@@ -2496,19 +2529,19 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 - **Change**: Emit `.windsurf/workflows/{workflow-plan,workflow-fix,external-review}.md` as Cascade workflows invocable via `/workflow-plan` etc.
 - **Done when**: every partial has a Windsurf counterpart with correct activation; rendered file count = partial count + 3 workflows; snapshot test in `tests/generate-windsurf-config.test.ts` passes.
 
-### E11.T5 — Route all target writes through `writeFileSafe` [S]
+### E11.T5 — Route all target writes through `writeFileSafe` [S] [DONE 2026-04-28]
 
 - **Files**: `src/generator/generate-cursor-config.ts`, `src/generator/generate-copilot-config.ts`, `src/generator/generate-windsurf-config.ts`, plus shared `src/generator/write-file.ts` (from Epic 7).
 - **Change**: No direct `fs.writeFile*` call in any new generator. Every write passes through `writeFileSafe({ path, content, merge })`. Markdown outputs use the Markdown-aware merger (Epic 7 E7.T3). Cursor MDC frontmatter blocks are treated as a managed heading equivalent so re-runs do not clobber user-appended body content.
 - **Done when**: re-running `agents-workflows init` on a project that already has hand-edited `.cursor/rules/20-stack.mdc` preserves the user body; ESLint rule (or simple Grep in CI) asserts no `writeFile` in new generators.
 
-### E11.T6 — Tests for multi-target parity [M]
+### E11.T6 — Tests for multi-target parity [M] [DONE 2026-04-28]
 
 - **Files**: `tests/generate-cursor-config.test.ts` (new), `tests/generate-copilot-config.test.ts` (new), `tests/generate-windsurf-config.test.ts` (new), `tests/target-selection.test.ts` (new).
 - **Change**: Per-target snapshot tests + a parity test that asserts every partial referenced in `AGENTS.md.ejs` is present (by slug) in the rendered Cursor, Copilot, and Windsurf outputs.
 - **Done when**: `pnpm test` green; snapshot diffs reviewed by human; parity test fails if a new partial is added to `AGENTS.md.ejs` without a corresponding Cursor/Windsurf rule + Copilot section.
 
-### E11.T7 — README "Supported targets" table + AGENTS.md note [S]
+### E11.T7 — README "Supported targets" table + AGENTS.md note [S] [DONE 2026-04-28]
 
 - **Files**: `README.md`, `src/templates/config/AGENTS.md.ejs`.
 - **Change**: Add a "Supported targets" table to `README.md` listing the five tools, their output paths, activation model, and detection signals. In `AGENTS.md.ejs` add a one-paragraph note under Tooling stating: "This file is the universal surface — Copilot, Windsurf, Gemini CLI, Aider, and Continue.dev read it natively. Claude Code, Codex CLI, and Cursor additionally consume tool-native files under `.claude/`, `.codex/`, and `.cursor/`."

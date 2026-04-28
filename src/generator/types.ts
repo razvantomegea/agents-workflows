@@ -1,4 +1,6 @@
 import type { StackConfig, SecurityConfig } from '../schema/stack-config.js';
+import type { MergeFunction } from './write-file.js';
+import type { PartialEntry } from './list-partials.js';
 
 export interface CommandHook {
   type: 'command';
@@ -62,9 +64,17 @@ export interface GeneratorContext extends Record<string, unknown> {
   testFramework: string;
   testsDir: string | null;
   security: SecurityConfig;
+  /**
+   * Discovered partials, populated once by `generateAll()` so that
+   * per-target generators (Cursor, Windsurf) skip their own filesystem
+   * scans. Optional so callers that build a context outside `generateAll()`
+   * (e.g. unit tests) can still let generators discover lazily.
+   */
+  discoveredPartials?: readonly PartialEntry[];
 }
 
 export interface GeneratedFile {
   path: string;
   content: string;
+  merge?: MergeFunction;
 }

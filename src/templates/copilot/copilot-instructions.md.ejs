@@ -1,0 +1,35 @@
+# GitHub Copilot Instructions — `<%= project.name %>`
+
+<!-- agents-workflows:managed-start -->
+
+This file is read by GitHub Copilot Chat and Copilot Agent in this repository.
+It mirrors the safety posture defined in `AGENTS.md` and `CLAUDE.md`. When this
+file conflicts with `AGENTS.md`, treat `AGENTS.md` as authoritative.
+
+## Project context
+
+`<%= project.name %>` — <%- markdownText(project.description) %>.
+
+<%- include('../partials/stack-context.md.ejs', { stackItems }) %>
+
+<%- include('../partials/context-budget.md.ejs') %>
+
+<%- include('../partials/deny-destructive-ops.md.ejs', { mainBranch }) %>
+
+GitHub branch protection on `<%= mainBranch %>` (disallow force-push, require
+review) is the server-side backstop for the Copilot coding agent — client-side
+guards in this file and the `tools:` frontmatter are advisory.
+
+<%- include('../partials/git-rules.md.ejs', { mainBranch }) %>
+
+<%- include('../partials/security-defaults.md.ejs') %>
+
+<%- include('../partials/definition-of-done.md.ejs', { commands, packageManagerPrefix: tooling.packageManagerPrefix }) %>
+
+<%- include('../partials/ai-complacency.md.ejs') %>
+
+<%- include('../partials/mcp-policy.md.ejs') %>
+
+<%- include('../partials/memory-discipline.md.ejs') %>
+
+<!-- agents-workflows:managed-end -->

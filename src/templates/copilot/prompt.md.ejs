@@ -1,0 +1,13 @@
+---
+description: <%- jsonString(description) %>
+name: <%- jsonString(name) %>
+argument-hint: <%- jsonString(argumentHint) %>
+agent: "agent"
+model: <%- jsonString(model) %>
+tools:
+<% for (const tool of tools) { -%>
+  - <%- jsonString(tool) %>
+<% } -%>
+---
+
+<%- body %>

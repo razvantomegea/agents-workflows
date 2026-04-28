@@ -26,5 +26,8 @@ export interface PromptAnswers {
   selectedCommands: string[];
   claudeCode: boolean;
   codexCli: boolean;
+  cursor: boolean;
+  copilot: boolean;
+  windsurf: boolean;
   security: SecurityConfig;
 }

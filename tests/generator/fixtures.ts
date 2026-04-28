@@ -74,7 +74,7 @@ export function makeDetectedStack(overrides: Partial<DetectedStack> = {}): Detec
 
 export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConfig {
   const baseStack: StackConfig['stack'] = { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null, i18nLibrary: null };
-  const baseTargets: StackConfig['targets'] = { claudeCode: true, codexCli: true };
+  const baseTargets: StackConfig['targets'] = { claudeCode: true, codexCli: true, cursor: false, copilot: false, windsurf: false };
   const baseSelectedCommands: StackConfig['selectedCommands'] = { workflowPlan: true, workflowFix: true, externalReview: true, workflowLonghorizon: false, workflowTcr: false };
   const baseGovernance: StackConfig['governance'] = { enabled: false };
   const baseAgents: StackConfig['agents'] = { architect: true, implementer: true, reactTsSenior: true, codeReviewer: true, securityReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true };

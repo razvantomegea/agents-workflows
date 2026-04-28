@@ -33,7 +33,7 @@ describe('generateAll', () => {
     }
   });
 
-  it('preserves apostrophes and other markdown-special characters in project description', async () => {
+  it('renders project descriptions as markdown-safe text', async () => {
     const config = makeConfig();
     config.project.description = "A driver's app that shows <fuel> costs & speed";
     const files = await generateAll(config);
@@ -41,11 +41,9 @@ describe('generateAll', () => {
     const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
     expect(claudeMd).toBeDefined();
     expect(claudeMd?.content).toContain("driver's");
-    expect(claudeMd?.content).toContain('<fuel>');
-    expect(claudeMd?.content).toContain('& speed');
+    expect(claudeMd?.content).toContain('&lt;fuel&gt;');
+    expect(claudeMd?.content).toContain('&amp; speed');
     expect(claudeMd?.content).not.toContain('&#39;');
-    expect(claudeMd?.content).not.toContain('&amp;');
-    expect(claudeMd?.content).not.toContain('&lt;');
   });
 
   it('injects docs reference into CLAUDE.md, AGENTS.md, and every agent when docsFile is set', async () => {
@@ -70,6 +68,36 @@ describe('generateAll', () => {
     for (const file of skillFiles) {
       expect(file.content).toContain('## Primary Documentation');
       expect(file.content).toContain('`PRD.md`');
+    }
+  });
+
+  it('renders configured project structure paths in CLAUDE.md and AGENTS.md', async () => {
+    const config = makeConfig({
+      paths: {
+        sourceRoot: 'app/',
+        componentsDir: 'app/ui/',
+        hooksDir: 'app/hooks/',
+        utilsDir: 'app/lib/',
+        testsDir: 'spec/',
+        designTokensFile: 'app/theme/tokens.ts',
+        i18nDir: 'app/i18n/',
+        testConfigFile: 'jest.config.ts',
+      },
+    });
+    const files = await generateAll(config);
+    const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
+    const agentsMd = files.find((file) => file.path === 'AGENTS.md');
+
+    for (const content of [claudeMd?.content, agentsMd?.content]) {
+      expect(content).toContain('## Project Structure');
+      expect(content).toContain('|-- app/    # source root');
+      expect(content).toContain('|-- app/ui/    # reusable UI components');
+      expect(content).toContain('|-- app/hooks/    # application hooks');
+      expect(content).toContain('|-- app/lib/    # utilities and business logic');
+      expect(content).toContain('|-- spec/    # tests');
+      expect(content).toContain('|-- app/theme/tokens.ts    # design tokens');
+      expect(content).toContain('|-- app/i18n/    # internationalization resources');
+      expect(content).toContain('`-- jest.config.ts    # test configuration');
     }
   });
 

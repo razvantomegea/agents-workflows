@@ -18,6 +18,7 @@ import {
 import { askIsolation } from './ask-isolation.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
+import { resolveTargetDefaults } from './ask-targets.js';
 export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 export { createDefaultConfig } from './default-config.js';
 export { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
@@ -48,6 +49,7 @@ export async function runPromptFlow(
 
   if (options.yes) {
     const baseConfig = createDefaultConfig(detected, pkg?.scripts ?? {}, pkg);
+    const targets = await resolveTargetDefaults({ detected: detected.aiAgents, projectRoot });
     const isolation = await askIsolation({ yes: true, isolation: options.isolation });
     const security = await askNonInteractiveMode({
       yes: true,
@@ -55,7 +57,7 @@ export async function runPromptFlow(
       isolation,
       acceptRisks: options.acceptRisks,
     });
-    return { ...baseConfig, security };
+    return { ...baseConfig, targets, security };
   }
 
   const identity = await askProjectIdentity(detected, pkg);
@@ -68,7 +70,7 @@ export async function runPromptFlow(
   const isReactTs = supportsReactTsStack(stack.framework, stack.language);
   const selectedAgents = await askAgentSelection({ isFrontend, isReactTs });
   const selectedCommands = await askCommandSelection();
-  const targets = await askTargets(detected.aiAgents);
+  const targets = await askTargets({ detected: detected.aiAgents, projectRoot });
   const governance = await askGovernance();
   const isolation = await askIsolation({ isolation: options.isolation });
   const security = await askNonInteractiveMode({
@@ -92,8 +94,7 @@ export async function runPromptFlow(
       locale: identity.locale,
       localeRules: identity.localeRules,
       docsFile: identity.docsFile,
-      // roadmapFile is detection-only — no interactive override (mirrors i18nLibrary).
-      roadmapFile: detected.roadmapFile.value,
+      roadmapFile: identity.roadmapFile,
       mainBranch: identity.mainBranch,
     },
     stack: {

@@ -2,6 +2,7 @@ import { input, confirm, checkbox } from '@inquirer/prompts';
 import type { DetectedStack } from '../detector/types.js';
 import type { PackageJson } from '../utils/index.js';
 import { isFrontendFramework } from '../constants/frameworks.js';
+import { safeProjectDescription, safeProjectPath } from '../schema/stack-config.js';
 import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 
 function useDetectedOr<T>(detection: { value: T | null; confidence: number }, fallback: T): T {
@@ -17,6 +18,7 @@ export async function askProjectIdentity(
   locale: string;
   localeRules: string[];
   docsFile: string | null;
+  roadmapFile: string | null;
   mainBranch: string;
 }> {
   const language = detected.language.value ?? 'typescript';
@@ -29,6 +31,9 @@ export async function askProjectIdentity(
   const description = await input({
     message: 'Short description:',
     default: resolveDefaultDescription(pkg, detected.framework.value, language),
+    validate: (value: string): true | string => safeProjectDescription.safeParse(value).success
+      ? true
+      : 'Use a short single-line plain-text description without markdown, HTML, backticks, or control characters.',
   });
 
   const locale = await input({
@@ -41,18 +46,52 @@ export async function askProjectIdentity(
     default: '',
   });
 
-  const localeRules = localeRulesRaw ? localeRulesRaw.split(',').map((r) => r.trim()).filter(Boolean) : [];
+  const localeRules = localeRulesRaw
+    ? localeRulesRaw.split(',').map((rule: string) => rule.trim()).filter(Boolean)
+    : [];
 
-  const docsFile = await askDocsFile(detected);
+  const projectDocumentation = await askProjectDocumentationFiles({
+    docsFile: detected.docsFile.value,
+    roadmapFile: detected.roadmapFile.value,
+  });
   const mainBranch = await askMainBranch('main');
 
-  return { name, description, locale, localeRules, docsFile, mainBranch };
+  return { name, description, locale, localeRules, ...projectDocumentation, mainBranch };
 }
 
-async function askDocsFile(detected: DetectedStack): Promise<string | null> {
-  const raw = await input({
+export interface ProjectDocumentationFiles {
+  docsFile: string | null;
+  roadmapFile: string | null;
+}
+
+export async function askProjectDocumentationFiles(
+  defaults: Readonly<ProjectDocumentationFiles>,
+): Promise<ProjectDocumentationFiles> {
+  const docsFile = await askOptionalProjectPath({
     message: 'Primary documentation file (path relative to project root, blank to skip):',
-    default: detected.docsFile.value ?? '',
+    defaultValue: defaults.docsFile,
+  });
+  const roadmapFile = await askOptionalProjectPath({
+    message: 'Roadmap/PRD file (path relative to project root, blank to skip):',
+    defaultValue: defaults.roadmapFile,
+  });
+
+  return { docsFile, roadmapFile };
+}
+
+async function askOptionalProjectPath(
+  params: Readonly<{ message: string; defaultValue: string | null }>,
+): Promise<string | null> {
+  const raw = await input({
+    message: params.message,
+    default: params.defaultValue ?? '',
+    validate: (value: string): true | string => {
+      const trimmed = value.trim();
+      if (trimmed === '') return true;
+      return safeProjectPath.safeParse(trimmed).success
+        ? true
+        : 'Use a relative project path without spaces, parent traversal, control characters, or markdown metacharacters.';
+    },
   });
   const trimmed = raw.trim();
   return trimmed === '' ? null : trimmed;
@@ -125,18 +164,30 @@ export async function askPaths(framework: string | null): Promise<{
   const sourceRoot = await input({
     message: 'Source root directory:',
     default: 'src/',
+    validate: validateRequiredProjectPath,
   });
 
   const componentsDir = isFrontend
-    ? await input({ message: 'Components directory:', default: `${sourceRoot}components/` })
+    ? await input({ message: 'Components directory:', default: `${sourceRoot}components/`, validate: validateRequiredProjectPath })
     : null;
 
   const utilsDir = await input({
     message: 'Utils/lib directory:',
     default: `${sourceRoot}utils/`,
+    validate: validateRequiredProjectPath,
   });
 
-  return { sourceRoot, componentsDir, utilsDir };
+  return {
+    sourceRoot: sourceRoot.trim(),
+    componentsDir: componentsDir?.trim() ?? null,
+    utilsDir: utilsDir.trim(),
+  };
+}
+
+function validateRequiredProjectPath(value: string): true | string {
+  return safeProjectPath.safeParse(value.trim()).success
+    ? true
+    : 'Use a relative project path without spaces, parent traversal, control characters, or markdown metacharacters.';
 }
 
 export async function askConventions(): Promise<{

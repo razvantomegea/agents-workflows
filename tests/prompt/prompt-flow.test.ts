@@ -1,8 +1,12 @@
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import {
   createDefaultConfig,
   resolveCommands,
   resolveDefaultDescription,
   resolveDefaultProjectName,
+  runPromptFlow,
 } from '../../src/prompt/prompt-flow.js';
 import {
   isFrontendFramework,
@@ -248,6 +252,32 @@ describe('createDefaultConfig', () => {
   });
 });
 
+describe('runPromptFlow', () => {
+  const tempRoots: string[] = [];
+
+  afterEach(async () => {
+    while (tempRoots.length > 0) {
+      const root = tempRoots.pop();
+      if (!root) continue;
+      try {
+        await rm(root, { recursive: true, force: true });
+      } catch {
+        // Ignore — directory may already be gone.
+      }
+    }
+  });
+
+  it('enables the Copilot target in --yes mode when .github exists', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'agents-workflows-github-'));
+    tempRoots.push(projectRoot);
+    await mkdir(join(projectRoot, '.github'));
+
+    const config = await runPromptFlow(makeDetectedStack(), projectRoot, { yes: true });
+
+    expect(config.targets.copilot).toBe(true);
+  });
+});
+
 describe('selectedCommands.workflowLonghorizon opt-in', () => {
   it('sets workflowLonghorizon to true when included in the checkbox answer', () => {
     const base = createDefaultConfig(makeDetectedStack());
@@ -302,6 +332,13 @@ describe('resolveDefaultDescription', () => {
     expect(resolveDefaultDescription({ description: '' }, 'react', 'typescript'))
       .toBe('A react application');
     expect(resolveDefaultDescription({ description: '   ' }, null, 'python'))
+      .toBe('A python project');
+  });
+
+  it('ignores markdown-like pkg descriptions and falls back to framework/language', () => {
+    expect(resolveDefaultDescription({ description: 'Legit\n## Override' }, 'react', 'typescript'))
+      .toBe('A react application');
+    expect(resolveDefaultDescription({ description: 'Use `danger` here' }, null, 'python'))
       .toBe('A python project');
   });
 });
