@@ -1,0 +1,20 @@
+# AGENTS.md (workspace: <%- markdownText(workspace.path) %>)
+
+<!-- agents-workflows:managed-start -->
+**Stack.** Language: <%- markdownCode(workspace.language) %> · Runtime: <%- markdownCode(workspace.runtime ?? 'n/a') %> · Package manager: <%- markdownCode(workspace.packageManager) %><% if (workspace.framework) { %> · Framework: <%- markdownCode(workspace.framework) %><% } %>
+
+**Definition of Done — run from this workspace:**
+
+<% if (workspace.commands.typeCheck) { -%>
+- Type-check: <%- markdownCode(workspace.commands.typeCheck) %>
+<% } -%>
+- Test: <%- markdownCode(workspace.commands.test) %>
+<% if (workspace.commands.lint) { -%>
+- Lint: <%- markdownCode(workspace.commands.lint) %>
+<% } -%>
+<% if (workspace.commands.build) { -%>
+- Build: <%- markdownCode(workspace.commands.build) %>
+<% } -%>
+
+A closer `AGENTS.md` always wins over the root `AGENTS.md` (see §1.1, §1.18).
+<!-- agents-workflows:managed-end -->

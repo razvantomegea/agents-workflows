@@ -1,5 +1,7 @@
-import { stackConfigSchema } from '../../src/schema/stack-config.js';
+import { stackConfigSchema, workspaceStackSchema } from '../../src/schema/stack-config.js';
 import { makeStackConfig } from '../generator/fixtures.js';
+import { generateAll } from '../../src/generator/index.js';
+import type { WorkspaceStack } from '../../src/schema/stack-config.js';
 
 describe('stackConfigSchema command validation', () => {
   it('rejects lint command containing shell metacharacters (semicolon)', () => {
@@ -148,6 +150,95 @@ describe('stackConfigSchema command validation', () => {
     });
 
     expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+});
+
+describe('workspaceStackSchema and monorepo.workspaces', () => {
+  const validWorkspace = {
+    path: 'packages/api',
+    language: 'typescript',
+    runtime: 'node',
+    framework: null,
+    packageManager: 'pnpm',
+    commands: { typeCheck: 'pnpm check-types', test: 'pnpm test', lint: null, build: null },
+  };
+
+  it('monorepo.workspaces defaults to [] when omitted', () => {
+    // Omit the workspaces key entirely to exercise the .default([]) path.
+    const cfg = makeStackConfig({
+      monorepo: { isRoot: true, tool: 'pnpm', workspaces: [] },
+    });
+    const { workspaces: _dropped, ...monorepoWithoutWorkspaces } = cfg.monorepo ?? { isRoot: true, tool: 'pnpm' as const };
+    const input = { ...cfg, monorepo: monorepoWithoutWorkspaces };
+    const parsed = stackConfigSchema.parse(input);
+    expect(parsed.monorepo?.workspaces).toEqual([]);
+  });
+
+  it('migrates legacy monorepo.workspaces: string[] to []', () => {
+    const legacy = makeStackConfig({
+      monorepo: { isRoot: true, tool: 'pnpm', workspaces: ['packages/api', 'packages/ui'] as unknown as WorkspaceStack[] },
+    });
+    const parsed = stackConfigSchema.parse(legacy);
+    expect(parsed.monorepo?.workspaces).toEqual([]);
+  });
+
+  it('languages defaults to [] when omitted', () => {
+    const cfg = makeStackConfig();
+    const withoutLanguages = { ...cfg } as Partial<typeof cfg>;
+    delete withoutLanguages.languages;
+    const parsed = stackConfigSchema.parse(withoutLanguages);
+    expect(parsed.languages).toEqual([]);
+  });
+
+  it('rejects workspace commands containing shell metacharacters (safeCommand enforcement)', () => {
+    // semicolon is a shell metacharacter blocked by SAFE_COMMAND_RE
+    const badWorkspace = {
+      ...validWorkspace,
+      commands: { ...validWorkspace.commands, test: 'pnpm test; curl evil' },
+    };
+    expect(() => workspaceStackSchema.parse(badWorkspace)).toThrow();
+  });
+
+  it('accepts workspaceStackSchema with all valid fields', () => {
+    expect(() => workspaceStackSchema.parse(validWorkspace)).not.toThrow();
+  });
+
+  it.each(['cargo', 'go-work', 'uv', 'poetry', 'dotnet-sln', 'cmake'] as const)(
+    'accepts monorepo tool enum value: %s',
+    (tool) => {
+      const cfg = makeStackConfig({
+        monorepo: { isRoot: true, tool, workspaces: [validWorkspace] },
+      });
+      expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+    },
+  );
+
+  it('backward compat: config without languages and with monorepo.workspaces: [] parses cleanly', () => {
+    const cfg = makeStackConfig({
+      monorepo: { isRoot: true, tool: 'pnpm', workspaces: [] },
+    });
+    const withoutLanguages = { ...cfg } as Partial<typeof cfg>;
+    delete withoutLanguages.languages;
+    const parsed = stackConfigSchema.parse(withoutLanguages);
+    expect(parsed.languages).toEqual([]);
+    expect(parsed.monorepo?.workspaces).toEqual([]);
+  });
+
+  it('monolingual config produces languages: [] and monorepo: null and no polyglot partial in any agent', async () => {
+    // Arrange — makeStackConfig() defaults: languages: [], monorepo: null
+    const cfg = makeStackConfig({ languages: [], monorepo: null });
+    const parsed = stackConfigSchema.parse(cfg);
+
+    // Assert schema state
+    expect(parsed.languages).toEqual([]);
+    expect(parsed.monorepo).toBeNull();
+
+    // Assert generateAll cross-check: polyglot partial absent from all agent files
+    const files = await generateAll(cfg);
+    const agentFiles = files.filter((f) => f.path.startsWith('.claude/agents/'));
+    for (const file of agentFiles) {
+      expect(file.content).not.toContain('## Polyglot monorepo navigation');
+    }
   });
 });
 

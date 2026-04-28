@@ -23,6 +23,10 @@ export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults
 export { createDefaultConfig } from './default-config.js';
 export { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 export { toDetectedAiAgentFlags } from './detected-ai-flags.js';
+export {
+  resolveWorkspaceSelection,
+  type ResolveWorkspaceSelectionOptions,
+} from './resolve-workspace-selection.js';
 
 export interface PromptFlowOptions {
   yes?: boolean;
@@ -157,6 +161,7 @@ export async function runPromptFlow(
     targets,
     governance,
     detectedAiAgents: toDetectedAiAgentFlags(detected),
+    languages: [...detected.languages],
     monorepo: null,
     security,
   };

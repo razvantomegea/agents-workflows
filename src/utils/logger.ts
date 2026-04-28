@@ -1,5 +1,18 @@
 import chalk from 'chalk';
 
+/**
+ * Strips ANSI escape sequences, control characters, and newlines from a string
+ * before it is included in a log message. Prevents log injection via
+ * manifest-derived or user-controlled values.
+ */
+export function sanitizeForLog(value: string): string {
+  return value
+    // eslint-disable-next-line no-control-regex -- reason: intentionally strips ANSI escape sequences
+    .replace(/\x1b\[[0-9;]*m/g, '')
+    // eslint-disable-next-line no-control-regex -- reason: intentionally strips control characters
+    .replace(/[\x00-\x1f\x7f]/g, '');
+}
+
 export const logger = {
   heading(text: string): void {
     console.log(chalk.bold.cyan(`\n  ${text}\n`));

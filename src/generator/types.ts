@@ -54,6 +54,9 @@ export interface GeneratorContext extends Record<string, unknown> {
   preToolUseHooks: readonly PreToolUseHook[];
   monorepo: StackConfig['monorepo'];
 
+  isPolyglot: boolean;
+  languages: string[];
+
   hasUiDesigner: boolean;
   hasE2eTester: boolean;
   hasSecurityReviewer: boolean;

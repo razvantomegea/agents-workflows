@@ -1,11 +1,11 @@
-<% if (monorepo && monorepo.isRoot) { -%>
+<% if (monorepo && monorepo.workspaces.length > 0 && monorepo.isRoot) { -%>
 ## Workspaces
 
-This repository is a <%= monorepo.tool ?? 'monorepo' %> monorepo. The following workspaces each hold their own stack and code:
-
-<% monorepo.workspaces.forEach(function(workspace) { -%>
-- `<%= workspace %>/`
-<% }); -%>
+| Path | Language | Package manager | typeCheck | test | lint | build |
+|---|---|---|---|---|---|---|
+<% for (const workspace of monorepo.workspaces) { -%>
+| <%- markdownCode(workspace.path) %> | <%- markdownCode(workspace.language) %> | <%- markdownCode(workspace.packageManager) %> | <%- markdownCode(workspace.commands.typeCheck ?? '—') %> | <%- markdownCode(workspace.commands.test ?? '—') %> | <%- markdownCode(workspace.commands.lint ?? '—') %> | <%- markdownCode(workspace.commands.build ?? '—') %> |
+<% } -%>
 
 When a task targets a specific workspace, read that workspace's `CLAUDE.md` / `AGENTS.md` and its `.agents-workflows.json` before planning. Root-level scripts fan out through workspace filters; do not assume a single `src/` tree.
 <% } -%>

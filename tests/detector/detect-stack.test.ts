@@ -1,6 +1,6 @@
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { detectMonorepo, detectStack, resolveRuntime } from '../../src/detector/detect-stack.js';
+import { detectMonorepo, detectStack, resolveRuntime, aggregateLanguages } from '../../src/detector/detect-stack.js';
 
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(CURRENT_DIR, '..', 'fixtures');
@@ -71,5 +71,65 @@ describe('detectStack', () => {
     expect(result.language.value).toBeNull();
     expect(result.framework.value).toBeNull();
     expect(result.database.value).toBeNull();
+  });
+
+  it('returns empty languages and workspaceStacks for monolingual single-package projects', async () => {
+    const nextjs = await detectStack(join(FIXTURES_DIR, 'nextjs-app'));
+    expect(nextjs.languages).toEqual([]);
+    expect(nextjs.workspaceStacks).toEqual([]);
+
+    const expo = await detectStack(join(FIXTURES_DIR, 'react-native-expo'));
+    expect(expo.languages).toEqual([]);
+    expect(expo.workspaceStacks).toEqual([]);
+
+    const python = await detectStack(join(FIXTURES_DIR, 'python-fastapi'));
+    expect(python.languages).toEqual([]);
+    expect(python.workspaceStacks).toEqual([]);
+  });
+});
+
+describe('aggregateLanguages', () => {
+  it('returns empty array when workspace stacks are empty', () => {
+    const result = aggregateLanguages(null, []);
+    expect(result).toEqual([]);
+  });
+
+  it('returns empty array when all workspaces share a single language (monolingual)', () => {
+    const workspaces = [
+      { language: 'typescript' },
+      { language: 'typescript' },
+      { language: 'typescript' },
+    ];
+    const result = aggregateLanguages('typescript', workspaces);
+    expect(result).toEqual([]);
+  });
+
+  it('returns deduplicated language list for polyglot workspaces', () => {
+    const workspaces = [
+      { language: 'rust' },
+      { language: 'python' },
+    ];
+    const result = aggregateLanguages('typescript', workspaces);
+    expect(result).toEqual(['typescript', 'rust', 'python']);
+  });
+
+  it('deduplicates languages case-insensitively', () => {
+    const workspaces = [
+      { language: 'TypeScript' },
+      { language: 'typescript' },
+    ];
+    const result = aggregateLanguages('typescript', workspaces);
+    // All three collapse to one distinct value → monolingual → []
+    expect(result).toEqual([]);
+  });
+
+  it('filters out null language entries', () => {
+    const workspaces = [
+      { language: null },
+      { language: 'rust' },
+      { language: null },
+    ];
+    const result = aggregateLanguages('typescript', workspaces);
+    expect(result).toEqual(['typescript', 'rust']);
   });
 });

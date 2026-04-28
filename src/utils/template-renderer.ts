@@ -16,14 +16,21 @@ function tomlString(value: unknown): string {
   return `"${escaped}"`;
 }
 
-function markdownCode(value: unknown): string {
-  const normalized = String(value ?? '').replace(/[\r\n]+/g, ' ');
+// Exported for use in tests and downstream sanitization utilities.
+export function markdownCode(value: unknown): string {
+  const normalized = String(value ?? '')
+    // eslint-disable-next-line no-control-regex -- reason: strip control chars for security
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\r\n]+/g, ' ');
   if (!normalized.includes('`')) return `\`${normalized}\``;
   return `\`\` ${normalized.replace(/`/g, "'")} \`\``;
 }
 
-function markdownText(value: unknown): string {
+// Exported for use in tests and downstream sanitization utilities.
+export function markdownText(value: unknown): string {
   return String(value ?? '')
+    // eslint-disable-next-line no-control-regex -- reason: strip control chars for security
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/\\/g, '\\\\')
     .replace(/`/g, '\\`')
     .replace(/&/g, '&amp;')

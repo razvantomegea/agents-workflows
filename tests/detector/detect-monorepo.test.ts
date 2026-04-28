@@ -1,11 +1,20 @@
 import { mkdtemp, writeFile, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   detectMonorepo,
   expandWorkspacePatterns,
   parsePnpmWorkspacePackages,
 } from '../../src/detector/detect-monorepo.js';
+
+// Structural deviation note: the six new fixtures carry root manifests PLUS nested workspace
+// dirs with their own manifests — unlike the single-manifest convention in nextjs-app/,
+// python-fastapi/, react-native-expo/. This is justified because each fixture exercises a
+// distinct monorepo tool's workspace-resolution format (Cargo, go.work, uv, .sln, CMake,
+// pnpm hybrid).
+const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
+const FIXTURES_DIR = join(CURRENT_DIR, '..', 'fixtures');
 
 describe('parsePnpmWorkspacePackages', () => {
   it('parses quoted and unquoted entries', () => {
@@ -101,5 +110,58 @@ describe('detectMonorepo', () => {
     await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'single' }), 'utf-8');
     const result = await detectMonorepo(root);
     expect(result).toEqual({ isMonorepo: false, tool: null, workspaces: [] });
+  });
+
+  it('detects Cargo workspace from Cargo.toml members field', async () => {
+    const fixtureRoot = join(FIXTURES_DIR, 'monorepo-cargo');
+    const result = await detectMonorepo(fixtureRoot);
+    expect(result.isMonorepo).toBe(true);
+    expect(result.tool).toBe('cargo');
+    expect(result.workspaces).toEqual(['crates/foo']);
+  });
+
+  it('detects go.work workspace from use block', async () => {
+    const fixtureRoot = join(FIXTURES_DIR, 'monorepo-go-work');
+    const result = await detectMonorepo(fixtureRoot);
+    expect(result.isMonorepo).toBe(true);
+    expect(result.tool).toBe('go-work');
+    expect(result.workspaces).toEqual(['svc']);
+  });
+
+  it('detects uv workspace from [tool.uv.workspace] members', async () => {
+    const fixtureRoot = join(FIXTURES_DIR, 'monorepo-uv');
+    const result = await detectMonorepo(fixtureRoot);
+    expect(result.isMonorepo).toBe(true);
+    expect(result.tool).toBe('uv');
+    expect(result.workspaces).toEqual(['packages/foo']);
+  });
+
+  it('detects dotnet solution from .sln Project entries', async () => {
+    const fixtureRoot = join(FIXTURES_DIR, 'monorepo-dotnet-sln');
+    const result = await detectMonorepo(fixtureRoot);
+    expect(result.isMonorepo).toBe(true);
+    expect(result.tool).toBe('dotnet-sln');
+    expect(result.workspaces).toEqual(['Foo']);
+  });
+
+  it('detects CMake subdirectories from add_subdirectory calls', async () => {
+    const fixtureRoot = join(FIXTURES_DIR, 'monorepo-cmake');
+    const result = await detectMonorepo(fixtureRoot);
+    expect(result.isMonorepo).toBe(true);
+    expect(result.tool).toBe('cmake');
+    expect(result.workspaces).toEqual(['foo']);
+  });
+
+  it('hybrid pnpm+python+rust: resolves only pnpm workspace (apps/web); standalone python/rust dirs are not monorepo workspaces', async () => {
+    // detectMonorepo short-circuits on the first matching reader: package.json → pnpm → ...
+    // pnpm-workspace.yaml is present so tool = 'pnpm' and only apps/web (listed in yaml) is a workspace.
+    // services/api and crates/core are NOT in the pnpm workspace list — they're standalone manifests.
+    const fixtureRoot = join(FIXTURES_DIR, 'monorepo-hybrid-pnpm-python-rust');
+    const result = await detectMonorepo(fixtureRoot);
+    expect(result.isMonorepo).toBe(true);
+    expect(result.tool).toBe('pnpm');
+    expect(result.workspaces).toEqual(['apps/web']);
+    expect(result.workspaces).not.toContain('services/api');
+    expect(result.workspaces).not.toContain('crates/core');
   });
 });

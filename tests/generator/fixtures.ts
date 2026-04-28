@@ -68,6 +68,8 @@ export function makeDetectedStack(overrides: Partial<DetectedStack> = {}): Detec
     aiAgents: { agents: [], hasClaudeCode: false, hasCodexCli: false },
     docsFile: EMPTY_DETECTION,
     roadmapFile: EMPTY_DETECTION,
+    languages: [],
+    workspaceStacks: [],
     ...overrides,
   };
 }
@@ -97,6 +99,7 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
     targets: mergedTargets,
     governance: mergedGovernance,
     detectedAiAgents: { claudeCode: false, codexCli: false, cursor: false, aider: false, continueDev: false, copilot: false, windsurf: false, gemini: false, ...overrides.detectedAiAgents },
+    languages: overrides.languages ?? [],
     monorepo: overrides.monorepo !== undefined ? overrides.monorepo : null,
     security: { ...SECURITY_DEFAULTS, ...overrides.security },
   };

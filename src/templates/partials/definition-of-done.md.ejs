@@ -9,6 +9,9 @@ A task is done only when ALL of:
 5. `git status` shows only the intended changes; no stray files.
 6. You have read your own diff top-to-bottom.
 7. No `TODO`, `FIXME`, `console.log`, commented-out code, or `@ts-ignore`/`any`/`eslint-disable` introduced unless explicitly approved, and if so with a `// reason:` comment.
+<% if (isPolyglot) { -%>
+8. Polyglot repo: DoD gates run **per touched workspace** — type-check, lint, and the narrowest relevant test in each workspace's toolchain (see `## Polyglot monorepo navigation`).
+<% } -%>
 
 Never suppress or catch-and-ignore an error to make a gate pass. Never delete or weaken an existing test to make the build green; if a test is wrong, say so and ask the user.
 

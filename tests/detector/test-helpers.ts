@@ -3,6 +3,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 /**
+ * Create a temporary directory with a configurable prefix and register it for cleanup.
+ *
+ * The returned `root` is the absolute path to the temp dir. The caller is responsible
+ * for pushing the `root` into a `created: string[]` array and cleaning up in `afterEach`.
+ *
+ * @param options.prefix - Prefix for the OS temp dir name
+ * @param options.created - Mutable array to push the new dir path into (for cleanup)
+ * @returns The absolute path to the created temporary directory
+ */
+export async function makeRoot({
+  prefix,
+  created,
+}: {
+  prefix: string;
+  created: string[];
+}): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), prefix));
+  created.push(root);
+  return root;
+}
+
+/**
  * Create a temporary project with a package.json, run a callback against it, and remove the project directory afterward.
  *
  * Ensures the temporary directory is removed after the callback completes or throws.

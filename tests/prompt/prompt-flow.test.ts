@@ -42,6 +42,8 @@ function makeDetectedStack(): DetectedStack {
     },
     docsFile: emptyDetection,
     roadmapFile: emptyDetection,
+    languages: [],
+    workspaceStacks: [],
   };
 }
 

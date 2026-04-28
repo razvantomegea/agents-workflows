@@ -2549,7 +2549,9 @@ These disable the last-line sandbox controls and are out of bounds for this proj
 
 ---
 
-## Epic 12 — Polyglot Monorepo Support [SHOULD]
+## Epic 12 — Polyglot Monorepo Support [SHOULD] [DONE 2026-04-28]
+
+**Landed on** `feature/epic-12-polyglot-monorepo`.
 
 **Goal.** `agents-workflows init` produces workspace-aware outputs in polyglot monorepos: each workspace gets its own detected stack and toolchain commands, a nested `AGENTS.md` is emitted per workspace when languages differ, root config carries a `## Workspaces` index table, and every agent routes Definition-of-Done gates through the nearest workspace manifest per §1.18.
 

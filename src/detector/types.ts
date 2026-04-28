@@ -5,6 +5,20 @@ export interface Detection<T = string> {
   confidence: number;
 }
 
+export interface WorkspaceStackDetection {
+  path: string;
+  language: string | null;
+  runtime: string | null;
+  framework: string | null;
+  packageManager: string | null;
+  commands: {
+    typeCheck: string | null;
+    test: string | null;
+    lint: string | null;
+    build: string | null;
+  };
+}
+
 export type AiAgentId =
   | 'claude'
   | 'codex'
@@ -49,4 +63,6 @@ export interface DetectedStack {
   aiAgents: DetectedAiAgents;
   docsFile: Detection;
   roadmapFile: Detection;
+  languages: readonly string[];
+  workspaceStacks: readonly WorkspaceStackDetection[];
 }

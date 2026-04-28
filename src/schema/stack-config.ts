@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { safeCommand, safeCommandNullable, safeProjectPath } from './validators.js';
+import { workspaceStackSchema } from './workspace-stack.js';
+
+export { safeCommand, safeCommandNullable, safeProjectPath } from './validators.js';
 
 export const ISOLATION_CHOICES = [
   'devcontainer',
@@ -11,33 +15,16 @@ export const ISOLATION_CHOICES = [
 
 export type IsolationChoice = (typeof ISOLATION_CHOICES)[number];
 
-const SAFE_COMMAND_RE = /^[a-zA-Z0-9 ._/:=@-]+$/;
-const SAFE_COMMAND_MESSAGE = 'command contains disallowed shell metacharacters';
 const SAFE_BRANCH_RE = /^[a-zA-Z0-9._/-]+$/;
 const SAFE_BRANCH_MESSAGE = 'branch name contains disallowed shell metacharacters';
 const SAFE_PROJECT_NAME_RE = /^[a-zA-Z0-9 ._-]+$/;
 const SAFE_PROJECT_NAME_MESSAGE = 'project.name must contain only letters, digits, space, dot, underscore, hyphen';
 const SAFE_PROJECT_NAME_WHITESPACE_MESSAGE = 'project.name cannot be empty or whitespace only';
 const SAFE_PROJECT_DESCRIPTION_MESSAGE = 'project.description must contain only plain single-line text characters';
-const SAFE_PROJECT_PATH_RE = /^[a-zA-Z0-9._/@+-]+$/;
-const SAFE_PROJECT_PATH_MESSAGE = 'path must be a relative project path using only letters, digits, slash, dot, underscore, at, plus, or hyphen';
-const SAFE_PROJECT_PATH_TRAVERSAL_MESSAGE = 'path must not be absolute, empty, contain parent traversal, or contain empty path segments';
 
-const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
-const safeCommandNullable = safeCommand.nullable().default(null);
 const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
-export const safeProjectPath = z
-  .string()
-  .trim()
-  .min(1)
-  .regex(SAFE_PROJECT_PATH_RE, SAFE_PROJECT_PATH_MESSAGE)
-  .refine((value: string) => {
-    if (value.startsWith('/') || value.startsWith('.')) return false;
-    const normalized = value.endsWith('/') ? value.slice(0, -1) : value;
-    const segments = normalized.split('/');
-    return segments.every((segment: string) => segment !== '' && segment !== '.' && segment !== '..');
-  }, SAFE_PROJECT_PATH_TRAVERSAL_MESSAGE);
 const safeProjectPathNullable = safeProjectPath.nullable().default(null);
+
 function isSafeProjectDescription(value: string): boolean {
   for (const char of value) {
     const code = char.charCodeAt(0);
@@ -174,10 +161,21 @@ export const stackConfigSchema = z.object({
     enabled: z.boolean().default(false),
   }).default({ enabled: false }),
 
+  languages: z.array(z.string()).default([]),
+
   monorepo: z.object({
     isRoot: z.boolean(),
-    tool: z.enum(['pnpm', 'npm', 'yarn', 'lerna', 'turbo', 'nx']).nullable(),
-    workspaces: z.array(z.string()),
+    tool: z.enum(['pnpm', 'npm', 'yarn', 'lerna', 'turbo', 'nx', 'cargo', 'go-work', 'uv', 'poetry', 'dotnet-sln', 'cmake']).nullable(),
+    // Why: pre-T3 manifests serialised workspaces as string[]. The preprocess drops those legacy
+    // string entries so update-command never fails to parse an old manifest. The next init/update
+    // re-derives workspaces via detectStack and repopulates with WorkspaceStack objects.
+    workspaces: z.preprocess(
+      (val) => {
+        if (!Array.isArray(val)) return val;
+        return val.filter((item) => typeof item === 'object' && item !== null);
+      },
+      z.array(workspaceStackSchema).default([]),
+    ),
   }).nullable().default(null),
 
   security: z.object({
@@ -189,3 +187,5 @@ export const stackConfigSchema = z.object({
 
 export type StackConfig = z.infer<typeof stackConfigSchema>;
 export type SecurityConfig = z.infer<typeof stackConfigSchema>['security'];
+export { workspaceStackSchema } from './workspace-stack.js';
+export type { WorkspaceStack } from './workspace-stack.js';
