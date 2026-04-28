@@ -1,7 +1,13 @@
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderTemplate } from '../utils/template-renderer.js';
+import { fileExists } from '../utils/file-exists.js';
 import { convertToSkill } from '../utils/convert-to-skill.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
+
+const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
+const TEMPLATES_DIR = join(MODULE_DIR, '..', 'templates');
 
 interface AgentDefinition {
   key: keyof StackConfig['agents'];
@@ -12,7 +18,6 @@ interface AgentDefinition {
 const AGENT_DEFINITIONS: AgentDefinition[] = [
   { key: 'architect', templateFile: 'agents/architect.md.ejs', outputName: 'architect.md' },
   { key: 'implementer', templateFile: 'agents/implementer.md.ejs', outputName: 'implementer.md' },
-  { key: 'reactTsSenior', templateFile: 'agents/react-ts-senior.md.ejs', outputName: 'react-ts-senior.md' },
   { key: 'codeReviewer', templateFile: 'agents/code-reviewer.md.ejs', outputName: 'code-reviewer.md' },
   { key: 'securityReviewer', templateFile: 'agents/security-reviewer.md.ejs', outputName: 'security-reviewer.md' },
   { key: 'codeOptimizer', templateFile: 'agents/code-optimizer.md.ejs', outputName: 'code-optimizer.md' },
@@ -31,7 +36,19 @@ export async function generateAgents(
   for (const agent of AGENT_DEFINITIONS) {
     if (!config.agents[agent.key]) continue;
 
-    const content = await renderTemplate(agent.templateFile, context);
+    let templateFile = agent.templateFile;
+
+    if (agent.key === 'implementer') {
+      const variant = config.agents.implementerVariant;
+      templateFile = `agents/implementer-variants/${variant}.md.ejs`;
+      const absoluteTemplatePath = join(TEMPLATES_DIR, templateFile);
+      const exists = await fileExists(absoluteTemplatePath);
+      if (!exists) {
+        throw new Error(`Missing implementer variant template: agents/implementer-variants/${variant}.md.ejs`);
+      }
+    }
+
+    const content = await renderTemplate(templateFile, context);
 
     if (config.targets.claudeCode) {
       files.push({ path: `.claude/agents/${agent.outputName}`, content });
@@ -45,4 +62,3 @@ export async function generateAgents(
 
   return files;
 }
-

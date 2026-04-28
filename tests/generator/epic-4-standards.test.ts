@@ -13,6 +13,7 @@ const partialLines = async (name: string): Promise<number> => {
 const makeFrameworkConfig = (framework: string | null): ReturnType<typeof makeStackConfig> =>
   makeStackConfig({
     stack: { language: 'typescript', runtime: 'node', framework, uiLibrary: null, stateManagement: null, database: null, auth: null },
+    agents: { implementerVariant: 'generic' },
   });
 
 describe('Epic 4 T1 — security-defaults', () => {

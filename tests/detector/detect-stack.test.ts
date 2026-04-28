@@ -43,7 +43,7 @@ describe('detectStack', () => {
   });
 
   it('detects Python FastAPI project', async () => {
-    const result = await detectStack(join(FIXTURES_DIR, 'python-fastapi'));
+    const result = await detectStack(join(FIXTURES_DIR, 'backend-python-fastapi'));
 
     expect(result.language.value).toBe('python');
     expect(result.framework.value).toBe('fastapi');
@@ -82,7 +82,7 @@ describe('detectStack', () => {
     expect(expo.languages).toEqual([]);
     expect(expo.workspaceStacks).toEqual([]);
 
-    const python = await detectStack(join(FIXTURES_DIR, 'python-fastapi'));
+    const python = await detectStack(join(FIXTURES_DIR, 'backend-python-fastapi'));
     expect(python.languages).toEqual([]);
     expect(python.workspaceStacks).toEqual([]);
   });

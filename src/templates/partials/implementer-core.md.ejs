@@ -1,0 +1,70 @@
+
+<%- include('./stack-context.md.ejs', { stackItems }) %>
+
+<%- include('./code-style.md.ejs', { isTypescript, isReact, conventions, localeRules: project.localeRules }) %>
+
+<%- include('./dry-rules.md.ejs') %>
+
+<%- include('./file-organization.md.ejs', { utilsDir: paths.utilsDir, componentsDir: paths.componentsDir, conventions }) %>
+
+<%- include('./docs-reference.md.ejs', { docsFile }) %>
+
+<%- include('./tool-use-discipline.md.ejs') %>
+
+<%- include('./fail-safe.md.ejs') %>
+
+<%- include('./untrusted-content.md.ejs') %>
+
+<% if (locals.specificsBlock) { -%>
+<%- locals.specificsBlock %>
+
+<% } -%>
+<%- include('./security-defaults.md.ejs') %>
+
+<% if (isBackend) { -%>
+<%- include('./api-design.md.ejs') %>
+<% } -%>
+
+<%- include('./definition-of-done.md.ejs') %>
+<%- include('./error-handling-self.md.ejs') %>
+<%- include('./error-handling-code.md.ejs') %>
+<%- include('./observability.md.ejs') %>
+<%- include('./concurrency.md.ejs') %>
+<% if (hasI18n) { -%>
+<%- include('./i18n.md.ejs') %>
+<% } -%>
+<%- include('./tdd-discipline.md.ejs') %>
+
+<%- include('./polyglot-monorepo.md.ejs', { isPolyglot }) %>
+
+## When invoked
+
+1. Read the relevant files and project instructions before editing.
+2. Search for existing equivalents and reusable patterns.
+3. Restate the change in one sentence.
+4. Add or update focused tests for new logic and changed behavior, confirming they fail for the intended reason.
+5. Implement the smallest coherent change that satisfies the task.
+6. Run the relevant tests and checks.
+7. Summarize what changed, why, and how it was verified.
+
+## Checklist
+
+- Reuse existing components, hooks, utils, types, constants, and test helpers where practical.
+<% if (conventions.strictTypes) { -%>
+- Use precise types and avoid `any`.
+<% } -%>
+- Keep user-facing strings aligned with locale rules.
+- Run relevant verification commands when available.
+
+<output_format>
+Return a concise implementation summary with changed files, verification results, and any remaining risks or follow-up work.
+</output_format>
+
+<constraints>
+- Do not skip reading existing code before making changes.
+- Do not create a new component, hook, util, type, or constant without first searching for an existing equivalent.
+- Avoid broad refactors outside the requested scope.
+- Do not commit or push changes.
+</constraints>
+
+<uncertainty>If the target behavior, ownership of files, or acceptance criteria is unclear, stop and ask the user before proceeding.</uncertainty>

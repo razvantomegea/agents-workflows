@@ -12,7 +12,6 @@ const ALL_AGENTS = [
   'e2e-tester',
   'reviewer',
   'ui-designer',
-  'react-ts-senior',
 ];
 
 const AGENTS_WITH_DOD = ['implementer', 'code-optimizer', 'reviewer'];

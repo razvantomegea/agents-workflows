@@ -2,7 +2,6 @@ import type { StackConfig } from '../../src/schema/stack-config.js';
 import { SECURITY_DEFAULTS } from '../../src/schema/stack-config.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 import type { DetectedStack } from '../../src/detector/types.js';
-import { supportsReactTsStack } from '../../src/constants/frameworks.js';
 
 export const IMPLEMENTER_PATH = '.claude/agents/implementer.md';
 export const UI_DESIGNER_PATH = '.claude/agents/ui-designer.md';
@@ -36,8 +35,8 @@ export function getContent(files: GeneratedFile[], filePath: string): string {
  *
  * The function builds a complete configuration object from fixed base defaults for stack, targets,
  * selected commands, governance, agents, and other top-level sections, then applies any fields
- * present in `overrides` to those defaults. The returned config sets `agents.reactTsSenior` to the
- * explicit override when provided; otherwise it is inferred from the merged stack's framework and language.
+ * present in `overrides` to those defaults. Tests that need a specific implementer variant should
+ * pass `overrides.agents.implementerVariant`.
  *
  * @param overrides - Partial configuration values to override the defaults
  * @returns The assembled StackConfig with defaults merged and override values applied
@@ -79,7 +78,7 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
   const baseTargets: StackConfig['targets'] = { claudeCode: true, codexCli: true, cursor: false, copilot: false, windsurf: false };
   const baseSelectedCommands: StackConfig['selectedCommands'] = { workflowPlan: true, workflowFix: true, externalReview: true, workflowLonghorizon: false, workflowTcr: false };
   const baseGovernance: StackConfig['governance'] = { enabled: false };
-  const baseAgents: StackConfig['agents'] = { architect: true, implementer: true, reactTsSenior: true, codeReviewer: true, securityReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true };
+  const baseAgents: StackConfig['agents'] = { architect: true, implementer: true, implementerVariant: 'react-ts', codeReviewer: true, securityReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true };
 
   const mergedStack: StackConfig['stack'] = { ...baseStack, ...overrides.stack };
   const mergedTargets: StackConfig['targets'] = { ...baseTargets, ...overrides.targets };
@@ -104,12 +103,5 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
     security: { ...SECURITY_DEFAULTS, ...overrides.security },
   };
 
-  return {
-    ...baseConfig,
-    agents: {
-      ...mergedAgents,
-      reactTsSenior: overrides.agents?.reactTsSenior
-        ?? supportsReactTsStack(mergedStack.framework, mergedStack.language),
-    },
-  };
+  return baseConfig;
 }

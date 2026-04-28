@@ -53,7 +53,6 @@ describe('Epic 3 review depth', () => {
       'security-reviewer',
       'e2e-tester',
       'ui-designer',
-      'react-ts-senior',
     ];
     for (const agentName of excludedAgents) {
       const agentFile = files.find(

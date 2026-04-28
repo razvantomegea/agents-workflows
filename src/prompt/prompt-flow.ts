@@ -1,7 +1,7 @@
 import type { DetectedStack } from '../detector/types.js';
 import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
 import { readPackageJson } from '../utils/index.js';
-import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
+import { isFrontendFramework } from '../constants/frameworks.js';
 import { createDefaultConfig } from './default-config.js';
 import {
   askProjectIdentity,
@@ -14,6 +14,7 @@ import {
   askTargets,
   askGovernance,
   askNonInteractiveMode,
+  askImplementerVariant,
 } from './questions.js';
 import { askIsolation } from './ask-isolation.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
@@ -71,8 +72,8 @@ export async function runPromptFlow(
   const conventions = await askConventions();
 
   const isFrontend = isFrontendFramework(stack.framework);
-  const isReactTs = supportsReactTsStack(stack.framework, stack.language);
-  const selectedAgents = await askAgentSelection({ isFrontend, isReactTs });
+  const implementerVariant = await askImplementerVariant(detected);
+  const selectedAgents = await askAgentSelection({ isFrontend });
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets({ detected: detected.aiAgents, projectRoot });
   const governance = await askGovernance();
@@ -142,7 +143,7 @@ export async function runPromptFlow(
     agents: {
       architect: selectedAgents.includes('architect'),
       implementer: selectedAgents.includes('implementer'),
-      reactTsSenior: selectedAgents.includes('reactTsSenior'),
+      implementerVariant,
       codeReviewer: selectedAgents.includes('codeReviewer'),
       securityReviewer: selectedAgents.includes('securityReviewer'),
       codeOptimizer: selectedAgents.includes('codeOptimizer'),

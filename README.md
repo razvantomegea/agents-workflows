@@ -9,7 +9,7 @@ Reusable AI agent configuration framework. Install battle-tested Claude Code age
 
 This CLI tool extracts proven agentic workflow patterns into parameterized templates that adapt to your project's technology stack. Instead of writing agent configurations from scratch, you answer a few questions and get a complete set of:
 
-- **Up to 10 specialized agents**: architect, implementer, react-ts-senior (React + TypeScript stacks only), code-reviewer, security-reviewer, code-optimizer, test-writer, e2e-tester, reviewer, ui-designer
+- **Up to 9 specialized agents**: architect, implementer (one of 13 stack-aware variants), code-reviewer, security-reviewer, code-optimizer, test-writer, e2e-tester, reviewer, ui-designer
 - **3 workflow commands**: `/workflow-plan`, `/workflow-fix`, `/external-review`
 - **Root config files**: `AGENTS.md`, plus `CLAUDE.md` and `.claude/settings.json` when Claude Code output is selected
 - **Sync scripts**: Codex CLI integration with `.codex/` skills and prompts
@@ -93,8 +93,7 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 | Agent | Role | Model |
 |---|---|---|
 | `architect` | Planning only; produces structured `PLAN.md` with max 8 tasks | Opus |
-| `implementer` | Primary code writing agent adapted to your stack | Sonnet |
-| `react-ts-senior` | Senior React + TypeScript implementation agent (enabled only for React stacks on TypeScript) | Sonnet |
+| `implementer` | Primary code writing agent — one of 13 stack-aware variants chosen at config time | Sonnet |
 | `code-reviewer` | Post-edit review with project-specific checklist | Sonnet |
 | `security-reviewer` | OWASP/security audit (injection, auth, secrets, data exposure) | Sonnet |
 | `code-optimizer` | Performance, DRY, and quality analysis | Sonnet |
@@ -104,6 +103,26 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 | `ui-designer` | UI/UX design system enforcement (frontend only) | Sonnet |
 
 > **Model routing.** The `Model` column above lists Claude defaults that ship today. Where multiple model families are available, the templates are designed to pair the **implementer and reviewer in different families** so each acts as an independent check on the other. Stack-by-stack pairings (TS/React, Python, C++, etc.) are specified in [PRD §1.7 Cross-model external review](./PRD.md#17-cross-model-external-review) and [§1.7.1 Claude + GPT pairing (stack-aware defaults)](./PRD.md#171-claude--gpt-pairing-stack-aware-defaults).
+
+### Stack matrix
+
+| Detected stack | Variant | Notes |
+|---|---|---|
+| Spring Boot (Java / Kotlin) | `java-spring` | |
+| ASP.NET Core (C#) | `dotnet-csharp` | |
+| Vue / Nuxt | `vue` | Epic 17 body |
+| Angular | `angular` | Epic 17 body |
+| SvelteKit | `svelte` | |
+| React + TypeScript (incl. Next.js, Remix, Expo, React Native) | `react-ts` | Mobile (Expo, RN) intentionally routes here per Epic 13 non-goals |
+| TypeScript + NestJS / Express / Fastify / Hono | `node-ts-backend` | |
+| Python (any framework) | `python` | |
+| Go | `go` | |
+| Rust | `rust` | |
+| Plain TypeScript (no framework) | `typescript` | Epic 17 body |
+| Plain JavaScript (no framework) | `javascript` | Epic 17 body |
+| Unknown / polyglot root | `generic` | Stack-agnostic baseline |
+
+The emitted filename is always `.claude/agents/implementer.md` and `.codex/skills/implementer/SKILL.md`; the active variant is recorded in `.agents-workflows.json` under `agents.implementerVariant`. Existing manifests carrying the legacy `reactTsSenior: true` field migrate automatically on first `update` to `implementerVariant: 'react-ts'`; any pre-existing `.claude/agents/react-ts-senior.md` and `.codex/skills/react-ts-senior/SKILL.md` are removed via the Epic 7 safe-delete confirmation flow (`--yes` skips the prompt; a backup is always written first).
 
 ## Workflow patterns
 
@@ -323,7 +342,7 @@ All generated output starts as an `.ejs` file here. Five categories:
 
 | Category | Contents |
 |---|---|
-| `agents/` | `architect.md.ejs`, `implementer.md.ejs`, `react-ts-senior.md.ejs`, `code-reviewer.md.ejs`, `security-reviewer.md.ejs`, `code-optimizer.md.ejs`, `test-writer.md.ejs`, `e2e-tester.md.ejs`, `reviewer.md.ejs`, `ui-designer.md.ejs` |
+| `agents/` | `architect.md.ejs`, `implementer-variants/<variant>.md.ejs` (13 stack-aware variants), `code-reviewer.md.ejs`, `security-reviewer.md.ejs`, `code-optimizer.md.ejs`, `test-writer.md.ejs`, `e2e-tester.md.ejs`, `reviewer.md.ejs`, `ui-designer.md.ejs` |
 | `commands/` | `workflow-plan.md.ejs`, `workflow-fix.md.ejs`, `external-review.md.ejs` |
 | `config/` | `AGENTS.md.ejs`, `CLAUDE.md.ejs`, `codex-config.toml.ejs`, `settings.json.ejs`, `codex-project-rules.ejs` |
 | `partials/` | Reusable context blocks included by agents/commands: `code-style`, `context-budget`, `definition-of-done`, `dry-rules`, `error-handling-self`, `fail-safe`, `file-organization`, `git-rules`, `review-checklist`, `stack-context`, `tdd-discipline`, `testing-patterns`, `tool-use-discipline`, `untrusted-content`, `workspaces`, `docs-reference` |

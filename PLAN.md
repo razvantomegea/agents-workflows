@@ -1,283 +1,222 @@
-# Plan — Epic 12 — Polyglot Monorepo Support
+# PLAN.md
 
-_Branch: `feature/epic-12-polyglot-monorepo` | Date: 2026-04-28_
+**Branch:** `feature/epic-13-stack-aware-implementer`
 
 ## Context
 
-**Goal (verbatim from PRD §Epic 12, line 2554).** `agents-workflows init` produces workspace-aware outputs in polyglot monorepos: each workspace gets its own detected stack and toolchain commands, a nested `AGENTS.md` is emitted per workspace when languages differ, root config carries a `## Workspaces` index table, and every agent routes Definition-of-Done gates through the nearest workspace manifest per §1.18.
-
-**Out of scope (PRD §Epic 12 non-goals, lines 2623–2629):** Bazel/Buck2/Pants/Moon/Nx polyglot plugins, JVM monorepos (Gradle multi-module, Maven reactor), remote-caching integration (Turbo/Nx Cloud/Bazel Remote), CI matrix generation across workspaces, build-graph-based change-detection.
-
-**Doc-vs-code mismatch flagged.** The user task brief states the partial count is "40 → 41 after T4". The actual current count under `src/templates/partials/` is **42**, so this epic will land **43** partials after T4 (per CLAUDE.md "flag mismatches" rule §README and §CLAUDE.md "When `README.md` and code disagree, flag the mismatch").
+Epic 13 replaces the single generic `implementer` agent with one of 13 stack-specific variants chosen by detection at config time, while keeping the emitted filename `implementer.md` (Claude) / `.codex/skills/implementer/SKILL.md` (Codex) so every downstream reference stays valid. The legacy additive `reactTsSenior` agent is removed (template deleted, schema field migrated, stale files safe-deleted on `update`); `ui-designer` is hidden — not just unchecked — for pure-backend stacks. New JVM (Spring Boot) and .NET (ASP.NET Core) detectors land alongside a new `implementer-core.md.ejs` partial that holds the shared body so each variant template stays a thin wrapper.
 
 ## Pre-implementation checklist
 
-- [ ] On `feature/epic-12-polyglot-monorepo` branched from clean `main` (verified: `git status` clean, branch matches).
-- [ ] `detectMonorepo` reviewed — `src/detector/detect-monorepo.ts:14-24` returns `MonorepoInfo { isMonorepo, tool, workspaces: string[] }`; T1 extends the `MonorepoTool` union (line 6) and adds new readers, but keeps the existing JS readers intact and the `workspaces: string[]` shape on this layer.
-- [ ] `detectLanguage` reviewed — `src/detector/detect-language.ts:6-43` already detects TS/JS/Python/Go/Rust/Java/C# from a single root; T2 reuses it unchanged, scoped to a workspace path.
-- [ ] `detectPackageManager` reviewed — `src/detector/detect-package-manager.ts:5-42` already maps lockfiles to `pnpm/yarn/npm/bun/uv/poetry/pipenv/pip/go-mod`; T2 reuses it.
-- [ ] `safeCommand` (line 26) and `safeCommandNullable` (line 27) of `src/schema/stack-config.ts` confirmed — T3 reuses both verbatim. **`SAFE_COMMAND_RE` (line 14) MUST NOT be broadened.**
-- [ ] `writeFileSafe` four-status contract confirmed — `src/generator/write-file.ts:5` exports `WriteFileStatus = 'written' | 'skipped' | 'merged' | 'unchanged'`; default behavior is "never clobber a hand-edited file" (Epic 7 contract — `writeFileSafe` only writes on first creation, on `existing === content` no-op, or after explicit user prompt). T6 calls it for every nested `AGENTS.md`.
-- [ ] Partial count baseline: **42 today** under `src/templates/partials/`; T4 adds exactly **1** new partial → **43 after T4**. T5 edits 3 existing partials, no new files.
-- [ ] `polyglot-monorepo.md.ejs` confirmed absent under `src/templates/partials/` (will be created by T4).
-- [ ] `workspace-AGENTS.md.ejs` confirmed absent under `src/templates/config/` (will be created by T6 — note: this is a **config template**, not a partial, so it does not count toward the partial cap).
-- [ ] Existing `src/templates/partials/workspaces.md.ejs` (12 lines) confirmed — currently iterates `monorepo.workspaces` as `string[]`. T6 updates it in place to render the §Epic 12 acceptance bullet 2 `## Workspaces` index table from the new `WorkspaceStack[]` shape (do **not** introduce a parallel partial).
-- [ ] Existing schema `monorepo` shape (`src/schema/stack-config.ts:177-181`): `{ isRoot: boolean; tool: enum-or-null; workspaces: string[] }`. New shape after T3: `monorepo.workspaces: WorkspaceStack[]`, `monorepo.tool: enum-with-new-values-or-null`, plus a new **top-level** `languages: string[]` (sibling of `stack` / `monorepo`). Backward compat via `.default([])` on `workspaces` and `languages` so legacy manifests deserialize unchanged (PRD §Epic 12 acceptance bullet 5).
-- [ ] Agent template partial-include blocks located: `architect.md.ejs:11-23`, `implementer.md.ejs:11-41`, `code-reviewer.md.ejs:11-26`, `code-optimizer.md.ejs:11-25`, `test-writer.md.ejs:11-19`, `reviewer.md.ejs:11-19`. T4 inserts the new include after the last existing partial-include line in each.
-- [ ] No `any` allowed; all new functions with >2 parameters use a single object parameter; all files ≤200 lines.
-- [ ] All `path.join` calls use `node:path` `join`/`resolve` (Windows-aware). Never hardcode `/`.
+- [ ] Read PRD §Epic 13 (lines 2635–2724) and §1.19.
+- [ ] Read CLAUDE.md (per-user + per-project rules: ≤200 lines per file, DRY, no `any`, simple Jest tests for moved logic).
+- [ ] Verify branch is `feature/epic-13-stack-aware-implementer` and tree is clean.
+- [ ] Confirm `pnpm test`, `pnpm check-types`, `pnpm lint` pass on `main` baseline.
+- [ ] Capture a snapshot of today's `implementer.md.ejs` rendered against `tests/generator/fixtures.ts:makeStackConfig()` BEFORE deleting the file — this is the byte-identical baseline for the `generic` variant in T8.
+- [ ] Grep for every `reactTsSenior` / `react-ts-senior` / `hasReactTsSenior` / `supportsReactTsStack` reference in `src/`, `tests/`, `.claude/`, `.codex/`, `README.md`, `PRD.md` so nothing is missed across tasks.
 
 ## Tasks
 
-### Task 1 — Extend `MonorepoTool` enum and polyglot workspace readers [LOGIC]
+### T1 — Detector enrichments and framework constants [LOGIC] [SCHEMA] [PARALLEL]
+
+- **Files**: `src/detector/detect-framework.ts`, `src/detector/detect-jvm-framework.ts` (new), `src/detector/detect-dotnet-framework.ts` (new), `src/constants/frameworks.ts`.
+- **Input**: existing `Detection` type, existing `BACKEND_FRAMEWORKS`, an unused `pom.xml` / `build.gradle` / `build.gradle.kts` / `*.csproj` reader path. Read `package.json`/`pyproject.toml` paths already exist; the JVM and .NET detectors must read raw text via `node:fs/promises` plus the `glob` dep already used elsewhere for `*.csproj`.
+- **Output**:
+  - `detectJvmFramework(projectRoot)` returns `{ value: 'spring-boot', confidence: 0.9 }` when `pom.xml` contains `<artifactId>spring-boot-starter` or any `build.gradle*` contains `org.springframework.boot`; otherwise `{ value: null, confidence: 0 }`.
+  - `detectDotnetFramework(projectRoot)` returns `{ value: 'aspnetcore', confidence: 0.9 }` when the first `*.csproj` reference contains `Microsoft.AspNetCore.`; otherwise `{ value: null, confidence: 0 }`.
+  - `detectFramework` chains the two new detectors after the existing pyproject branch (return the first hit, then fall back to `{ value: null, confidence: 0 }`).
+  - `BACKEND_FRAMEWORKS` extended with `'spring-boot'` and `'aspnetcore'`; the `PACKAGE_JSON_BACKEND_CONFIDENCE` map in `detect-framework.ts` adjusted to cover the two new keys (value `0.9` even though they are detected outside `package.json`, to keep the typed map exhaustive).
+  - New helper `isFullstackJsFramework(framework)` listing `'nextjs' | 'nuxt' | 'remix' | 'sveltekit'` exported from `src/constants/frameworks.ts`. Existing `isReactFramework`, `isFrontendFramework`, `isBackendFramework`, `isMobileFramework`, `supportsReactTsStack` unchanged.
+- **Notes**:
+  - Maps to PRD E13.T1.
+  - **DRY**: do not copy the regex-test pattern between the two new detectors — extract a shared `matchesAny(text, needles[])` helper into the new file that both consume (keep it under 10 lines so it stays Locality-of-Behavior local).
+  - PRD E13.T1 specifies Maven + Gradle (incl. `.kts`) Spring Boot detection; the `.csproj` scan must use the FIRST `.csproj` returned by glob to keep determinism.
+  - Per the user's global rule "Move logic into simple functions and always add Jest tests for them," each new pure helper (`matchesAny`, `detectJvmFramework`, `detectDotnetFramework`) gets a small Jest test. Tests are added in T8 (no new tests in this task — colocated detector tests already live under `tests/detector/`).
+  - File-size cap: keep `detect-jvm-framework.ts` and `detect-dotnet-framework.ts` ≤80 lines each (well under the 200-line CLAUDE.md cap).
+  - **No `any`** — use `string` for raw file content, `Detection` for return type.
+  - This task can run in parallel with T2 — they touch disjoint files. Both must merge before T3.
+
+### T2 — Schema migration, routing helper, fixtures helper update [SCHEMA] [LOGIC] [PARALLEL]
+
+- **Files**: `src/schema/stack-config.ts`, `src/schema/manifest.ts`, `src/generator/implementer-routing.ts` (new), `tests/generator/fixtures.ts`.
+- **Input**: existing `stackConfigSchema.agents` shape with `reactTsSenior: z.boolean().default(false)` (line 123); existing `manifestSchema` that nests `stackConfigSchema`; existing `makeStackConfig` helper at `tests/generator/fixtures.ts:77` that bakes `reactTsSenior: true` into base agents (lines 82, 109–114); the new `BACKEND_FRAMEWORKS` from T1.
+- **Output**:
+  - `IMPLEMENTER_VARIANTS = ['generic', 'typescript', 'javascript', 'react-ts', 'node-ts-backend', 'python', 'go', 'rust', 'java-spring', 'dotnet-csharp', 'vue', 'angular', 'svelte'] as const` exported from `stack-config.ts`. Add `type ImplementerVariant = (typeof IMPLEMENTER_VARIANTS)[number]`.
+  - In `agents`: `implementerVariant: z.enum(IMPLEMENTER_VARIANTS).default('generic')` REPLACES `reactTsSenior`.
+  - `agents` wrapped in a `z.preprocess` (or a small exported `migrateLegacyAgents(raw): unknown` helper invoked from the schema) that, when input is a plain object, (a) maps `reactTsSenior: true` → `implementerVariant: 'react-ts'` ONLY when no `implementerVariant` already exists, (b) strips ANY key matching `/Senior$/` whose value is boolean (defensive: covers any future `*Senior` flag drift — encoded per constraint #10), (c) leaves all other keys untouched.
+  - `src/generator/implementer-routing.ts` exports `getApplicableImplementerVariant(detected: DetectedStack): ImplementerVariant` with this exhaustive ORDER-SENSITIVE mapping (document the order in a leading comment):
+    1. `framework === 'spring-boot'` → `'java-spring'`
+    2. `framework === 'aspnetcore'` → `'dotnet-csharp'`
+    3. `framework ∈ {'vue','nuxt'}` → `'vue'`
+    4. `framework === 'angular'` → `'angular'`
+    5. `framework === 'sveltekit'` → `'svelte'`
+    6. `supportsReactTsStack(framework, language)` → `'react-ts'` (covers React/Next/Expo/RN/Remix on TS — mobile included per non-goal §Epic 13)
+    7. `language === 'typescript' && framework ∈ {'nestjs','express','fastify','hono'}` → `'node-ts-backend'`
+    8. `language === 'python'` → `'python'`
+    9. `language === 'go'` → `'go'`
+    10. `language === 'rust'` → `'rust'`
+    11. `language === 'typescript' && framework === null` → `'typescript'` (Epic 17 body)
+    12. `language === 'javascript' && framework === null` → `'javascript'` (Epic 17 body)
+    13. otherwise → `'generic'`
+  - `tests/generator/fixtures.ts:makeStackConfig` updated: `baseAgents.reactTsSenior` removed; new field `implementerVariant: 'react-ts'` (default keeps the current Next.js+TS fixture's behaviour). The trailing `?? supportsReactTsStack(...)` re-derivation block (lines 109–114) is deleted; tests that need a different variant pass `overrides.agents.implementerVariant`.
+- **Notes**:
+  - Maps to PRD E13.T2.
+  - The migration preprocess MUST keep all other keys including future ones — encode constraint #10 in a unit test (T8) that asserts `barNonSenior: true` is preserved while `fooSenior: true` is stripped.
+  - `manifestSchema` does NOT need its own preprocess — wrapping `agents` inside `stackConfigSchema` makes both `init`-loaded and `update`-loaded paths benefit. Verify by reading `src/schema/manifest.ts` (it just nests `stackConfigSchema`).
+  - **DRY**: `IMPLEMENTER_VARIANTS` is the single source of truth consumed by Zod (`z.enum(...)`), the prompt question (T4), and the routing helper.
+  - **No `any`** — use `unknown` in the preprocess input, narrow with `typeof === 'object'` and `Record<string, unknown>` casts only after guards.
+  - Per the user's global rule, `migrateLegacyAgents` and `getApplicableImplementerVariant` are simple pure functions — Jest tests for both land in T8 (covers every `(language, framework)` row plus the legacy-manifest preprocess case).
+  - This task can run in parallel with T1 — disjoint files. Both must merge before T3.
+
+### T3 — Shared `implementer-core.md.ejs` partial + 13 variant wrappers + legacy template/test deletes [TEMPLATE] [API]
 
 - **Files**:
-  - `src/detector/detect-monorepo.ts` (edit — extend enum + add 6 readers, keep existing JS readers intact).
-- **Input**: PRD E12.T1 (lines 2575–2579). Existing readers `readPnpmWorkspace` (line 47), `readPackageJson` (line 36), `readLernaPackages` (line 78), `expandWorkspacePatterns` (line 93).
+  - New: `src/templates/partials/implementer-core.md.ejs`.
+  - New (13): `src/templates/agents/implementer-variants/generic.md.ejs`, `.../typescript.md.ejs`, `.../javascript.md.ejs`, `.../react-ts.md.ejs`, `.../node-ts-backend.md.ejs`, `.../python.md.ejs`, `.../go.md.ejs`, `.../rust.md.ejs`, `.../java-spring.md.ejs`, `.../dotnet-csharp.md.ejs`, `.../vue.md.ejs`, `.../angular.md.ejs`, `.../svelte.md.ejs`.
+  - Deleted: `src/templates/agents/implementer.md.ejs`, `src/templates/agents/react-ts-senior.md.ejs`, `tests/generator/react-ts-senior.test.ts`.
+- **Input**: today's `src/templates/agents/implementer.md.ejs` (76 lines) — confirmed via grep to include 18 partial-include sites in this exact order: `stack-context`, `code-style`, `dry-rules`, `file-organization`, `docs-reference`, `tool-use-discipline`, `fail-safe`, `untrusted-content`, `security-defaults`, `api-design` (gated on `isBackend`), `definition-of-done`, `error-handling-self`, `error-handling-code`, `observability`, `concurrency`, `i18n` (gated on `hasI18n`), `tdd-discipline`, `polyglot-monorepo` (with `isPolyglot` arg). Today's `react-ts-senior.md.ejs` (78 lines) — Component & Hook Details + TypeScript Specifics + Testing + Workflow + Boundaries blocks (the body to migrate into the `react-ts` variant).
 - **Output**:
-  - `MonorepoTool` union (line 6) extended with: `'cargo' | 'go-work' | 'uv' | 'poetry' | 'dotnet-sln' | 'cmake'`.
-  - New private readers in the same file: `readCargoWorkspace`, `readGoWork`, `readUvWorkspace`, `readPoetryWorkspace`, `readDotnetSolution`, `readCmakeSubdirs`.
-  - `readWorkspacePatterns` (line 31) gains the new readers. **Detection ordering** (PRD bullet): JS wins on `package.json workspaces` → `pnpm-workspace.yaml` → `lerna.json` → Cargo (`Cargo.toml [workspace]`) → `go.work` → `pyproject.toml [tool.uv.workspace]` → `pyproject.toml [tool.poetry]`'s `packages` array → `*.sln` → `CMakeLists.txt`.
-  - `MonorepoInfo` (`src/detector/detect-monorepo.ts:8-12`) shape unchanged — keeps `workspaces: string[]` (raw relative paths). The richer `WorkspaceStack[]` shape lives in the **schema**, not in `MonorepoInfo` (see Task 2 Notes).
-  - Satisfies acceptance bullets 1 (JS-only path retained) and 1 (six new manifest formats parse).
+  - `implementer-core.md.ejs` extracts the shared block (every partial include in the existing order + the When-invoked / Checklist / `<output_format>` / `<constraints>` / `<uncertainty>` blocks) and accepts a `specificsBlock` parameter (default empty string) which the variants inject between `untrusted-content` and `security-defaults` (matches the existing implementer's "specifics belong before the security/api-design block" implicit ordering). Cap: ≤120 lines.
+  - Each variant template = YAML frontmatter (`name: implementer` — never `python-senior` etc., constant across all 13; `description` references the variant stack; `tools: Read, Edit, Write, Bash, Grep, Glob`; `model: sonnet`; `color: green`) + one-line header + `<%- include('../../partials/implementer-core.md.ejs', { specificsBlock: '...' }) %>` + an inline `specificsBlock` literal.
+  - **`generic.md.ejs`**: `specificsBlock` is the empty string. Body MUST render byte-identical to today's `implementer.md.ejs` against the captured baseline (T8 asserts this; if it diverges, fix the partial, not the test).
+  - **Tier-1 specifics blocks (≤30 lines each, real content this epic owns)**: `react-ts` (port from `react-ts-senior.md.ejs` — Component & Hook Details, TypeScript Specifics, Testing, Boundaries — slightly trimmed to fit), `node-ts-backend` (NestJS DTOs/guards/interceptors + Express/Fastify/Hono routing patterns + jest+supertest), `python` (`async def` + type hints + Pydantic + pytest), `go` (`error` returns + `context.Context` + `go test`), `rust` (`Result` + `?` + ownership + `cargo test`), `java-spring` (`@RestController` + DI + JUnit + `@SpringBootTest`), `dotnet-csharp` (minimal APIs vs controllers + xUnit + `WebApplicationFactory`), `svelte` (runes + `+page.server.ts` load functions + Vitest + `@testing-library/svelte`).
+  - **Epic-17 placeholder specifics blocks (≤120 lines wrapper cap, ≤80 lines specificsBlock cap)**: `typescript`, `javascript`, `vue`, `angular` get a minimal placeholder block with this exact body: `## Stack Specifics\n\n> Detailed body (citation-backed, top-5 anti-patterns) lands in Epic 17.` — this lets Epic 17 fill the body without touching the wrapper.
+  - Tier-1 wrapper cap: ≤40 lines per file.
 - **Notes**:
-  - DRY: reuse `fileExists` (`src/utils/index.ts`), `readFile` (`node:fs/promises`), and `expandWorkspacePatterns` (line 93) — do not duplicate path-walking logic. The existing `parsePnpmWorkspacePackages` (line 54) is the model for line-based YAML parsing; mirror its style for `pyproject.toml` table parsing without pulling in a TOML dep (read `Cargo.toml` and `pyproject.toml` line-wise; PRD does not require full TOML parsing for `[workspace] members` / `[tool.uv.workspace] members`).
-  - File cap: `detect-monorepo.ts` is currently 126 lines. After this task it must stay ≤200; split helpers into a new `src/detector/monorepo-readers/` folder if it exceeds. Prefer one file unless ≥200 lines.
-  - No `any`. Each reader returns `Promise<string[] | null>` (workspace member globs/paths) and is composed by `readWorkspacePatterns`.
-  - `*.sln` parser: parse `Project("...") = "name", "rel\path\to.csproj", "..."` lines and return the directory portion of the `.csproj` path; normalize Windows backslashes to forward slashes via `path.posix.dirname`.
-  - `CMakeLists.txt`: regex `add_subdirectory\(\s*([^)\s]+)\s*\)`; ignore commented lines.
-  - `go.work`: parse `use (` ... `)` block and standalone `use ./pkg` lines.
-  - **Reviewer fix (C-2):** Poetry packages live under `[tool.poetry]`'s `packages` array, not a `[tool.poetry.packages]` section header; `parsePoetryPackages` section-detect regex corrected to `/^\[tool\.poetry\]\s*$/`.
+  - Maps to PRD E13.T3 + E13.T4.
+  - **CRITICAL — PRD vs code drift flagged in handoff**: PRD E13.T3 lists 11 partial includes; the current file actually has **18** includes. The `generic` byte-identical guarantee (constraint #9) requires extracting **all 18** (including `api-design` and `i18n` with their conditionals, `polyglot-monorepo` with its `isPolyglot` arg). Encode this in the partial; the implementer's handoff message must explicitly flag the PRD drift so PRD §Epic 13 can be amended.
+  - The `name: implementer` invariant (constraint #8) makes the existing `convertToSkill` and AGENTS.md routing references work without ANY change. Do NOT introduce `name: python-senior` etc. — `description` carries the variant identity.
+  - **DRY**: the 13 variant wrappers are near-identical scaffolding. Resist any temptation to template-of-templates them — they are leaf templates and copy-paste-with-substitution is the right shape (Locality of Behavior; AHA / rule of three). Each variant body lives in exactly one file; no shared "stack specifics partials" between variants.
+  - File deletes — do them as part of this task so subsequent tasks never see them.
+  - The `tests/generator/react-ts-senior.test.ts` deletion is mandatory — the new test surface lives in T8's `stack-aware-agents.test.ts`. Without this delete, T8 fails (the template path it references no longer exists).
+  - Locale rules / `docsFile` / `mainBranch` / paths context unchanged — `implementer-core.md.ejs` consumes them via the `GeneratorContext` already.
 
-### Task 2 — Per-workspace stack detection [LOGIC]
+### T4 — Prompt flow + default-config wiring [UI] [LOGIC]
+
+- **Files**: `src/prompt/questions.ts`, `src/prompt/prompt-flow.ts`, `src/prompt/default-config.ts`, `src/prompt/ask-implementer-variant.ts` (new sibling, mirrors `ask-targets.ts` / `ask-governance.ts` pattern).
+- **Input**: existing `askAgentSelection({ isFrontend, isReactTs })` at `questions.ts:205` (the `isReactTs`-gated `react-ts-senior` row at line 213); existing `runPromptFlow` at `prompt-flow.ts:73–75`/`145` (computes `isReactTs` via `supportsReactTsStack`, threads `reactTsSenior` into `agents`); existing `createDefaultConfig` at `default-config.ts:28`/`85` (sets `reactTsSenior: isReactTs`); the new `getApplicableImplementerVariant` from T2 and `isFrontendFramework` from T1/`constants/frameworks.ts`.
+- **Output**:
+  - `askAgentSelection`: drop the `isReactTs` parameter (signature becomes `Readonly<{ isFrontend: boolean }>`); remove the spread that adds the `react-ts-senior` row; gate the `ui-designer` row by EXCLUDING it from the choices array when `!isFrontend` (hidden, not just unchecked — per Epic 13 spec).
+  - New `src/prompt/ask-implementer-variant.ts` exports `askImplementerVariant(detected: DetectedStack): Promise<ImplementerVariant>` — single-select `select` prompt (use `@inquirer/prompts` `select`); choices are the 13-variant enum with inline labels (`generic — Stack-agnostic baseline`, `typescript — Plain TS (Epic 17 body)`, `react-ts — React + TypeScript`, `node-ts-backend — Node TS backend (Nest/Express/Fastify/Hono)`, etc.); default is `getApplicableImplementerVariant(detected)`. Re-export from `questions.ts` (matches the existing pattern at lines 240–245).
+  - `runPromptFlow`:
+    - Drop the `const isReactTs = supportsReactTsStack(...)` line (line 74).
+    - Call `askImplementerVariant(detected)` after `askStack` and before `askAgentSelection({ isFrontend })` (so language/framework are confirmed first).
+    - Replace `reactTsSenior: selectedAgents.includes('reactTsSenior')` (line 145) with `implementerVariant: variantFromPrompt`.
+    - Remove `supportsReactTsStack` from the import list when no longer used.
+  - `createDefaultConfig`:
+    - Drop the `const isReactTs = supportsReactTsStack(...)` line (line 28).
+    - Replace `reactTsSenior: isReactTs` (line 85) with `implementerVariant: getApplicableImplementerVariant(detected)`.
+    - `uiDesigner: isFrontend` unchanged.
+- **Notes**:
+  - Maps to PRD E13.T5 + E13.T6.
+  - **DRY**: variant choice labels live ONLY inside `ask-implementer-variant.ts` for now. If/when another consumer needs the same human-readable labels, extract a `VARIANT_LABELS` const colocated with `IMPLEMENTER_VARIANTS` in `schema/stack-config.ts` (rule of three; do not pre-extract).
+  - Per the user's global rule, `askImplementerVariant` is a thin Inquirer wrapper but the *default-resolution* logic lives in `getApplicableImplementerVariant` (T2, with Jest tests in T8). No new Jest tests in this task — prompt flow is exercised by `tests/prompt/prompt-flow.test.ts` (kept as-is; updated only in T8 if its assertions reference `reactTsSenior`).
+  - File-size: `questions.ts` is currently 246 lines — adding ~30 lines for `askImplementerVariant` would push it past the 200-line cap. Hence the new sibling file (matches `ask-targets.ts`, `ask-governance.ts`, `ask-isolation.ts`). `ask-implementer-variant.ts` ≤80 lines.
+  - **No `any`** — explicit `ImplementerVariant` return type and explicit `Readonly<{ name: string; value: ImplementerVariant }>` choice element type.
+  - This task depends on T1+T2 (needs both the routing helper and the new framework constants).
+
+### T5 — Generator routing + build-context + types + AGENTS.md.ejs cleanup [LOGIC] [TEMPLATE]
+
+- **Files**: `src/generator/generate-agents.ts`, `src/generator/build-context.ts`, `src/generator/types.ts`, `src/templates/config/AGENTS.md.ejs`.
+- **Input**: existing `AGENT_DEFINITIONS` at `generate-agents.ts:12` (with the `reactTsSenior` row at line 15); existing `buildContext` at `build-context.ts:39, 78` (derives `hasReactTsSenior`); `types.ts:63` (`hasReactTsSenior: boolean` interface field); `AGENTS.md.ejs` lines 31–33 (`<% if (hasReactTsSenior) { -%>` row).
+- **Output**:
+  - `generate-agents.ts`:
+    - Remove the `reactTsSenior` row from `AGENT_DEFINITIONS`.
+    - Inside `generateAgents`, when `agent.key === 'implementer'`, resolve `templateFile = \`agents/implementer-variants/${config.agents.implementerVariant}.md.ejs\`` before `renderTemplate`. Output name stays `implementer.md` for both Claude and Codex paths.
+    - Add a fail-fast invariant: if the resolved variant template path does not exist on disk (use `fileExists` from `src/utils/`, or wrap `renderTemplate`'s missing-file error with a clearer message), throw `new Error(\`Missing implementer variant template: ${templateFile}\`)`. Catches schema/template drift early.
+    - `convertToSkill` path unchanged — produces `.codex/skills/implementer/SKILL.md` regardless of variant.
+  - `build-context.ts`: drop the `hasReactTsSenior` derivation (line 39) and the `hasReactTsSenior` field on the returned object (line 78). Drop `supportsReactTsStack` from the import list. Add a passthrough `implementerVariant: config.agents.implementerVariant` to the returned context.
+  - `types.ts`: drop `hasReactTsSenior: boolean` from the `GeneratorContext` interface (line 63). Add `implementerVariant: ImplementerVariant` so `AGENTS.md.ejs` can render the variant label. Import the type from `../schema/stack-config.js`.
+  - `AGENTS.md.ejs`:
+    - Delete the `<% if (hasReactTsSenior) { -%> | Implementation (React + TypeScript) | \`react-ts-senior\` | <% } -%>` block at lines 31–33.
+    - Change `| Implementation | \`implementer\` |` to render with an optional variant label: `| Implementation | \`implementer\`<% if (implementerVariant !== 'generic') { %> (<%= implementerVariant %> variant)<% } %> |`.
+- **Notes**:
+  - Maps to PRD E13.T7 + E13.T10.
+  - The static `AGENT_DEFINITIONS` shape stays but the implementer's `templateFile` is now a special case inline in `generateAgents`. Alternative considered: promote `templateFile` to `string | (cfg: StackConfig) => string`. Either is fine — pick the inline-special-case approach to keep the type signature simple (Ousterhout's "deep modules"; no premature abstraction).
+  - The fail-fast invariant covers Epic 13's startup-error requirement (E13.T7 acceptance criterion).
+  - **DRY**: the `(${variant} variant)` rendering pattern lives ONLY in AGENTS.md.ejs for now. If/when another template needs the same label, extract a `partials/variant-label.md.ejs` partial.
+  - **No `any`** — `templateFile: string` retained; the dynamic resolution returns a `string`.
+  - File-size: `generate-agents.ts` grows from 47 to ~70 lines (well under 200); `build-context.ts` shrinks; `types.ts` net-zero (one field swapped).
+  - Depends on T2 (needs `ImplementerVariant`) and T3 (the variant template files must exist for the fail-fast check to pass during normal runs).
+
+### T6 — Update-command stale-file safe delete [LOGIC]
+
+- **Files**: `src/cli/update-command.ts`, `src/installer/safe-delete-stale-files.ts` (new), `src/installer/index.ts` (export the new helper).
+- **Input**: existing `updateCommand` (`update-command.ts:28`); existing `backupExistingFiles` from `src/installer/index.ts` (Epic 7 backup path); existing `confirm` from `@inquirer/prompts`; existing `fileExists` from `src/utils/`; the shape `GeneratedFile` already accepted by `backupExistingFiles`.
+- **Output**:
+  - New helper `safeDeleteStaleFiles({ projectRoot, candidates, suppressed })` that for each candidate path:
+    1. Returns early if `!await fileExists(absolutePath)`.
+    2. Calls `backupExistingFiles(projectRoot, [{ path, content: '' }])` so a copy lands in `.agents-workflows-backup/` per Epic 7 semantics. Verify by reading `src/installer/backup.ts` first — adjust the call shape if the helper signature differs.
+    3. If `suppressed === false`, asks `await confirm({ message: \`Removing stale file replaced by implementer variant: ${path}. Delete?\`, default: false })`. If user answers no, log a warning via `logger.warn` and `continue`.
+    4. If `suppressed === true` OR user answered yes, `await fs.rm(absolutePath)` and `logger.info(\`Removed stale: ${path}\`)`.
+  - Exported const `STALE_IMPLEMENTER_VARIANT_FILES = ['.claude/agents/react-ts-senior.md', '.codex/skills/react-ts-senior/SKILL.md'] as const` from the new file.
+  - `updateCommand`: invoke `safeDeleteStaleFiles({ projectRoot, candidates: STALE_IMPLEMENTER_VARIANT_FILES, suppressed: promptsSuppressed })` AFTER the diff has been computed and the user has confirmed `proceed`, INSIDE the `withSafetySession` callback, immediately after `backupExistingFiles(projectRoot, changedFiles)` and BEFORE `writeGeneratedFiles`.
+- **Notes**:
+  - Maps to PRD E13.T8.
+  - **Constraint #5 — never hard-delete without confirmation; `--yes` skips the prompt but the backup still runs.** The `suppressed` flag controls only the prompt, never the backup. This is the Epic 7 safe-delete contract.
+  - Idempotent — if the files don't exist, it's a no-op. `update --yes` against a fresh tree produces zero log output for this helper.
+  - **DRY**: the const list is the single source for "files Epic 13 superseded." If Epic 8 adds tier-2 variant supersessions, append to this list, never duplicate the helper.
+  - Per the user's global rule, `safeDeleteStaleFiles` is pure logic above the FS layer — Jest tests for it land in T8 (uses the temp-dir pattern from `tests/installer/backup.test.ts`; verify which by reading that file before writing the test).
+  - File-size: `update-command.ts` is currently 158 lines; adding 1–2 lines stays under cap. `safe-delete-stale-files.ts` ≤80 lines.
+  - **No `any`** — explicit `Readonly<{ projectRoot: string; candidates: readonly string[]; suppressed: boolean }>` param.
+  - Depends on T3 (the templates the stale files are being replaced by must exist) but is otherwise independent of T4/T5.
+
+### T7 — README stack matrix + migration paragraph + remove every `react-ts-senior.md` reference [DOCS] [PARALLEL]
+
+- **Files**: `README.md` (only). Do NOT touch `PRD.md` — Phase 4 of `/workflow-plan` stamps the Epic 13 header.
+- **Input**: existing README.md "Generated agents" table at lines 91–105 (currently lists `react-ts-senior` as row 3); existing "Supported stacks" table at lines 79–89; line 12 in the "What it does" bullet list (also references `react-ts-senior`); the 13-variant enum and routing rules from T2.
+- **Output**:
+  - Drop the `react-ts-senior` row from the "Generated agents" table.
+  - Replace the `implementer` row's role text with: `Primary code writing agent — one of 13 stack-aware variants chosen at config time` (model column unchanged).
+  - Update line 12 ("Up to 10 specialized agents: ...") to remove `react-ts-senior` and adjust the count to 9.
+  - Add a NEW section `### Stack matrix` immediately after "Generated agents" that renders a table with columns `Detected stack`, `Variant`, `Notes`. Rows cover every variant: `(language, framework)` → variant value. Mobile (Expo, React Native) explicitly noted as routing to `react-ts`. Polyglot/unknown row maps to `generic`.
+  - Add a one-paragraph migration note immediately under the Stack matrix: "The emitted filename is always `.claude/agents/implementer.md` and `.codex/skills/implementer/SKILL.md`; the active variant is recorded in `.agents-workflows.json` under `agents.implementerVariant`. Existing manifests carrying the legacy `reactTsSenior: true` field migrate automatically on first `update` to `implementerVariant: 'react-ts'`; any pre-existing `.claude/agents/react-ts-senior.md` and `.codex/skills/react-ts-senior/SKILL.md` are removed via the Epic 7 safe-delete confirmation flow (`--yes` skips the prompt; a backup is always written first)."
+  - Grep README for any other `react-ts-senior` reference and replace with `implementer` variant language.
+- **Notes**:
+  - Maps to PRD E13.T11.
+  - **DRY**: do not duplicate the variant list — the Stack matrix table is the single doc reference. The Generated-agents table refers users to the matrix.
+  - Constraint #6: the README must contain ZERO `react-ts-senior` references after this task, EXCEPT inside the migration paragraph as `react-ts-senior.md` / `reactTsSenior: true` legacy citations. This is the only allowed mention.
+  - Stack matrix LOC: keep the table ≤25 rows, ~40 lines total including paragraph.
+  - This task can be authored in parallel with T6 — disjoint files. Both must merge before T8.
+  - No code changes; no Jest tests. Excluded from the test-writer routing.
+
+### T8 — Stack-aware agents test suite + 8 new fixtures + 1 fixture rename + per-helper unit tests [TEST]
 
 - **Files**:
-  - `src/detector/detect-workspace-stack.ts` (**new** — ≤120 lines).
-  - `src/detector/detect-stack.ts` (edit — aggregate workspace stacks and `languages`).
-  - `src/detector/types.ts` (edit — add `DetectedStack.languages: readonly string[]` field; add `WorkspaceStackDetection` interface for the in-memory aggregate before schema parsing).
-  - `src/detector/index.ts` (edit — export `detectWorkspaceStack` and `WorkspaceStackDetection`).
-  - `src/cli/init-command.ts` (edit — `rootMonorepoConfig` lines 93–100 must build `WorkspaceStack[]` from `detected.monorepo.workspaces` paths via `detectWorkspaceStack`; `installWorkspaces` line 102 must consume the enriched per-workspace stacks rather than re-running detection).
-- **Input**: PRD E12.T2 (lines 2581–2585). Existing detector pipeline in `detect-stack.ts:31-91`. Existing `detectMonorepo` (Task 1).
-- **Output**:
-  - `detectWorkspaceStack({ workspacePath })` runs the same pipeline as `detectStack` but **scoped to a workspace directory**: `detectLanguage`, `detectFramework`, `detectTestFramework`, `detectLinter`, `detectFormatter`, `detectPackageManager`, `detectE2e`, `detectAuth`, `detectI18n`, plus `resolveCommands` reuse via `src/prompt/commands.ts`. Returns `WorkspaceStackDetection { path, language, runtime, framework, packageManager, commands: { typeCheck, test, lint, build } }`.
-  - `detectStack` now: when `monorepo.workspaces.length > 0`, `Promise.all` over `detectWorkspaceStack` per workspace path and aggregate `languages: readonly string[]` = distinct non-null lowercased language values across `[rootLanguage, ...workspaceLanguages]`.
-  - `DetectedStack` gains `languages: readonly string[]` and `workspaceStacks: readonly WorkspaceStackDetection[]` (empty arrays when monolingual). Existing single-language root path is preserved (acceptance bullet 5).
-  - `init-command.ts:93-100` rewritten to call `detectStack` once at root, then map `detected.workspaceStacks` into the schema-shaped `WorkspaceStack[]` — no second detection pass. `installWorkspaces` (line 102) consumes that pre-detected list.
-  - Satisfies acceptance bullet 1 (per-workspace tooling) and the per-task done-when (TS+Rust+Python fixture resolves three distinct workspace stacks).
+  - New: `tests/generator/stack-aware-agents.test.ts`.
+  - New fixtures (each ≤30 LOC, total <300 LOC): `tests/fixtures/backend-go/`, `tests/fixtures/backend-rust/`, `tests/fixtures/backend-java-spring/`, `tests/fixtures/backend-dotnet/`, `tests/fixtures/frontend-vue/`, `tests/fixtures/frontend-angular/`, `tests/fixtures/frontend-svelte/`, `tests/fixtures/backend-node-nestjs/`. Plus a fixture rename: `tests/fixtures/python-fastapi/` → `tests/fixtures/backend-python-fastapi/` (use `git mv` to preserve history). Update the only consumer (`tests/detector/__snapshots__/` if any) — verify via grep before renaming.
+  - New tests for the small pure helpers from T1/T2/T6: `tests/detector/detect-jvm-framework.test.ts`, `tests/detector/detect-dotnet-framework.test.ts`, `tests/generator/implementer-routing.test.ts`, `tests/installer/safe-delete-stale-files.test.ts`. Existing `tests/schema/stack-config.test.ts` extended (or sibling `tests/schema/stack-config-migration.test.ts` added) to cover the legacy-manifest preprocess.
+- **Input**: the captured byte-identical baseline from the pre-implementation checklist (snapshot file `tests/generator/__snapshots__/stack-aware-agents.test.ts.snap` for the `generic` variant); the 13 variant templates from T3; the fixtures, helpers, and `STALE_IMPLEMENTER_VARIANT_FILES` from prior tasks; the existing `findFile` / `getContent` / `makeStackConfig` / `makeDetectedStack` helpers in `tests/generator/fixtures.ts`.
+- **Output** — `stack-aware-agents.test.ts` MUST assert all of the following, one `describe` per concern:
+  - **(a) Variant routing**: `getApplicableImplementerVariant` returns the expected enum value for each fixture's `DetectedStack`. One assertion per fixture covering every variant except `typescript`/`javascript` (those need synthetic `framework=null` detected stacks built inline via `makeDetectedStack`).
+  - **(b) `createDefaultConfig` wiring**: each fixture's `createDefaultConfig(detect(fixturePath))` produces `agents.implementerVariant === <expected>` and DOES NOT contain a `reactTsSenior` key (`Object.keys(config.agents)` check).
+  - **(c) Filename invariant**: across every fixture × `targets ∈ {claudeCode, codexCli}`, exactly one `implementer.md` (or `.codex/skills/implementer/SKILL.md`) appears in the generated file list, and zero file paths match `/-senior\.md$/` or `/\/react-ts-senior\//`.
+  - **(d) Variant body content**: the Python fixture's `implementer.md` contains `async def`/`Pydantic`/`pytest`; the Rust fixture's contains `Result`/`?`/`cargo test`; the Go fixture's contains `context.Context`/`go test`; the Spring fixture's contains `@RestController`/`JUnit`; the .NET fixture's contains `WebApplicationFactory`/`xUnit`; the React-TS fixture's body is a superset of today's `react-ts-senior.md` content (assert `Readonly<`, `useCallback`, `useMemo`, `Component & Hook Details` substrings — same anchors as the deleted test). The Vue/Angular/TypeScript/JavaScript fixtures' bodies contain the Epic-17 placeholder string `Detailed body (citation-backed, top-5 anti-patterns) lands in Epic 17.`.
+  - **(e) `ui-designer` gating**: `ui-designer.md` is ABSENT from every backend fixture's generated file list and PRESENT for every frontend fixture; the backend AGENTS.md emitted text does not contain the `ui-designer` row.
+  - **(f) Legacy manifest migration**: `manifestSchema.parse({ ...validManifest, config: { ...validConfig, agents: { ...rest, reactTsSenior: true /* no implementerVariant */ } } })` succeeds, `result.config.agents.implementerVariant === 'react-ts'`, and `'reactTsSenior' in result.config.agents === false`. Plus a defensive case: a fake `fooSenior: true` is silently stripped, `barNonSenior: true` is preserved.
+  - **(g) Generic byte-identical**: the rendered `implementer.md` for the existing `nextjs-app` fixture under `agents.implementerVariant: 'generic'` matches the captured baseline snapshot exactly (use Jest `toMatchSnapshot` against the pre-T3 baseline file checked in earlier).
 - **Notes**:
-  - **Two-layer model (must be explicit so it isn't conflated):** the **detector layer** (`MonorepoInfo.workspaces: string[]`) carries raw relative paths; the **schema layer** (`StackConfig['monorepo'].workspaces: WorkspaceStack[]` from Task 3) carries the enriched per-workspace stacks. `detectStack` is the bridge: it produces `DetectedStack.workspaceStacks: WorkspaceStackDetection[]`, and `init-command.ts → rootMonorepoConfig` translates that into the schema shape.
-  - DRY: `detectWorkspaceStack` MUST reuse the existing detector functions imported by `detect-stack.ts` — do **not** copy detection logic. The shared piece is the body of `detect-stack.ts:31-91` minus `detectMonorepo` / `detectAiAgents` / `detectDocsFile` / `detectRoadmapFile` (those are root-only concerns). Extract a new private helper `runStackPipeline(projectRoot)` in `detect-stack.ts` that both `detectStack` (root) and `detectWorkspaceStack` call. This avoids code duplication.
-  - `detectWorkspaceStack` signature: **single-object parameter** `{ workspacePath: string }` (>2 params anticipated when adding `rootScripts` later). Matches CLAUDE.md "Functions with more than 2 parameters must use a single object parameter."
-  - `commands.{typeCheck,test,lint,build}` per workspace: reuse `resolveCommands` from `src/prompt/commands.ts` — do not invent a parallel command resolver. Read the workspace's `package.json` scripts (or `Cargo.toml` `[package]` for Rust, etc.) and feed them to the existing helper.
-  - No `any`. `WorkspaceStackDetection` is a discriminated union not needed; a plain interface suffices.
-  - File cap: new file ≤120 lines; if `detect-stack.ts` exceeds 200 after edits, split `runStackPipeline` into its own file.
-  - Windows-aware: every workspace path computed with `path.join(projectRoot, relativePath)` — never hardcoded `/`.
-
-### Task 3 — Schema update for per-workspace stacks and languages [SCHEMA]
-
-- **Files**:
-  - `src/schema/stack-config.ts` (edit — extend `monorepo.workspaces`, add `WorkspaceStack` schema, add top-level `languages`).
-- **Input**: PRD E12.T3 (lines 2587–2591). Existing schema lines 26–27 (`safeCommand`, `safeCommandNullable`), 177–181 (`monorepo` object).
-- **Output**:
-  - New private schema constant `workspaceStackSchema` defined alongside the existing block (just before `stackConfigSchema`):
-    ```ts
-    const workspaceStackSchema = z.object({
-      path: safeProjectPath,
-      language: z.string(),
-      runtime: z.string(),
-      framework: z.string().nullable().default(null),
-      packageManager: z.string(),
-      commands: z.object({
-        typeCheck: safeCommandNullable,
-        test: safeCommand,
-        lint: safeCommandNullable,
-        build: safeCommandNullable,
-      }),
-    });
-    ```
-  - `monorepo` object (lines 177–181) becomes:
-    ```ts
-    monorepo: z.object({
-      isRoot: z.boolean(),
-      tool: z.enum(['pnpm','npm','yarn','lerna','turbo','nx','cargo','go-work','uv','poetry','dotnet-sln','cmake']).nullable(),
-      workspaces: z.array(workspaceStackSchema).default([]),
-    }).nullable().default(null),
-    ```
-  - **New top-level field** (sibling of `stack` and `monorepo`, NOT nested inside `monorepo`): `languages: z.array(z.string()).default([])`.
-  - Exported types: `WorkspaceStack = z.infer<typeof workspaceStackSchema>`.
-  - Satisfies acceptance bullet 5 (legacy `workspaces: string[]` migrating: legacy manifests with `monorepo.workspaces: ["packages/foo"]` now fail strict parse because the schema expects objects — so the schema MUST also accept legacy `string[]` via a `z.preprocess` that maps `string` items to `{ path: s, language: '', runtime: '', framework: null, packageManager: '', commands: { typeCheck: null, test: '', lint: null, build: null } }` — or, simpler, default `workspaces: []` and let migration happen in the manifest loader. **Decision: default `[]` and re-derive workspaces from detection on load.** The Epic 7 manifest loader already calls `detectStack` so legacy manifests cleanly upgrade.
-- **Notes**:
-  - **DRY: reuse `safeCommand` / `safeCommandNullable` (lines 26–27) verbatim.** Do NOT introduce a separate validator for workspace commands. Workspace commands MUST pass the same `SAFE_COMMAND_RE` (line 14) as root commands (PRD: "No broadening of the `SAFE_COMMAND_RE` pattern").
-  - **Top-level placement:** `languages` is a **sibling** of `stack` and `monorepo` at the top level of `stackConfigSchema`, NOT nested under `monorepo`. PRD §Epic 12 line 2584 says "aggregates a top-level `languages: string[]`".
-  - **Backward compatibility (acceptance bullet 5):**
-    - JS-only monorepos: schema still parses today's manifests because `workspaces: []` is the default. The `monorepoTool` enum is widened additively (no removed values).
-    - Monolingual repos: `monorepo` stays `null`; `languages` defaults to `[]`. No diff in serialized JSON for monolingual projects.
-    - Legacy manifests with `monorepo.workspaces: string[]` deserialize after `init`'s `detectStack` re-runs and produces the enriched shape; the manifest is rewritten on save. Add one Zod test asserting an empty-array `monorepo.workspaces` parse succeeds against the new schema.
-  - No `any`. `WorkspaceStack` is exported as `z.infer<typeof workspaceStackSchema>` — no manual interface duplicate.
-  - File cap: `stack-config.ts` is currently 192 lines. After this edit it must stay ≤200. If it would exceed, extract `workspaceStackSchema` to a sibling file `src/schema/workspace-stack.ts` and re-export from `stack-config.ts`.
-
-### Task 4 — New partial `polyglot-monorepo.md.ejs` and wire into 6 agent templates [UI] [PARALLEL]
-
-- **Files**:
-  - `src/templates/partials/polyglot-monorepo.md.ejs` (**new**, ≤80 lines per PRD).
-  - `src/templates/agents/architect.md.ejs` (edit — insert include after line 23, the last existing partial-include before "## Planning protocol").
-  - `src/templates/agents/implementer.md.ejs` (edit — insert include after line 41, the last `tdd-discipline` include).
-  - `src/templates/agents/code-reviewer.md.ejs` (edit — insert include after line 26, after `untrusted-content`).
-  - `src/templates/agents/code-optimizer.md.ejs` (edit — insert include after line 25, after `performance`).
-  - `src/templates/agents/test-writer.md.ejs` (edit — insert include after line 19, after `tdd-discipline`).
-  - `src/templates/agents/reviewer.md.ejs` (edit — insert include after line 19, after `subagent-delegation`).
-- **Input**: PRD E12.T4 (lines 2593–2597), §1.18 paste-ready snippet (PRD lines 869–903 — render verbatim inside `<polyglot_monorepo>` ... `</polyglot_monorepo>` tags).
-- **Output**:
-  - New partial body = the **exact** §1.18 7-bullet snippet wrapped in a Markdown heading `## Polyglot monorepo navigation`. Contains no logic except a single `<% if (polyglot) { -%>` guard.
-  - **Render predicate** passed to each `include`: `polyglot = monorepo && monorepo.workspaces.length > 1 || (languages && languages.length >= 2)`. Compute it once in `src/generator/build-context.ts` (new field `isPolyglot: boolean` on `GeneratorContext`) so all templates share one predicate (DRY). Pass it into the include via local context binding `<%- include('../partials/polyglot-monorepo.md.ejs', { polyglot: isPolyglot }) %>`.
-  - Satisfies acceptance bullet 2 (rendering in polyglot fixtures).
-- **Notes**:
-  - **PARALLEL with Task 5** — different files, no overlap.
-  - DRY: a **single** `isPolyglot` predicate in `build-context.ts` — do not recompute in each template. Import-time data flow: `detectStack` aggregates `languages` → `init-command.ts` writes them into `StackConfig` (T3 schema field) → `buildContext` derives `isPolyglot` from `config.languages.length >= 2 || (config.monorepo?.workspaces.length ?? 0) > 1`.
-  - **No new partials beyond this one** — Task 5 cross-references only.
-  - File cap: partial ≤80 lines (PRD constraint). Each agent template currently 50–121 lines; adding one include line keeps each well under 200.
-  - The wrapping `<polyglot_monorepo>` ... `</polyglot_monorepo>` XML-style tags follow the existing partial convention (cf. `definition-of-done.md.ejs`, `fail-safe.md.ejs`, `tool-use-discipline.md.ejs`).
-  - `architect.md.ejs` already enumerates planning rules — the partial reinforces them but does NOT duplicate them; it adds the workspace-routing layer.
-  - Update `src/templates/agents/architect.md.ejs` Pre-implementation Checklist Block (lines 56–70) to add a checkbox `- [ ] Cross-workspace plan: every touched workspace's DoD enumerated` **only when** `<% if (isPolyglot) { %>`. Keep monolingual snapshots byte-identical.
-
-### Task 5 — Cross-reference workspace routing in three existing partials [UI] [PARALLEL]
-
-- **Files**:
-  - `src/templates/partials/definition-of-done.md.ejs` (edit — currently 16 lines; add ≤4 conditional lines).
-  - `src/templates/partials/fail-safe.md.ejs` (edit — currently 15 lines; add ≤3 conditional lines).
-  - `src/templates/partials/tool-use-discipline.md.ejs` (edit — currently 14 lines; add ≤3 conditional lines).
-- **Input**: PRD E12.T5 (lines 2599–2603). Existing partial bodies (read above).
-- **Output**:
-  - `definition-of-done.md.ejs`: under bullet 4 ("The specific acceptance criterion is verified end-to-end."), add `<% if (isPolyglot) { -%>` block: "DoD gates run **per touched workspace** — type-check, lint, and the narrowest relevant test in each workspace's toolchain (see polyglot partial)."
-  - `fail-safe.md.ejs`: append a `<% if (isPolyglot) { -%>` block after the existing `<fail_safe>` body: "Before any command, run `pwd` and walk upward to the nearest manifest. Use that workspace's commands — never the repo root's."
-  - `tool-use-discipline.md.ejs`: append a `<% if (isPolyglot) { -%>` line under "When doing N independent reads/searches…": "Per-workspace searches/reads fan out as parallel tool calls — one per workspace."
-  - Satisfies acceptance bullet 2 (cross-reference in polyglot fixtures only) and PRD task done-when (monolingual snapshots unchanged).
-- **Notes**:
-  - **PARALLEL with Task 4** — disjoint file set.
-  - DRY: cross-reference the §1.18 snippet (link by name "polyglot partial") — do **not** duplicate the 7-bullet body. The polyglot partial holds the full content; these three add only routing reminders.
-  - All conditional blocks gated by the same `isPolyglot` predicate from Task 4 (single source of truth).
-  - File cap: each edited partial stays ≤30 lines after edits (well under 200).
-  - Existing monolingual snapshots in `tests/generator/__snapshots__/` MUST remain byte-identical — the `<% if (isPolyglot) { -%>` guard ensures this. Task 8 adds an explicit assertion.
-
-### Task 6 — Nested per-workspace `AGENTS.md` + root `## Workspaces` table [LOGIC]
-
-- **Files**:
-  - `src/generator/generate-root-config.ts` (edit — emit nested AGENTS.md and update root AGENTS.md / CLAUDE.md path).
-  - `src/templates/config/AGENTS.md.ejs` (edit — replace existing line 15 include of `workspaces.md.ejs` with the upgraded version).
-  - `src/templates/config/CLAUDE.md.ejs` (edit — same change at line 15).
-  - `src/templates/partials/workspaces.md.ejs` (edit — replace 12-line bullet list with the `## Workspaces` markdown table — see PRD bullet "root table lists every workspace").
-  - `src/templates/config/workspace-AGENTS.md.ejs` (**new** — minimal template rendering `language` + `packageManager` + `commands.{typeCheck,test,lint,build}` for one workspace).
-- **Input**: PRD E12.T6 (lines 2605–2609). Existing `generateRootConfig` (`src/generator/generate-root-config.ts:15-71`). Existing `writeFileSafe` four-status contract.
-- **Output**:
-  - **Root table:** `workspaces.md.ejs` upgraded to render a Markdown table with columns `path | language | package manager | typeCheck | test | lint | build` for each `workspace` in `monorepo.workspaces` (`WorkspaceStack[]`). Conditional on `monorepo && monorepo.workspaces.length > 0 && monorepo.isRoot`. Replaces today's bullet-list output. AGENTS.md.ejs / CLAUDE.md.ejs already include this partial at line 15 — no extra wiring there.
-  - **Nested AGENTS.md:** `generateRootConfig` iterates `config.monorepo?.workspaces ?? []`; for each workspace whose `language !== config.stack.language` (case-insensitive), render `workspace-AGENTS.md.ejs` with that workspace's data and push `{ path: <workspacePath>/AGENTS.md, content }` onto `files`. The shared `writeFileSafe` (consumed via `installer/write-files.ts`) handles the never-clobber-hand-edits semantics — no separate code path needed.
-  - **Root table renderer helper:** new function `renderWorkspaceTableRow({ workspace })` extracted (single-object param per CLAUDE.md rule) into `src/generator/workspace-table.ts` if `workspaces.md.ejs` exceeds inline-EJS readability. Otherwise inline.
-  - Satisfies acceptance bullet 3 (nested `AGENTS.md` per differing-language workspace) and bullet 2 (root table).
-- **Notes**:
-  - **DRY: reuse the existing `workspaces.md.ejs` partial — do not create a parallel partial** (per user instruction "No new partials beyond the one explicitly required"). The new file `workspace-AGENTS.md.ejs` is a **config template** under `src/templates/config/`, not a partial — explicitly allowed by PRD E12.T6 Files list and outside the partial cap.
-  - **DRY: reuse `writeFileSafe`** (Epic 7 contract) for all nested writes. The default behavior — first-create writes; existing-equal no-op; existing-different prompts/respects sticky/override — is exactly what acceptance bullet 3 requires ("re-running `init` preserves hand-edited nested files").
-  - Functions with >2 params use a single object parameter: `renderWorkspaceTableRow({ workspace })`, `emitNestedAgentsFiles({ config, context, files })`.
-  - File cap: `generate-root-config.ts` is currently 71 lines. After this task it must stay ≤200 — add a private helper `emitNestedAgentsFiles` and call it after the existing `agentsMd` push.
-  - Windows-aware: nested `AGENTS.md` paths use `path.join(workspace.path, 'AGENTS.md')` then forward-slash normalize (`split(path.sep).join('/')`) for the manifest's `files: string[]` — the manifest stores POSIX-style paths regardless of host OS.
-  - Comparison `language !== config.stack.language` is case-insensitive (`.toLowerCase()`).
-  - `workspace-AGENTS.md.ejs` body (≤30 lines): heading `# AGENTS.md (workspace: <%= workspace.path %>)`, a `<!-- agents-workflows:managed-start -->` marker, language/runtime line, package manager line, DoD commands list, `<!-- agents-workflows:managed-end -->`. Mirrors the marker convention from `src/templates/config/AGENTS.md.ejs` for Epic 7 merge compatibility.
-
-### Task 7 — Prompt flow: confirm detected workspaces (multi-select + non-interactive flags) [LOGIC]
-
-- **Files**:
-  - `src/prompt/questions.ts` (edit — add `askWorkspaceSelection({ detected })` exporting a `checkbox` of detected workspaces).
-  - `src/prompt/prompt-flow.ts` (edit — call new question after `askInstallScope` resolves to non-`root`; persist the result into `monorepo.workspaces`).
-  - `src/prompt/install-scope.ts` (edit — extend the existing prompt; do NOT introduce a parallel scope handler).
-  - `src/cli/init-command.ts` (edit — `installWorkspaces` (line 102) iterates the user-selected subset, not the full `detected.monorepo.workspaces`).
-- **Input**: PRD E12.T7 (lines 2611–2615). Existing prompt-flow shape (`src/prompt/prompt-flow.ts:43-163`). Existing `--yes` / `--no-prompt` / `--merge-strategy` semantics from Epic 7 (`InitCommandOptions`).
-- **Output**:
-  - New `askWorkspaceSelection({ detected, isPolyglot })` in `questions.ts`: returns `string[]` of selected workspace paths via `checkbox` from `@inquirer/prompts` (existing dep), pre-checked = all detected. Display label per row: `<path> — <language>` so the user sees what they're (de)selecting.
-  - `prompt-flow.ts` invokes it only when (a) `monorepo.workspaces.length > 0` AND (b) `options.yes !== true && options.noPrompt !== true`. With `--yes`, keep all detected workspaces. With `--no-prompt`, also keep all detected workspaces but skip the confirmation prompt. With neither, ask the user.
-  - User-deselected workspaces: their paths are filtered out before the schema-shaping in `init-command.ts:rootMonorepoConfig`. No nested `AGENTS.md` is emitted, no row in the root table, no per-workspace pass in `installWorkspaces`.
-  - Satisfies acceptance bullet 1 (workspace resolution honors user selection) and PRD done-when.
-- **Notes**:
-  - **DRY: extend `askInstallScope`** (`src/prompt/install-scope.ts:6`) — do not parallel-implement scope vs. workspace selection. Add a follow-up `checkbox` after the `select` returns `'per-package'` or `'both'`.
-  - **DRY: reuse `parseSafetyFlags` and `parseNonInteractiveFlags`** from `src/cli/`. Do NOT introduce a third flag-parsing helper.
-  - Functions with >2 params: `askWorkspaceSelection({ detected, isPolyglot })` is single-object-param.
-  - No `any`. Return type `Promise<string[]>` (paths).
-  - File cap: `questions.ts` is currently 245 lines, **already over the 200-line guideline**. **DO NOT enlarge it further** — put `askWorkspaceSelection` in a new file `src/prompt/ask-workspace-selection.ts` and re-export from `questions.ts` (mirrors the existing `ask-targets.ts` / `ask-isolation.ts` / `ask-non-interactive.ts` pattern at lines 240–244). Flag this 245-line file as a separate cleanup target in the post-implementation checklist.
-  - `prompt-flow.ts` is currently 163 lines — adding the call must keep it ≤200; if not, extract a `applyWorkspaceSelection` helper.
-  - Windows-aware: paths from `checkbox` choices are POSIX-style (already normalized by `expandWorkspacePatterns`).
-
-### Task 8 — Jest fixtures and snapshot coverage [TEST]
-
-- **Files**:
-  - `tests/fixtures/monorepo-cargo/Cargo.toml` (**new**) + `tests/fixtures/monorepo-cargo/crates/foo/Cargo.toml` + `tests/fixtures/monorepo-cargo/crates/foo/src/lib.rs`.
-  - `tests/fixtures/monorepo-go-work/go.work` (**new**) + `tests/fixtures/monorepo-go-work/svc/go.mod` + `tests/fixtures/monorepo-go-work/svc/main.go`.
-  - `tests/fixtures/monorepo-uv/pyproject.toml` (**new**) + `tests/fixtures/monorepo-uv/packages/foo/pyproject.toml` + `tests/fixtures/monorepo-uv/packages/foo/src/__init__.py`.
-  - `tests/fixtures/monorepo-dotnet-sln/solution.sln` (**new**) + `tests/fixtures/monorepo-dotnet-sln/Foo/Foo.csproj`.
-  - `tests/fixtures/monorepo-cmake/CMakeLists.txt` (**new**) + `tests/fixtures/monorepo-cmake/foo/CMakeLists.txt` + `tests/fixtures/monorepo-cmake/foo/main.cpp`.
-  - `tests/fixtures/monorepo-hybrid-pnpm-python-rust/` (**new** directory tree) — `pnpm-workspace.yaml` + `apps/web/package.json` + `services/api/pyproject.toml` + `crates/core/Cargo.toml` (and minimal `src/`/`lib.rs` placeholders, ≤2 lines each).
-  - `tests/detector/detect-monorepo.test.ts` (edit — extend with cases for the six new tools; reuse the existing `mkdtemp` pattern at lines 60–73).
-  - `tests/detector/detect-workspace-stack.test.ts` (**new**).
-  - `tests/generator/generate-workspace-agents.test.ts` (**new**).
-  - `tests/schema/stack-config.test.ts` (edit — add tests asserting `workspaces` defaults `[]`, `languages` defaults `[]`, `safeCommand` enforced on workspace commands).
-- **Input**: PRD E12.T8 (lines 2617–2621). Existing fixtures convention from `tests/fixtures/{nextjs-app,python-fastapi,react-native-expo}/` (single manifest). Existing `tests/detector/detect-monorepo.test.ts` `mkdtemp` pattern (lines 28–73).
-- **Output**:
-  - Six new fixtures under `tests/fixtures/`. Total LOC < 200 across all six (PRD constraint).
-  - Tests assert: workspace resolution (Task 1), per-workspace stack output (Task 2), polyglot partial rendering present (Task 4) and absent in monolingual fixtures, three existing partials' polyglot reminders gated correctly (Task 5), nested `AGENTS.md` emission with correct content (Task 6), root `## Workspaces` table contents (Task 6), `writeFileSafe` round-trip preserving hand edits (Task 6 / Epic 7), and prompt flow `--yes` keeps all + deselected workspaces produce no nested files (Task 7 — assert via direct call to the `askWorkspaceSelection`-replacing fake).
-  - Satisfies acceptance bullets 1, 2, 3, 4, 5 (PRD §Epic 12 lines 2569–2573).
-- **Notes**:
-  - **Convention deviation flagged:** existing fixtures (`nextjs-app/`, `python-fastapi/`, `react-native-expo/`) are single-manifest directories. Five of the six new fixtures (Cargo / go.work / uv / .sln / CMake) carry a root manifest **plus** at least one nested workspace dir with its own manifest — this is a structural deviation justified by the polyglot acceptance bullet (each fixture must produce a workspace resolution against its manifest format). The hybrid fixture (`monorepo-hybrid-pnpm-python-rust/`) deviates further — three nested workspace dirs with three different manifests in one tree. State this deviation in the test file headers.
-  - **DRY: reuse the `makeRoot` / `mkdtemp` helper pattern** from `tests/detector/detect-monorepo.test.ts:36-40` — copy the same shape into the new test files; if it ends up in three test files, extract to `tests/detector/test-helpers.ts` (already exists). Reuse `findFile` / `getContent` from `tests/generator/fixtures.ts:16-32` for the generator tests.
-  - **DRY: reuse `makeStackConfig` and `makeDetectedStack`** from `tests/generator/fixtures.ts:51-80` — extend with `monorepo` overrides; do not duplicate setup boilerplate.
-  - **Backward-compat assertions (mandatory per acceptance bullet 5):**
-    - One test loads a legacy `.agents-workflows.json` fixture with `monorepo: { isRoot: true, tool: 'pnpm', workspaces: ['apps/web'] }` (legacy `string[]`) and confirms it parses without error after the schema treats `workspaces` as defaulting to `[]` (manifest is reseeded by `init`).
-    - One test confirms a monolingual fixture (`tests/fixtures/nextjs-app/`) produces `languages: []` and `monorepo: null` and **no** `polyglot-monorepo.md.ejs` rendering.
-    - One snapshot test confirms the three Task-5 partials are byte-identical for a monolingual config vs. their pre-Epic-12 baseline.
-  - All new test files use single-object parameters where helper signatures exceed 2 params.
-  - Total fixture content cap < 200 LOC.
-  - File cap: each new test file ≤200 lines.
-
-## Tags
-
-- `[UI]` template-rendering changes (T4, T5).
-- `[LOGIC]` runtime / detection / generator code (T1, T2, T6, T7).
-- `[SCHEMA]` Zod schema changes (T3).
-- `[TEST]` Jest fixtures + tests (T8).
-- `[PARALLEL]` independent of other tasks (T4 and T5 only — disjoint file sets, both depend on T3 but not on each other).
-
-## Dependency order
-
-```text
-T1 ──> T2 ──> T3 ──> T4 [PARALLEL with T5]
-                ├──> T5 [PARALLEL with T4]
-                └──> T6
-       T2 ──────────> T7
-T1..T7 ───────────────> T8
-```
+  - Maps to PRD E13.T9.
+  - Each new fixture ships only the minimal manifest needed for detection: `backend-go` = `go.mod` + one `.go` file; `backend-rust` = `Cargo.toml`; `backend-java-spring` = `pom.xml` with `<artifactId>spring-boot-starter-web</artifactId>`; `backend-dotnet` = `Project.csproj` with `<PackageReference Include="Microsoft.AspNetCore.App" />`; `frontend-vue` = `package.json` with `vue` dep; `frontend-angular` = `package.json` with `@angular/core`; `frontend-svelte` = `package.json` with `@sveltejs/kit`; `backend-node-nestjs` = `package.json` with `@nestjs/core`. Stay strictly under 30 LOC per fixture.
+  - **DRY**: the test helpers (build a `DetectedStack` for a fixture path, generate, find the implementer file) MUST be extracted into a shared factory inside the test file or `tests/generator/fixtures.ts` — copy-paste across 9 fixtures is forbidden by both the global rule and CLAUDE.md.
+  - Per the user's global rule, the four small-helper tests (JVM detector, .NET detector, routing, safe-delete) MUST be simple Jest assertions — one happy path + one negative per file, no elaborate scenarios.
+  - **No `any`** — explicit `DetectedStack`/`StackConfig`/`GeneratedFile` types throughout; tests fail-loud on missing files via `getContent()`.
+  - File-size: target ≤200 lines for `stack-aware-agents.test.ts`; if assertions push past that, split (g) into a sibling `generic-byte-identical.test.ts`.
+  - This task is LAST. Tagged `[TEST]` so it routes to `test-writer`, not `implementer`.
 
 ## Post-implementation checklist
 
-- [ ] `pnpm check-types` — zero errors.
-- [ ] `pnpm test` — all suites pass; new fixtures green; monolingual snapshots byte-identical.
-- [ ] `pnpm lint` — zero warnings (Oxlint).
-- [ ] Run `code-reviewer` and `security-reviewer` agents in **parallel** on every modified file from T1–T7 (T8 reviewed separately as test-only). Apply every critical and warning finding via `implementer`.
-- [ ] Run `code-optimizer` once across all modified files.
-- [ ] Run `reviewer` for the final 5-step gate (review → fix → check-types → test → lint).
-- [ ] Run `/external-review` (CodeRabbit CLI default) on the full diff vs. `main`. Capture findings to `QA.md`. Run `/workflow-fix` until clean.
-- [ ] DRY scan complete — confirm `runStackPipeline` (T2), `isPolyglot` (T4), `safeCommand` reuse (T3), `writeFileSafe` reuse (T6), `parseSafetyFlags` reuse (T7) — no parallel implementations introduced.
-- [ ] Backward-compat verified — `.agents-workflows.json` from a JS-only monorepo (e.g. existing repo's own manifest) deserializes and re-renders without diff.
-- [ ] Partial count = **43** under `src/templates/partials/` (was 42; +1 from T4; T5 edits in place).
-- [ ] File-size cap audited — every modified or new file under `src/` and `tests/` ≤ 200 lines. Flagged exception: `src/prompt/questions.ts` (already 245 LOC pre-Epic; T7 must NOT add lines — extract to a sibling file).
-- [ ] No `any` types introduced anywhere.
-- [ ] Manual `git diff` review on the feature branch before any commit (Epic 9 / CLAUDE.md `Sub-agent deny-bypass caveat`).
+- [ ] `pnpm check-types` clean
+- [ ] `pnpm test` clean (including the new `stack-aware-agents.test.ts` and per-helper unit tests)
+- [ ] `pnpm lint` clean
+- [ ] code-reviewer + security-reviewer pass with no critical/warning findings
+- [ ] code-optimizer pass surfaces no critical findings
+- [ ] `/external-review` produces empty/clean QA.md
+- [ ] No `react-ts-senior.md` artifacts remain in `src/`, `dist/`, fixtures, snapshots (grep returns empty)
+- [ ] No `reactTsSenior` / `hasReactTsSenior` symbol remains in `src/` or `tests/` outside the legacy-migration test fixture (grep returns empty save for those allowed sites)
+- [ ] README "Stack matrix" section renders correctly; `react-ts-senior` only appears inside the migration paragraph as a legacy citation
+- [ ] PRD Epic 13 header marked `[DONE 2026-04-28]` with `Landed on feature/epic-13-stack-aware-implementer` (Phase 4 of `/workflow-plan`, not done by this plan)
 
 ## External errors
 
-### T8 findings (test-only, no src/ changes required)
-
-- **`writeFileSafe` round-trip preservation not directly tested** — per PLAN T8 constraint ("if it would balloon the test file, mention in External errors and keep the test file lean"), this assertion was skipped. The installer test suite already covers `writeFileSafe` behavior via `tests/installer/backup.test.ts` and `tests/generator/no-direct-fs-write.test.ts`.
-
-- **`tests/schema/stack-config.test.ts` line count (pre-existing drift)** — file is 295 lines, already over the 200-line cap before T8 work. One new test was added (the monolingual cross-check). The drift predates Epic 12; flagged for future extraction into sub-files.
-
-- **`tests/detector/detect-monorepo.test.ts` note** — the file uses ESM (`import.meta.url`) so `__dirname` is unavailable. Fixed by importing `dirname` + `fileURLToPath` from node built-ins (matches pattern in `tests/detector/detect-stack.test.ts:2-5`).
-
-- **T5 partial byte-identicalness (PLAN line 232) relaxed** — per task body instructions, the "byte-identical pre-Epic-12 baseline snapshot" for `fail-safe.md.ejs`, `definition-of-done.md.ejs`, and `tool-use-discipline.md.ejs` was relaxed to a single `not.toContain(POLYGLOT_HEADING)` absence check. If stricter byte-identical baseline coverage is required later, snapshot the three partials directly in a dedicated snapshot test.
-
-- **`inferNpmOrYarn` (`src/detector/detect-monorepo.ts:127`) is pre-Epic-12 tech debt** — always returns `'npm'`; out of scope for Epic 12.
+(empty — populate during execution if errors surface in unrelated files)

@@ -1,0 +1,13 @@
+{
+  "name": "frontend-vue",
+  "version": "0.1.0",
+  "dependencies": {
+    "vue": "^3.4.0",
+    "pinia": "^2.1.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -10,7 +10,7 @@ import {
 
 // Structural deviation note: the six new fixtures carry root manifests PLUS nested workspace
 // dirs with their own manifests — unlike the single-manifest convention in nextjs-app/,
-// python-fastapi/, react-native-expo/. This is justified because each fixture exercises a
+// backend-python-fastapi/, react-native-expo/. This is justified because each fixture exercises a
 // distinct monorepo tool's workspace-resolution format (Cargo, go.work, uv, .sln, CMake,
 // pnpm hybrid).
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));

@@ -6,7 +6,7 @@ import { manifestSchema } from '../schema/manifest.js';
 import { generateAll, writeFileSafe } from '../generator/index.js';
 import { withSafetySession } from './safety-session.js';
 import { parseSafetyFlags } from './safety-flags.js';
-import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
+import { writeGeneratedFiles, backupExistingFiles, diffFiles, safeDeleteStaleFiles, STALE_IMPLEMENTER_VARIANT_FILES } from '../installer/index.js';
 import { resolveSecurityUpdate } from './resolve-security-update.js';
 import { resolveUpdateProjectConfig } from './resolve-update-project-config.js';
 import { hashConfig } from './hash-config.js';
@@ -123,6 +123,11 @@ export async function updateCommand(
 
   await withSafetySession(safetyFlags, async () => {
     await backupExistingFiles(projectRoot, changedFiles);
+    await safeDeleteStaleFiles({
+      projectRoot,
+      candidates: STALE_IMPLEMENTER_VARIANT_FILES,
+      suppressed: promptsSuppressed,
+    });
     const writeResult = await writeGeneratedFiles(projectRoot, changedFiles);
     const nextManifest: AgentsWorkflowsManifest = {
       ...parsed.data,

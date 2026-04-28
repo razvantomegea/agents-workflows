@@ -27,10 +27,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Task | Agent |
 |---|---|
 | Architecture, planning | `architect` |
-| Implementation | `implementer` |
-<% if (hasReactTsSenior) { -%>
-| Implementation (React + TypeScript) | `react-ts-senior` |
-<% } -%>
+| Implementation | `implementer`<% if (implementerVariant !== 'generic') { %> (<%= implementerVariant %> variant)<% } %> |
 | Code review (after every file edit) | `code-reviewer` |
 <% if (hasSecurityReviewer) { -%>
 | Security review (parallel to code review) | `security-reviewer` |

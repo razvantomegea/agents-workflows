@@ -10,10 +10,10 @@ describe('generateAll', () => {
     const paths = files.map((file) => file.path);
 
     expect(paths).toContain('.claude/agents/architect.md');
-    expect(paths).toContain('.claude/agents/react-ts-senior.md');
+    expect(paths).toContain('.claude/agents/implementer.md');
     expect(paths).toContain('.claude/agents/security-reviewer.md');
     expect(paths).toContain('.codex/skills/architect/SKILL.md');
-    expect(paths).toContain('.codex/skills/react-ts-senior/SKILL.md');
+    expect(paths).toContain('.codex/skills/implementer/SKILL.md');
     expect(paths).toContain('.codex/skills/security-reviewer/SKILL.md');
     expect(paths).toContain('CLAUDE.md');
     expect(paths).toContain('AGENTS.md');
@@ -269,6 +269,7 @@ describe('generateAll', () => {
     config.paths.componentsDir = null;
     config.paths.hooksDir = null;
     config.agents.uiDesigner = false;
+    config.agents.implementerVariant = 'generic';
 
     const files = await generateAll(config);
 
@@ -289,7 +290,7 @@ describe('generateAll', () => {
     const config = makeConfig();
     const files = await generateAll(config);
     const agentFiles = files.filter((file) => file.path.startsWith('.claude/agents/'));
-    const expectedAgentCount = Object.values(config.agents).filter(Boolean).length;
+    const expectedAgentCount = Object.values(config.agents).filter((value) => value === true).length;
 
     expect(agentFiles).toHaveLength(expectedAgentCount);
 
@@ -298,6 +299,7 @@ describe('generateAll', () => {
       expect(file.content).toContain('<constraints>');
       expect(file.content).toContain('<uncertainty>');
       // implementer/ui-designer/e2e-tester carry Epic 4 content (§2.2 security, §2.4 API design, §2.6 git, §2.8 errors, §2.12 a11y); ≤280 per PLAN.md Epic 4 T7
+      // implementer raised from ≤280 to ≤320 to accommodate Epic 13 stack-specific variant blocks.
       // code-reviewer carries the full §2.1 nine-section review checklist; raised from ≤250 (E3.T1)
       // to ≤320 to accommodate Epic 6 partials: observability (E6.T2), design-principles (E6.T3),
       // documentation (E6.T6).
@@ -306,7 +308,9 @@ describe('generateAll', () => {
         ? CODE_REVIEWER_MAX_LINES
         : file.path.endsWith('architect.md')
           ? 300
-          : 280;
+          : file.path.endsWith('implementer.md')
+            ? 320
+            : 280;
       expect(file.content.split(/\r?\n/).length).toBeLessThanOrEqual(lineLimit);
     }
 

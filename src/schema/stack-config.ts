@@ -1,7 +1,10 @@
 import { z } from 'zod';
 import { safeCommand, safeCommandNullable, safeProjectPath } from './validators.js';
 import { workspaceStackSchema } from './workspace-stack.js';
+import { IMPLEMENTER_VARIANTS, migrateLegacyAgents } from './implementer-variants.js';
 
+export { IMPLEMENTER_VARIANTS, migrateLegacyAgents } from './implementer-variants.js';
+export type { ImplementerVariant } from './implementer-variants.js';
 export { safeCommand, safeCommandNullable, safeProjectPath } from './validators.js';
 
 export const ISOLATION_CHOICES = [
@@ -117,18 +120,21 @@ export const stackConfigSchema = z.object({
     strictTypes: z.boolean().default(true),
   }),
 
-  agents: z.object({
-    architect: z.boolean().default(true),
-    implementer: z.boolean().default(true),
-    reactTsSenior: z.boolean().default(false),
-    codeReviewer: z.boolean().default(true),
-    securityReviewer: z.boolean().default(true),
-    codeOptimizer: z.boolean().default(true),
-    testWriter: z.boolean().default(true),
-    e2eTester: z.boolean().default(false),
-    reviewer: z.boolean().default(true),
-    uiDesigner: z.boolean().default(true),
-  }),
+  agents: z.preprocess(
+    migrateLegacyAgents,
+    z.object({
+      architect: z.boolean().default(true),
+      implementer: z.boolean().default(true),
+      implementerVariant: z.enum(IMPLEMENTER_VARIANTS).default('generic'),
+      codeReviewer: z.boolean().default(true),
+      securityReviewer: z.boolean().default(true),
+      codeOptimizer: z.boolean().default(true),
+      testWriter: z.boolean().default(true),
+      e2eTester: z.boolean().default(false),
+      reviewer: z.boolean().default(true),
+      uiDesigner: z.boolean().default(true),
+    }),
+  ),
 
   selectedCommands: z.object({
     workflowPlan: z.boolean().default(true),
