@@ -1,7 +1,7 @@
 import { resolveTargetDefaultsSync } from '../../src/prompt/ask-targets.js';
 import type { DetectedAiAgent, DetectedAiAgents } from '../../src/detector/types.js';
 
-function makeAgent(id: DetectedAiAgent['id'], cliAvailable = false): DetectedAiAgent {
+function makeAgent(id: DetectedAiAgent['id'], cliAvailable: boolean = false): DetectedAiAgent {
   return {
     id,
     name: id,

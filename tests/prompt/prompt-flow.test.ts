@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
@@ -253,8 +253,23 @@ describe('createDefaultConfig', () => {
 });
 
 describe('runPromptFlow', () => {
+  const tempRoots: string[] = [];
+
+  afterEach(async () => {
+    while (tempRoots.length > 0) {
+      const root = tempRoots.pop();
+      if (!root) continue;
+      try {
+        await rm(root, { recursive: true, force: true });
+      } catch {
+        // Ignore — directory may already be gone.
+      }
+    }
+  });
+
   it('enables the Copilot target in --yes mode when .github exists', async () => {
     const projectRoot = await mkdtemp(join(tmpdir(), 'agents-workflows-github-'));
+    tempRoots.push(projectRoot);
     await mkdir(join(projectRoot, '.github'));
 
     const config = await runPromptFlow(makeDetectedStack(), projectRoot, { yes: true });

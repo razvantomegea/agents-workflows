@@ -12,10 +12,10 @@ export interface PartialEntry {
   absolutePath: string;
 }
 
-let cache: PartialEntry[] | null = null;
+let cache: readonly PartialEntry[] | null = null;
 
 export async function listPartials(): Promise<PartialEntry[]> {
-  if (cache) return cache;
+  if (cache) return cache.map(clonePartialEntry);
   const entries = await readdir(PARTIALS_DIR, { withFileTypes: true });
   const partials: PartialEntry[] = [];
   for (const entry of entries) {
@@ -31,10 +31,18 @@ export async function listPartials(): Promise<PartialEntry[]> {
     });
   }
   partials.sort((a: PartialEntry, b: PartialEntry) => a.slug.localeCompare(b.slug));
-  cache = partials;
-  return partials;
+  cache = Object.freeze(partials.map((partial: PartialEntry) => Object.freeze(clonePartialEntry(partial))));
+  return cache.map(clonePartialEntry);
 }
 
 export function _resetPartialsCache(): void {
   cache = null;
+}
+
+function clonePartialEntry(partial: PartialEntry): PartialEntry {
+  return {
+    slug: partial.slug,
+    templatePath: partial.templatePath,
+    absolutePath: partial.absolutePath,
+  };
 }

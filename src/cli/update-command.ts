@@ -7,12 +7,14 @@ import { generateAll, writeFileSafe } from '../generator/index.js';
 import { withSafetySession } from './safety-session.js';
 import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
-import { askMainBranch, askProjectDocumentationFiles } from '../prompt/questions.js';
 import { resolveSecurityUpdate } from './resolve-security-update.js';
+import { resolveUpdateProjectConfig } from './resolve-update-project-config.js';
 import { hashConfig } from './hash-config.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { MergeStrategy } from '../generator/index.js';
 import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
+
+export { resolveUpdateProjectConfig };
 
 export interface UpdateCommandOptions {
   yes?: boolean;
@@ -52,7 +54,7 @@ export async function updateCommand(
     process.exit(1);
   }
 
-  const promptsSuppressed = options.yes || options.noPrompt;
+  const promptsSuppressed = Boolean(options.yes || options.noPrompt || options.nonInteractive);
 
   const securityResolved = await resolveSecurityUpdate({
     existing: parsed.data.config.security,
@@ -65,7 +67,7 @@ export async function updateCommand(
 
   const project = await resolveUpdateProjectConfig({
     existing: parsed.data.config.project,
-    promptsSuppressed: Boolean(promptsSuppressed),
+    promptsSuppressed,
   });
 
   const config: StackConfig = {
@@ -116,7 +118,7 @@ export async function updateCommand(
   const safetyFlags = parseSafetyFlags({
     yes: options.yes,
     noPrompt: options.noPrompt,
-    mergeStrategy: options.mergeStrategy,
+    mergeStrategy: resolveMergeStrategyForUpdate(options),
   });
 
   await withSafetySession(safetyFlags, async () => {
@@ -142,25 +144,15 @@ export async function updateCommand(
   });
 }
 
-export async function resolveUpdateProjectConfig(
-  params: Readonly<{
-    existing: StackConfig['project'];
-    promptsSuppressed: boolean;
-  }>,
-): Promise<StackConfig['project']> {
-  if (params.promptsSuppressed) {
-    return params.existing;
-  }
-
-  const projectDocumentation = await askProjectDocumentationFiles({
-    docsFile: params.existing.docsFile,
-    roadmapFile: params.existing.roadmapFile,
-  });
-  const mainBranch = await askMainBranch(params.existing.mainBranch);
-
-  return {
-    ...params.existing,
-    ...projectDocumentation,
-    mainBranch,
-  };
+/**
+ * In `--non-interactive` mode without an explicit `--yes`/`--no-prompt`/`--merge-strategy`
+ * choice, default the per-file write strategy to `merge` so the inner `withSafetySession`
+ * loop never blocks on the interactive overwrite/merge/skip prompt. `merge` is the safest
+ * non-destructive default — it preserves user-tail content past the managed sentinel and
+ * only overwrites the managed block.
+ */
+export function resolveMergeStrategyForUpdate(options: UpdateCommandOptions): MergeStrategy | undefined {
+  if (options.mergeStrategy !== undefined) return options.mergeStrategy;
+  if (options.nonInteractive && !options.yes && !options.noPrompt) return 'merge';
+  return undefined;
 }

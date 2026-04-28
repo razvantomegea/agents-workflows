@@ -24,37 +24,47 @@ describe('target re-run merge preservation', () => {
     await rm(projectRoot, { recursive: true, force: true });
   });
 
-  it('preserves user content past managed-end on Cursor rule re-run', async () => {
-    const files = await renderAllTargets();
-    const ruleFile = files.find((f) => f.path === '.cursor/rules/00-fail-safe.mdc');
-    expect(ruleFile).toBeDefined();
-    expect(ruleFile?.merge).toBeDefined();
+  interface MergeRerunCase {
+    target: 'Cursor' | 'Windsurf';
+    rulePath: string;
+    userTail: string;
+    expectedHeading: string;
+    expectedSnippet: string;
+  }
 
-    const fullPath = join(projectRoot, ruleFile!.path);
-    const userTail = '\n\n## Local override\nteam-only guidance lives here.\n';
-    await writeFileEnsuringDir(fullPath, ruleFile!.content + userTail);
+  const cases: readonly MergeRerunCase[] = [
+    {
+      target: 'Cursor',
+      rulePath: '.cursor/rules/00-fail-safe.mdc',
+      userTail: '\n\n## Local override\nteam-only guidance lives here.\n',
+      expectedHeading: '## Local override',
+      expectedSnippet: 'team-only guidance',
+    },
+    {
+      target: 'Windsurf',
+      rulePath: '.windsurf/rules/00-fail-safe.md',
+      userTail: '\n\n## Cascade override\nwindsurf-team guidance.\n',
+      expectedHeading: '## Cascade override',
+      expectedSnippet: 'windsurf-team guidance',
+    },
+  ];
 
-    await writeGeneratedFiles(projectRoot, [ruleFile!]);
+  it.each(cases)(
+    'preserves user content past managed-end on $target rule re-run',
+    async ({ rulePath, userTail, expectedHeading, expectedSnippet }: MergeRerunCase) => {
+      const files = await renderAllTargets();
+      const ruleFile = files.find((file: { path: string }) => file.path === rulePath);
+      expect(ruleFile).toBeDefined();
+      expect(ruleFile?.merge).toBeDefined();
 
-    const finalContent = await readFile(fullPath, 'utf-8');
-    expect(finalContent).toContain('## Local override');
-    expect(finalContent).toContain('team-only guidance');
-  });
+      const fullPath = join(projectRoot, ruleFile!.path);
+      await writeFileEnsuringDir(fullPath, ruleFile!.content + userTail);
 
-  it('preserves user content past managed-end on Windsurf rule re-run', async () => {
-    const files = await renderAllTargets();
-    const ruleFile = files.find((f) => f.path === '.windsurf/rules/00-fail-safe.md');
-    expect(ruleFile).toBeDefined();
-    expect(ruleFile?.merge).toBeDefined();
+      await writeGeneratedFiles(projectRoot, [ruleFile!]);
 
-    const fullPath = join(projectRoot, ruleFile!.path);
-    const userTail = '\n\n## Cascade override\nwindsurf-team guidance.\n';
-    await writeFileEnsuringDir(fullPath, ruleFile!.content + userTail);
-
-    await writeGeneratedFiles(projectRoot, [ruleFile!]);
-
-    const finalContent = await readFile(fullPath, 'utf-8');
-    expect(finalContent).toContain('## Cascade override');
-    expect(finalContent).toContain('windsurf-team guidance');
-  });
+      const finalContent = await readFile(fullPath, 'utf-8');
+      expect(finalContent).toContain(expectedHeading);
+      expect(finalContent).toContain(expectedSnippet);
+    },
+  );
 });

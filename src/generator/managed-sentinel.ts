@@ -5,8 +5,16 @@ export interface SentinelSplit {
   userTail: string;
 }
 
+/**
+ * Splits content at the FIRST occurrence of `MANAGED_END_SENTINEL` so that any
+ * later occurrence of the literal sentinel string in user-authored content is
+ * preserved as part of `userTail` and not reclassified as managed.
+ *
+ * Invariant: each managed section emits exactly one `MANAGED_END_SENTINEL`.
+ * Templates that emit it more than once produce undefined merge results.
+ */
 export function splitOnManagedSentinel(content: string): SentinelSplit {
-  const idx = content.lastIndexOf(MANAGED_END_SENTINEL);
+  const idx = content.indexOf(MANAGED_END_SENTINEL);
   if (idx === -1) return { managed: content, userTail: '' };
   const after = idx + MANAGED_END_SENTINEL.length;
   return { managed: content.slice(0, after), userTail: content.slice(after) };

@@ -219,7 +219,9 @@ codex exec --json --ephemeral "Read ./AGENTS.md and execute every step in order 
 | Codex CLI | `codex exec "..."` | `.codex/rules/project.rules` forbid rules present (Epic 9) | `--dangerously-bypass-approvals-and-sandbox`, `sandbox_mode = "danger-full-access"` |
 | Cursor | `cursor-agent --prompt "..."` (or Background Agents) | `.cursor/rules/00-deny-destructive-ops.mdc` present (Epic 9 E9.T6) | `--yolo` |
 | VSCode + Copilot | `/workflow-plan` from chat (executes `.github/prompts/workflow-plan.prompt.md`) or assign issue to Copilot coding agent | `tools:` allow-list in prompt frontmatter; GitHub branch protection on `main` | Do NOT set any auto-approve setting |
-| Windsurf | Cascade `/workflow-plan` in **Auto** mode (NOT Yolo) | `.windsurf/rules/00-forbidden-commands.md` present (Epic 9 E9.T8) | Yolo mode |
+| Windsurf | Cascade `/workflow-plan` in **Auto** mode (NOT Yolo) | `.windsurf/rules/00-deny-destructive-ops.md` present (Epic 9 E9.T8) | Yolo mode |
+
+**Windsurf Cascade approval mode (PRD §1.9 / Epic 9 E9.T8):** every contributor must run Cascade in **Manual** or **Auto** mode. Yolo mode is forbidden in this repository — it disables every per-command approval and renders the always-on `.windsurf/rules/00-deny-destructive-ops.md` rule advisory-only. The `00-deny-destructive-ops.md` rule and `git push --force` denies do not engage at the kernel level; pair them with branch protection on `main` and a non-Yolo Cascade default.
 
 **Windows caveat (PRD §1.9.1 item 10.2):** Codex `workspace-write` sandbox is unstable on Windows. Treat `.codex/rules/project.rules` as the PRIMARY guard. Prefer devcontainer / WSL2 / VM / GitHub Codespaces for higher trust.
 
@@ -254,7 +256,12 @@ Devcontainer alternative: scaffold `.devcontainer/devcontainer.json` based on `m
 
 ## What gets written
 
-`AGENTS.md` and `.agents-workflows.json` are emitted on every run regardless of which targets you select — they are the universal surface that every agent (Aider, Continue.dev, Gemini CLI, Copilot CLI, Cline/Roo) reads.
+`AGENTS.md` and `.agents-workflows.json` are emitted on every run regardless of which targets you select. They serve different audiences:
+
+- `AGENTS.md` is the **agent-facing universal instructions surface** emitted for every project. Tools that read it natively can consume it directly, while Claude Code, Codex CLI, Cursor, Copilot, and Windsurf also receive target-native files listed below.
+- `.agents-workflows.json` is the **CLI manifest/state surface** emitted by this generator on every run; it tracks the resolved config, hash, and produced file list so internal CLI workflows (`update`, idempotency checks, drift detection) can re-render deterministically. External agents do not consume it.
+
+If `README.md` describes either of these roles differently from the code, flag the mismatch in the PR rather than silently picking one.
 
 ### Supported targets
 

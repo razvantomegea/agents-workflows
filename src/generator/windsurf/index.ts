@@ -13,7 +13,7 @@ export async function generateWindsurfConfig(
   context: GeneratorContext,
 ): Promise<GeneratedFile[]> {
   if (!config.targets.windsurf) return [];
-  const partials = await listPartials();
+  const partials = context.discoveredPartials ?? await listPartials();
   const ruleFiles = await Promise.all(
     partials.map((partial: PartialEntry) => renderWindsurfRuleFile({ partial, context })),
   );

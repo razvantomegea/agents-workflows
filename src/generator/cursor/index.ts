@@ -13,7 +13,7 @@ export async function generateCursorConfig(
   context: GeneratorContext,
 ): Promise<GeneratedFile[]> {
   if (!config.targets.cursor) return [];
-  const partials = await listPartials();
+  const partials = context.discoveredPartials ?? await listPartials();
   const ruleFiles = await Promise.all(
     partials.map((partial: PartialEntry) => renderCursorRuleFile({ partial, context })),
   );

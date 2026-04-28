@@ -2026,7 +2026,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ## Epic 9 — Agent Permission & Sandbox Hardening [MUST]
 
-**Landed on** `feature/epic-9-permission-sandbox-hardening` (E9.T1–T5, T10–T15 complete; E9.T6–T8 blocked on missing Cursor/Copilot/Windsurf emission plumbing in the generator — tracked for the epic that introduces that pipeline). The Epic 9/10 safe posture now consistently uses `approval_policy = "on-request"` with `network_access = false`.
+**Landed on** `feature/epic-9-permission-sandbox-hardening` for E9.T1–T5 and T10–T15; E9.T6–T8 landed on `feature/epic-11-multi-ide-targets` once the Cursor/Copilot/Windsurf emission plumbing existed. The Epic 9/10 safe posture now consistently uses `approval_policy = "on-request"` with `network_access = false`.
 
 **Goal.** Ship a committed, deny-first permission policy for Claude Code and Codex so launching either tool from this repo cannot silently commit, push, rewrite history, touch paths outside the workspace, or run destructive commands. Deny-first rules and the sandbox are complementary layers; neither is trusted alone.
 
@@ -2122,7 +2122,8 @@ server-side backstop.
 enumerating the §1.4 deny list verbatim. Filename deviates from the PRD's
 illustrative `00-forbidden-commands.md` — single shared partial slug
 (`deny-destructive-ops`) yields parity filenames between Cursor and Windsurf.
-Cascade approval-mode README documentation is pending.
+README §"Headless invocation" now documents the Cascade Manual-or-Auto
+requirement (Yolo forbidden) and pairs it with branch protection on `main`.
 
 
 **Context.** Windsurf Cascade has three approval modes: Manual (ask every command), Auto (ask on destructive patterns), Yolo (never ask). Rules enforced via `.windsurf/rules/` are advisory — they instruct Cascade but do not block at kernel level. For committed repo policy, the target posture is **Manual default** with a `00-forbidden-commands.md` Always-On rule.

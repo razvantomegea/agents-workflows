@@ -39,14 +39,16 @@ export interface RenderWindsurfWorkflowsArgs {
 
 export async function renderWindsurfWorkflowFiles(args: RenderWindsurfWorkflowsArgs): Promise<GeneratedFile[]> {
   const { selectedCommands, context } = args;
-  const enabled = WINDSURF_WORKFLOWS.filter((wf: WindsurfWorkflowDef) => selectedCommands[wf.key]);
-  return Promise.all(enabled.map(async (wf: WindsurfWorkflowDef) => {
-    const body = await renderTemplate(wf.templateFile, context);
+  const enabled = WINDSURF_WORKFLOWS.filter(
+    (workflow: WindsurfWorkflowDef) => selectedCommands[workflow.key],
+  );
+  return Promise.all(enabled.map(async (workflow: WindsurfWorkflowDef) => {
+    const body = await renderTemplate(workflow.templateFile, context);
     const content = await renderTemplate('windsurf/workflow.md.ejs', {
       ...context,
-      description: wf.description,
+      description: workflow.description,
       body,
     });
-    return { path: `.windsurf/workflows/${wf.outputName}`, content };
+    return { path: `.windsurf/workflows/${workflow.outputName}`, content };
   }));
 }

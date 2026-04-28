@@ -46,7 +46,9 @@ export async function askProjectIdentity(
     default: '',
   });
 
-  const localeRules = localeRulesRaw ? localeRulesRaw.split(',').map((r) => r.trim()).filter(Boolean) : [];
+  const localeRules = localeRulesRaw
+    ? localeRulesRaw.split(',').map((rule: string) => rule.trim()).filter(Boolean)
+    : [];
 
   const projectDocumentation = await askProjectDocumentationFiles({
     docsFile: detected.docsFile.value,

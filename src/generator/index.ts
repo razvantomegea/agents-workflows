@@ -1,6 +1,7 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratedFile, GeneratorContext } from './types.js';
 import { buildContext } from './build-context.js';
+import { listPartials } from './list-partials.js';
 import { generateAgents } from './generate-agents.js';
 import { generateCommands } from './generate-commands.js';
 import { generateRootConfig } from './generate-root-config.js';
@@ -25,7 +26,9 @@ export const TARGET_GENERATORS: readonly TargetGenerator[] = [
 ];
 
 export async function generateAll(config: StackConfig): Promise<GeneratedFile[]> {
-  const context = buildContext(config);
+  const baseContext = buildContext(config);
+  const discoveredPartials = await listPartials();
+  const context: GeneratorContext = { ...baseContext, discoveredPartials };
   const groups = await Promise.all(
     TARGET_GENERATORS.map((generator: TargetGenerator) => generator(config, context)),
   );

@@ -1,3 +1,4 @@
+import type { StackConfig } from '../../src/schema/stack-config.js';
 import { generateCursorConfig } from '../../src/generator/cursor/index.js';
 import { renderMdcFrontmatter } from '../../src/generator/cursor/render-mdc-frontmatter.js';
 import { mergeMdc } from '../../src/generator/cursor/merge-mdc.js';
@@ -5,15 +6,28 @@ import { listPartials } from '../../src/generator/list-partials.js';
 import { buildContext } from '../../src/generator/build-context.js';
 import { makeStackConfig } from './fixtures.js';
 
+const TARGETS_CURSOR_OFF: StackConfig['targets'] = {
+  claudeCode: true,
+  codexCli: false,
+  cursor: false,
+  copilot: false,
+  windsurf: false,
+};
+
+const TARGETS_CURSOR_ON: StackConfig['targets'] = {
+  ...TARGETS_CURSOR_OFF,
+  cursor: true,
+};
+
 describe('generateCursorConfig', () => {
   it('returns empty array when cursor target disabled', async () => {
-    const config = makeStackConfig({ targets: { claudeCode: true, codexCli: false, cursor: false, copilot: false, windsurf: false } });
+    const config = makeStackConfig({ targets: TARGETS_CURSOR_OFF });
     const files = await generateCursorConfig(config, buildContext(config));
     expect(files).toHaveLength(0);
   });
 
   it('emits one .cursor/rules/NN-<slug>.mdc per partial when cursor enabled', async () => {
-    const config = makeStackConfig({ targets: { claudeCode: true, codexCli: false, cursor: true, copilot: false, windsurf: false } });
+    const config = makeStackConfig({ targets: TARGETS_CURSOR_ON });
     const files = await generateCursorConfig(config, buildContext(config));
     const partials = await listPartials();
     const ruleFiles = files.filter((f) => f.path.startsWith('.cursor/rules/'));
@@ -26,7 +40,7 @@ describe('generateCursorConfig', () => {
   });
 
   it('emits enabled commands under .cursor/commands/', async () => {
-    const config = makeStackConfig({ targets: { claudeCode: true, codexCli: false, cursor: true, copilot: false, windsurf: false } });
+    const config = makeStackConfig({ targets: TARGETS_CURSOR_ON });
     const files = await generateCursorConfig(config, buildContext(config));
     const commandFiles = files.filter((f) => f.path.startsWith('.cursor/commands/'));
     const paths = commandFiles.map((f) => f.path);
@@ -36,7 +50,7 @@ describe('generateCursorConfig', () => {
   });
 
   it('uses NN ordering prefix per activation mode', async () => {
-    const config = makeStackConfig({ targets: { claudeCode: true, codexCli: false, cursor: true, copilot: false, windsurf: false } });
+    const config = makeStackConfig({ targets: TARGETS_CURSOR_ON });
     const files = await generateCursorConfig(config, buildContext(config));
     const ruleFiles = files.filter((f) => f.path.startsWith('.cursor/rules/'));
     const failSafe = ruleFiles.find((f) => f.path === '.cursor/rules/00-fail-safe.mdc');

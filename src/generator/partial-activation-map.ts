@@ -36,6 +36,9 @@ export const MODEL_DECISION_SLUGS: readonly string[] = [
   'workspaces',
 ];
 
+const ALWAYS_ON_SLUG_SET: ReadonlySet<string> = new Set(ALWAYS_ON_SLUGS);
+const MODEL_DECISION_SLUG_SET: ReadonlySet<string> = new Set(MODEL_DECISION_SLUGS);
+
 const BACKEND_GLOBS = ['**/server/**', '**/api/**', '**/routes/**', '**/*.controller.ts'];
 const UI_GLOBS = ['**/components/**', '**/pages/**', '**/app/**', '**/*.tsx', '**/*.jsx', '**/*.vue', '**/*.svelte'];
 const TEST_GLOBS = ['**/*.test.ts', '**/*.spec.ts', '**/*.test.tsx', '**/*.spec.tsx', '**/__tests__/**'];
@@ -58,14 +61,14 @@ function describe(slug: string): string {
 }
 
 export function getPartialActivation(slug: string): PartialActivation {
-  if (ALWAYS_ON_SLUGS.includes(slug)) {
+  if (ALWAYS_ON_SLUG_SET.has(slug)) {
     return { mode: 'always', description: describe(slug) };
   }
   const globEntry = GLOB_ACTIVATION[slug];
   if (globEntry) {
     return { mode: 'glob', description: globEntry.description, globs: globEntry.globs };
   }
-  if (MODEL_DECISION_SLUGS.includes(slug)) {
+  if (MODEL_DECISION_SLUG_SET.has(slug)) {
     return { mode: 'modelDecision', description: describe(slug) };
   }
   return { mode: 'manual', description: describe(slug) };
@@ -73,8 +76,8 @@ export function getPartialActivation(slug: string): PartialActivation {
 
 export function isKnownActivationSlug(slug: string): boolean {
   return (
-    ALWAYS_ON_SLUGS.includes(slug)
-    || MODEL_DECISION_SLUGS.includes(slug)
+    ALWAYS_ON_SLUG_SET.has(slug)
+    || MODEL_DECISION_SLUG_SET.has(slug)
     || Boolean(GLOB_ACTIVATION[slug])
   );
 }
