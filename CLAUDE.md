@@ -13,6 +13,17 @@ This file provides guidance to Claude Code when working with code in this reposi
 - Oxlint (linter)
 - pnpm (package manager)
 
+## Project Structure
+
+Use this map for quick orientation. Folder descriptions are generated only from configured project roles, not inferred from a filesystem crawl.
+
+```text
+.
+|-- src/    # source root
+|-- src/utils/    # utilities and business logic
+|-- tests/    # tests
+```
+
 ## Primary Documentation
 
 - The canonical source of project intent lives in `README.md`.

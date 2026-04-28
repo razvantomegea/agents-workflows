@@ -13,6 +13,17 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 - Oxlint (linter)
 - pnpm (package manager)
 
+## Project Structure
+
+Use this map for quick orientation. Folder descriptions are generated only from configured project roles, not inferred from a filesystem crawl.
+
+```text
+.
+|-- src/    # source root
+|-- src/utils/    # utilities and business logic
+|-- tests/    # tests
+```
+
 ## Primary Documentation
 
 - The canonical source of project intent lives in `README.md`.
@@ -208,6 +219,8 @@ Before any destructive operation, state: (1) what changes, (2) where
 (env), (3) reversibility, (4) blast radius (count of rows/files/users).
 
 ## Tooling / hooks
+
+This file is the universal surface — Copilot, Windsurf, Gemini CLI, Aider, and Continue.dev read it natively. Claude Code, Codex CLI, and Cursor additionally consume tool-native files under `.claude/`, `.codex/`, and `.cursor/`.
 
 `agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
 
