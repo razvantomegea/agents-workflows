@@ -1,5 +1,7 @@
+import { posix as posixPath } from 'node:path';
 import { renderTemplate } from '../utils/template-renderer.js';
 import type { StackConfig } from '../schema/stack-config.js';
+import type { WorkspaceStack } from '../schema/workspace-stack.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
 
 /**
@@ -67,5 +69,60 @@ export async function generateRootConfig(
     files.push({ path: 'docs/oscal/component-definition.json', content: oscalComponent });
   }
 
+  await emitNestedAgentsFiles({ config, files });
+
   return files;
+}
+
+/**
+ * Determine whether a workspace warrants its own nested `AGENTS.md`.
+ *
+ * A workspace qualifies when it has a non-empty language that differs (case-insensitively)
+ * from the root stack language. Workspaces with an empty language string are skipped to
+ * avoid emitting a vacuous AGENTS.md for undetected stacks.
+ */
+function shouldEmitNestedAgents(options: {
+  workspace: WorkspaceStack;
+  rootLanguage: string;
+}): boolean {
+  const { workspace, rootLanguage } = options;
+  const workspaceLanguage = workspace.language.trim().toLowerCase();
+  const normalizedRootLanguage = rootLanguage.trim().toLowerCase();
+  return (
+    workspaceLanguage.length > 0 &&
+    workspaceLanguage !== normalizedRootLanguage
+  );
+}
+
+/**
+ * Emit one nested `AGENTS.md` per workspace whose language differs from the root stack language.
+ *
+ * Skips workspaces with an empty language (undetected language from T3's nullable filter would
+ * yield `language === ''` — the comparison `''.toLowerCase() !== rootLanguage.toLowerCase()`
+ * would always be `true`, emitting a vacuous AGENTS.md; the length guard prevents that).
+ *
+ * Paths are emitted in POSIX style (forward slashes) regardless of host OS so the manifest's
+ * `files: string[]` is portable.
+ */
+async function emitNestedAgentsFiles(options: {
+  config: StackConfig;
+  files: GeneratedFile[];
+}): Promise<void> {
+  const { config, files } = options;
+
+  if (config.monorepo === null || config.monorepo.workspaces.length === 0) {
+    return;
+  }
+
+  const rootLanguage = config.stack.language;
+
+  for (const workspace of config.monorepo.workspaces) {
+    if (!shouldEmitNestedAgents({ workspace, rootLanguage })) {
+      continue;
+    }
+
+    const content = await renderTemplate('config/workspace-AGENTS.md.ejs', { workspace });
+    const filePath = posixPath.join(workspace.path, 'AGENTS.md');
+    files.push({ path: filePath, content });
+  }
 }

@@ -29,6 +29,13 @@ export function buildContext(config: StackConfig): GeneratorContext {
   const isMobile = isMobileFramework(config.stack.framework);
   const isBackend = isBackendFramework(config.stack.framework);
   const isTypescript = config.stack.language.trim().toLowerCase() === 'typescript';
+  const languages = [...config.languages];
+  const uniqueLanguages = new Set(
+    languages
+      .map((language: string) => language.toLowerCase().trim())
+      .filter((language: string) => language.length > 0),
+  );
+  const isPolyglot = uniqueLanguages.size >= 2;
   const hasReactTsSenior = config.agents.reactTsSenior
     && supportsReactTsStack(config.stack.framework, config.stack.language);
 
@@ -47,6 +54,8 @@ export function buildContext(config: StackConfig): GeneratorContext {
     isMobile,
     isFrontend,
     isBackend,
+    isPolyglot,
+    languages,
 
     componentsDir: config.paths.componentsDir,
     utilsDir: config.paths.utilsDir,

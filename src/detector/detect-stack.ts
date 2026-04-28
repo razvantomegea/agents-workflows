@@ -1,19 +1,16 @@
-import { detectLanguage } from './detect-language.js';
-import { detectFramework } from './detect-framework.js';
-import { detectUiLibrary } from './detect-ui-library.js';
-import { detectStateManagement } from './detect-state-management.js';
-import { detectDatabase } from './detect-database.js';
-import { detectTestFramework, detectTestLibrary } from './detect-testing.js';
-import { detectLinter, detectFormatter } from './detect-linter.js';
-import { detectPackageManager } from './detect-package-manager.js';
-import { detectE2e } from './detect-e2e.js';
-import { detectAuth } from './detect-auth.js';
-import { detectI18n } from './detect-i18n.js';
 import { detectAiAgents } from './detect-ai-agents.js';
 import { detectDocsFile } from './detect-docs-file.js';
 import { detectRoadmapFile } from './detect-roadmap-file.js';
 import { detectMonorepo } from './detect-monorepo.js';
+import { detectWorkspaceStack } from './detect-workspace-stack.js';
+import { runStackPipeline, resolveRuntime } from './run-stack-pipeline.js';
+import { join } from 'node:path';
 import type { DetectedStack } from './types.js';
+
+export type { StackPipelineResult } from './run-stack-pipeline.js';
+export { runStackPipeline } from './run-stack-pipeline.js';
+// resolveRuntime lives in run-stack-pipeline.ts to avoid a cycle; re-exported here for backward compatibility.
+export { resolveRuntime } from './run-stack-pipeline.js';
 
 /**
  * Detects the technology stack and developer tooling used by the project at the given root directory.
@@ -25,95 +22,71 @@ import type { DetectedStack } from './types.js';
  * - `testFramework`, `testLibrary`, `e2eFramework`
  * - `linter`, `formatter`, `packageManager`
  * - `monorepo`, `aiAgents`, `docsFile`, and `roadmapFile`
+ * - `languages` (distinct non-null lowercased languages across root + workspaces)
+ * - `workspaceStacks` (per-workspace stack detection results)
  *
  * Each field holds the detector's result (typically a `value` and a `confidence` score) where applicable.
  */
 export async function detectStack(projectRoot: string): Promise<DetectedStack> {
-  const [
-    language,
-    framework,
-    uiLibrary,
-    stateManagement,
-    database,
-    testFramework,
-    testLibrary,
-    linter,
-    formatter,
-    packageManager,
-    e2eFramework,
-    auth,
-    i18n,
-    aiAgents,
-    docsFile,
-    roadmapFile,
-  ] = await Promise.all([
-    detectLanguage(projectRoot),
-    detectFramework(projectRoot),
-    detectUiLibrary(projectRoot),
-    detectStateManagement(projectRoot),
-    detectDatabase(projectRoot),
-    detectTestFramework(projectRoot),
-    detectTestLibrary(projectRoot),
-    detectLinter(projectRoot),
-    detectFormatter(projectRoot),
-    detectPackageManager(projectRoot),
-    detectE2e(projectRoot),
-    detectAuth(projectRoot),
-    detectI18n(projectRoot),
+  const [pipeline, aiAgents, docsFile, roadmapFile, monorepo] = await Promise.all([
+    runStackPipeline(projectRoot),
     detectAiAgents(),
     detectDocsFile(projectRoot),
     detectRoadmapFile(projectRoot),
+    detectMonorepo(projectRoot),
   ]);
 
-  const runtime = resolveRuntime(language.value, framework.value);
-  const monorepo = await detectMonorepo(projectRoot);
+  const runtime = resolveRuntime(pipeline.language.value, pipeline.framework.value);
+
+  const workspaceStacks = monorepo.workspaces.length > 0
+    ? await Promise.all(
+        monorepo.workspaces.map((workspace: string) =>
+          detectWorkspaceStack({ workspacePath: join(projectRoot, workspace), relativePath: workspace }),
+        ),
+      )
+    : [];
+
+  const languages = workspaceStacks.length > 0
+    ? aggregateLanguages(pipeline.language.value, workspaceStacks)
+    : [];
 
   return {
-    language,
+    language: pipeline.language,
     runtime,
-    framework,
-    uiLibrary,
-    stateManagement,
-    database,
-    auth,
-    i18n,
-    testFramework,
-    testLibrary,
-    e2eFramework,
-    linter,
-    formatter,
-    packageManager,
+    framework: pipeline.framework,
+    uiLibrary: pipeline.uiLibrary,
+    stateManagement: pipeline.stateManagement,
+    database: pipeline.database,
+    auth: pipeline.auth,
+    i18n: pipeline.i18n,
+    testFramework: pipeline.testFramework,
+    testLibrary: pipeline.testLibrary,
+    e2eFramework: pipeline.e2eFramework,
+    linter: pipeline.linter,
+    formatter: pipeline.formatter,
+    packageManager: pipeline.packageManager,
     monorepo,
     aiAgents,
     docsFile,
     roadmapFile,
+    languages,
+    workspaceStacks,
   };
 }
 
-export function resolveRuntime(
-  language: string | null,
-  framework: string | null,
-): { value: string | null; confidence: number } {
-  if (!language) return { value: null, confidence: 0 };
-
-  const runtimeMap: Record<string, string> = {
-    typescript: 'node',
-    javascript: 'node',
-    python: 'python',
-    go: 'go',
-    rust: 'rust',
-    java: 'jvm',
-    csharp: 'dotnet',
-  };
-
-  if (framework === 'expo' || framework === 'react-native') {
-    return { value: 'react-native', confidence: 0.9 };
-  }
-
-  const runtime = runtimeMap[language];
-  return runtime
-    ? { value: runtime, confidence: 0.85 }
-    : { value: null, confidence: 0 };
+// Returns [] when all workspaces share a single language (monolingual monorepo).
+// Only polyglot monorepos (2+ distinct languages) return a non-empty list.
+export function aggregateLanguages(
+  rootLanguage: string | null,
+  workspaceStacks: readonly { language: string | null }[],
+): readonly string[] {
+  const all = [
+    rootLanguage,
+    ...workspaceStacks.map((workspaceStack: { language: string | null }) => workspaceStack.language),
+  ];
+  const nonNull = all.filter((language: string | null): language is string => language !== null);
+  const distinct = Array.from(new Set(nonNull.map((language: string) => language.toLowerCase())));
+  return distinct.length <= 1 ? [] : distinct;
 }
 
 export { detectMonorepo } from './detect-monorepo.js';

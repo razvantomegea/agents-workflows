@@ -1,10 +1,10 @@
-export { logger } from './logger.js';
+export { logger, sanitizeForLog } from './logger.js';
 export { fileExists } from './file-exists.js';
 export { readPackageJson, getAllDeps } from './read-package-json.js';
 export type { PackageJson } from './read-package-json.js';
 export { readPyprojectToml } from './read-pyproject-toml.js';
 export type { PyprojectToml } from './read-pyproject-toml.js';
-export { renderTemplate } from './template-renderer.js';
+export { renderTemplate, markdownText, markdownCode } from './template-renderer.js';
 export { convertToSkill } from './convert-to-skill.js';
 export { renderUnifiedDiff, computeUnifiedPatch, DIFF_LINE_CAP } from './diff.js';
 export type { RenderDiffInput } from './diff.js';

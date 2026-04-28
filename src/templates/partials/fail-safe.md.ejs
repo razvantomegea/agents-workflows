@@ -12,4 +12,7 @@ pick an interpretation.
 If you attempt the same fix twice and it fails twice, STOP. Summarize
 what you've learned and ask the user to re-scope. Do not accumulate
 failed attempts.
+<% if (isPolyglot) { -%>
+- Polyglot repo: before any command, run `pwd` and walk upward to the nearest manifest — use that workspace's commands, never the repo root's (see `## Polyglot monorepo navigation`).
+<% } -%>
 </fail_safe>

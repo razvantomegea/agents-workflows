@@ -11,4 +11,7 @@
   calls in a single turn. Do not serialize independent work.
 - After any edit to a typed language, run the type-checker and the
   narrowest relevant test before declaring progress.
+<% if (isPolyglot) { -%>
+- Polyglot repo: per-workspace searches/reads fan out as parallel tool calls — one per workspace.
+<% } -%>
 </tool_use_discipline>

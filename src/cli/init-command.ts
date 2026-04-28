@@ -1,5 +1,5 @@
 import { join, resolve } from 'node:path';
-import { logger } from '../utils/index.js';
+import { logger, sanitizeForLog } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
 import { askInstallScope, type InstallScope } from '../prompt/install-scope.js';
@@ -9,13 +9,16 @@ import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
 import { printDetected } from './print-detected.js';
 import { printDetectedAiTools } from './print-detected-ai-tools.js';
+import { buildWorkspaceStacks } from './build-workspace-stacks.js';
+import { filterDetectedByWorkspacePaths } from './filter-detected-by-paths.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
-import type { StackConfig } from '../schema/stack-config.js';
+import type { StackConfig, IsolationChoice } from '../schema/stack-config.js';
 import type { DetectedStack } from '../detector/types.js';
 import type { MergeStrategy } from '../generator/index.js';
-import type { IsolationChoice } from '../schema/stack-config.js';
 import { parseNonInteractiveFlags } from './non-interactive-flags.js';
 import { hashConfig } from './hash-config.js';
+import { resolveWorkspaceSelection } from '../prompt/resolve-workspace-selection.js';
+import { safeProjectPath } from '../schema/stack-config.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
@@ -57,14 +60,21 @@ export async function initCommand(
     acceptRisks: nonInteractiveFlags.acceptedHostOsRisk,
   };
 
-  const scope = await resolveInstallScope(detected, resolvedOptions);
+  const selectedPaths = await resolveWorkspaceSelection({
+    detected,
+    yes: options.yes ?? false,
+    noPrompt: options.noPrompt ?? false,
+    nonInteractive: resolvedOptions.nonInteractive ?? false,
+  });
+  const filteredDetected = filterDetectedByWorkspacePaths(detected, selectedPaths);
+  const scope = await resolveInstallScope(filteredDetected, resolvedOptions);
 
   if (scope === 'root') {
     await installSinglePackage({
       projectRoot,
-      detected,
+      detected: filteredDetected,
       options: resolvedOptions,
-      monorepoOverride: rootMonorepoConfig(detected),
+      monorepoOverride: rootMonorepoConfig(filteredDetected),
     });
     return;
   }
@@ -72,20 +82,20 @@ export async function initCommand(
   if (scope === 'both') {
     await installSinglePackage({
       projectRoot,
-      detected,
+      detected: filteredDetected,
       options: resolvedOptions,
-      monorepoOverride: rootMonorepoConfig(detected),
+      monorepoOverride: rootMonorepoConfig(filteredDetected),
     });
   }
 
-  await installWorkspaces(projectRoot, detected, resolvedOptions);
+  await installWorkspaces(projectRoot, filteredDetected, resolvedOptions);
 }
 
 async function resolveInstallScope(
   detected: DetectedStack,
   options: InitCommandOptions,
 ): Promise<InstallScope> {
-  if (options.config || options.yes || options.noPrompt) return 'root';
+  if (options.config || options.yes || options.noPrompt || options.nonInteractive) return 'root';
   logger.blank();
   return askInstallScope(detected.monorepo);
 }
@@ -95,7 +105,7 @@ function rootMonorepoConfig(detected: DetectedStack): StackConfig['monorepo'] {
   return {
     isRoot: true,
     tool: detected.monorepo.tool,
-    workspaces: detected.monorepo.workspaces,
+    workspaces: buildWorkspaceStacks(detected),
   };
 }
 
@@ -104,10 +114,20 @@ async function installWorkspaces(
   detected: DetectedStack,
   options: InitCommandOptions,
 ): Promise<void> {
-  for (const workspace of detected.monorepo.workspaces) {
-    const workspacePath = join(rootDir, workspace);
+  for (const workspaceStack of detected.workspaceStacks) {
+    const pathResult = safeProjectPath.safeParse(workspaceStack.path);
+    if (!pathResult.success) {
+      logger.warn(
+        `Skipping workspace ${sanitizeForLog(workspaceStack.path)}: path validation failed (${pathResult.error.issues[0]?.message ?? 'unknown'})`,
+      );
+      continue;
+    }
+
+    const workspacePathSegment = pathResult.data;
+    const workspacePath = join(rootDir, workspacePathSegment);
     logger.blank();
-    logger.heading(`Workspace: ${workspace}`);
+    logger.heading(`Workspace: ${sanitizeForLog(workspacePathSegment)}`);
+    // Full detectStack per workspace: runPromptFlow needs fields (testLibrary, i18n, aiAgents) not in WorkspaceStackDetection.
     const workspaceDetected = await detectStack(workspacePath);
     printDetected(workspaceDetected);
     await installSinglePackage({
@@ -189,4 +209,3 @@ async function installSinglePackage({
   logger.info('  3. Run `npx agents-workflows update` after changing .agents-workflows.json');
   logger.blank();
 }
-

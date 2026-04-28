@@ -103,16 +103,85 @@ describe('generateAll', () => {
 
   it('renders a Workspaces section in CLAUDE.md when config.monorepo.isRoot is true', async () => {
     const config = makeConfig();
-    config.monorepo = { isRoot: true, tool: 'pnpm', workspaces: ['mobile', 'ingestion'] };
+    config.monorepo = {
+      isRoot: true,
+      tool: 'pnpm',
+      workspaces: [
+        {
+          path: 'mobile',
+          language: 'typescript',
+          runtime: 'node',
+          framework: null,
+          packageManager: 'pnpm',
+          commands: { typeCheck: 'pnpm check-types', test: 'pnpm test', lint: 'pnpm lint', build: 'pnpm build' },
+        },
+        {
+          path: 'ingestion',
+          language: 'python',
+          runtime: 'python',
+          framework: null,
+          packageManager: 'uv',
+          commands: { typeCheck: null, test: 'pytest', lint: null, build: null },
+        },
+      ],
+    };
     const files = await generateAll(config);
 
     const claudeMd = files.find((file) => file.path === 'CLAUDE.md');
     expect(claudeMd?.content).toContain('## Workspaces');
-    expect(claudeMd?.content).toContain('`mobile/`');
-    expect(claudeMd?.content).toContain('`ingestion/`');
+    expect(claudeMd?.content).toContain('`mobile`');
+    expect(claudeMd?.content).toContain('`ingestion`');
 
     const agentsMd = files.find((file) => file.path === 'AGENTS.md');
     expect(agentsMd?.content).toContain('## Workspaces');
+  });
+
+  it('emits nested AGENTS.md only for workspaces whose language differs from root (case-insensitive)', async () => {
+    const config = makeConfig(); // root language: typescript
+    config.monorepo = {
+      isRoot: true,
+      tool: 'pnpm',
+      workspaces: [
+        {
+          path: 'web',
+          language: 'TypeScript', // same as root (different case) — no nested AGENTS.md
+          runtime: 'node',
+          framework: null,
+          packageManager: 'pnpm',
+          commands: { typeCheck: 'pnpm check-types', test: 'pnpm test', lint: null, build: null },
+        },
+        {
+          path: 'api',
+          language: 'python', // different — should get nested AGENTS.md
+          runtime: 'python',
+          framework: 'fastapi',
+          packageManager: 'uv',
+          commands: { typeCheck: 'mypy .', test: 'pytest', lint: 'ruff check .', build: null },
+        },
+        {
+          path: 'mobile',
+          language: '', // empty language — should be skipped
+          runtime: null,
+          framework: null,
+          packageManager: 'unknown',
+          commands: { typeCheck: null, test: 'make test', lint: null, build: null },
+        },
+      ],
+    };
+    const files = await generateAll(config);
+
+    const paths = files.map((file) => file.path);
+    expect(paths).not.toContain('web/AGENTS.md');
+    expect(paths).not.toContain('mobile/AGENTS.md');
+    expect(paths).toContain('api/AGENTS.md');
+
+    const nestedAgents = files.find((file) => file.path === 'api/AGENTS.md');
+    expect(nestedAgents?.content).toContain('workspace: api');
+    expect(nestedAgents?.content).toContain('Language: `python`');
+    expect(nestedAgents?.content).toContain('Framework: `fastapi`');
+    expect(nestedAgents?.content).toContain('mypy .');
+    expect(nestedAgents?.content).toContain('agents-workflows:managed-start');
+    expect(nestedAgents?.content).toContain('agents-workflows:managed-end');
   });
 
   it('renders the configured primary branch in workflow and git guidance', async () => {

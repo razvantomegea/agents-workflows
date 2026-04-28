@@ -141,6 +141,43 @@ describe('buildContext', () => {
     expect(ctx.i18nLibrary).toBe('i18next');
   });
 
+  it('sets isPolyglot false when languages array is empty', () => {
+    const ctx = buildContext(makeConfig({ languages: [] }));
+    expect(ctx.isPolyglot).toBe(false);
+  });
+
+  it('sets isPolyglot false when only one language is present', () => {
+    const ctx = buildContext(makeConfig({ languages: ['typescript'] }));
+    expect(ctx.isPolyglot).toBe(false);
+  });
+
+  it('sets isPolyglot true when two or more languages are present', () => {
+    const ctx = buildContext(makeConfig({ languages: ['typescript', 'python'] }));
+    expect(ctx.isPolyglot).toBe(true);
+  });
+
+  it('does not count duplicate or case-variant languages as polyglot', () => {
+    const ctx = buildContext(makeConfig({ languages: ['TypeScript', 'typescript', ' typescript '] }));
+    expect(ctx.isPolyglot).toBe(false);
+  });
+
+  it('ignores blank language entries when computing isPolyglot', () => {
+    const ctx = buildContext(makeConfig({ languages: ['typescript', '  '] }));
+    expect(ctx.isPolyglot).toBe(false);
+  });
+
+  it('passes languages through onto the context', () => {
+    const ctx = buildContext(makeConfig({ languages: ['typescript', 'rust', 'go'] }));
+    expect(ctx.languages).toEqual(['typescript', 'rust', 'go']);
+  });
+
+  it('copies languages onto the context instead of aliasing config.languages', () => {
+    const config = makeConfig({ languages: ['typescript', 'python'] });
+    const ctx = buildContext(config);
+    config.languages.push('rust');
+    expect(ctx.languages).toEqual(['typescript', 'python']);
+  });
+
   it('passes detectedAiAgents through unchanged', () => {
     const ctx = buildContext(makeConfig({
       detectedAiAgents: {

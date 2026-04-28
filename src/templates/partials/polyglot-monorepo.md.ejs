@@ -1,0 +1,36 @@
+<% if (isPolyglot) { -%>
+## Polyglot monorepo navigation
+
+<polyglot_monorepo>
+This repo is a monorepo with multiple languages. Before any edit or
+command:
+
+1. Locate the NEAREST manifest walking upward from the target file:
+   `package.json`, `pyproject.toml`, `Cargo.toml`, `go.mod`,
+   `*.csproj` / `*.sln`, `CMakeLists.txt` / `conanfile.*` / `vcpkg.json`.
+   That directory is the workspace root for this operation.
+2. A closer `AGENTS.md` / `CLAUDE.md` ALWAYS wins over an outer one
+   (see §1.1).
+3. Resolve all commands from that workspace manifest — never from repo
+   root — unless a root task runner is configured to fan out (Turbo,
+   Nx, `cargo` workspace, `go work`, `dotnet sln`, `cmake --build`).
+   Examples:
+     - JS/TS:  `pnpm --filter <pkg> test` / `pnpm --filter <pkg> lint`
+     - Python: `uv run --package <pkg> pytest` / `poetry -C <pkg> run pytest`
+     - Rust:   `cargo test -p <pkg>` / `cargo clippy -p <pkg>`
+     - Go:     run from the module dir: `go test ./...` / `go vet ./...`
+     - .NET:   `dotnet test <proj>.csproj` / `dotnet build <proj>.csproj`
+     - C++:    `cmake --build build --target <tgt>` then `ctest --test-dir build`
+4. Definition of Done (§1.6) runs PER touched workspace: type-check,
+   lint, and the narrowest relevant test in each workspace's
+   toolchain. Do not short-circuit by running one ecosystem's gate.
+5. Cross-workspace refactors: the plan (§1.13) MUST enumerate every
+   touched workspace and list each workspace's DoD gate as a
+   verification step.
+6. Never install a dependency into the wrong workspace. Never share
+   or cross-write lockfiles across ecosystems (no `package-lock.json`
+   in a Rust crate, no `Cargo.lock` in a Python package, etc.).
+7. If a workspace has no `AGENTS.md`, inherit the root one but still
+   route commands through the workspace manifest.
+</polyglot_monorepo>
+<% } -%>
