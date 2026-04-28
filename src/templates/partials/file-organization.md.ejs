@@ -1,8 +1,8 @@
 ## File Organization
 
-- Keep business logic in `<%= utilsDir %>` and hooks — keep UI components thin.
+- Keep business logic in <%- markdownCode(utilsDir) %> and hooks — keep UI components thin.
 <% if (componentsDir) { -%>
-- Prioritize reusable building blocks under `<%= componentsDir %>`.
+- Prioritize reusable building blocks under <%- markdownCode(componentsDir) %>.
 <% } -%>
 - One public component/helper per file.
 <% if (conventions.barrelExports) { -%>

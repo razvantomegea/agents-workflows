@@ -18,10 +18,42 @@ const SAFE_BRANCH_MESSAGE = 'branch name contains disallowed shell metacharacter
 const SAFE_PROJECT_NAME_RE = /^[a-zA-Z0-9 ._-]+$/;
 const SAFE_PROJECT_NAME_MESSAGE = 'project.name must contain only letters, digits, space, dot, underscore, hyphen';
 const SAFE_PROJECT_NAME_WHITESPACE_MESSAGE = 'project.name cannot be empty or whitespace only';
+const SAFE_PROJECT_DESCRIPTION_MESSAGE = 'project.description must contain only plain single-line text characters';
+const SAFE_PROJECT_PATH_RE = /^[a-zA-Z0-9._/@+-]+$/;
+const SAFE_PROJECT_PATH_MESSAGE = 'path must be a relative project path using only letters, digits, slash, dot, underscore, at, plus, or hyphen';
+const SAFE_PROJECT_PATH_TRAVERSAL_MESSAGE = 'path must not be absolute, empty, contain parent traversal, or contain empty path segments';
 
 const safeCommand = z.string().regex(SAFE_COMMAND_RE, SAFE_COMMAND_MESSAGE);
 const safeCommandNullable = safeCommand.nullable().default(null);
 const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
+export const safeProjectPath = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(SAFE_PROJECT_PATH_RE, SAFE_PROJECT_PATH_MESSAGE)
+  .refine((value: string) => {
+    if (value.startsWith('/') || value.startsWith('.')) return false;
+    const normalized = value.endsWith('/') ? value.slice(0, -1) : value;
+    const segments = normalized.split('/');
+    return segments.every((segment: string) => segment !== '' && segment !== '.' && segment !== '..');
+  }, SAFE_PROJECT_PATH_TRAVERSAL_MESSAGE);
+const safeProjectPathNullable = safeProjectPath.nullable().default(null);
+function isSafeProjectDescription(value: string): boolean {
+  for (const char of value) {
+    const code = char.charCodeAt(0);
+    if (code <= 31 || code === 127 || char === '`' || char === '<' || char === '>' || char === '#') {
+      return false;
+    }
+  }
+  return true;
+}
+
+export const safeProjectDescription = z
+  .string()
+  .trim()
+  .min(1, 'project.description cannot be empty')
+  .max(500, 'project.description must be <= 500 characters')
+  .refine(isSafeProjectDescription, SAFE_PROJECT_DESCRIPTION_MESSAGE);
 
 export const SECURITY_DEFAULTS = {
   nonInteractiveMode: false,
@@ -41,11 +73,11 @@ export const stackConfigSchema = z.object({
       .max(100)
       .regex(SAFE_PROJECT_NAME_RE, SAFE_PROJECT_NAME_MESSAGE)
       .refine((value: string) => value.trim().length > 0, SAFE_PROJECT_NAME_WHITESPACE_MESSAGE),
-    description: z.string(),
+    description: safeProjectDescription,
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),
-    docsFile: z.string().nullable().default(null),
-    roadmapFile: z.string().nullable().default(null),
+    docsFile: safeProjectPathNullable,
+    roadmapFile: safeProjectPathNullable,
     mainBranch: safeBranch.default('main'),
   }),
 
@@ -71,14 +103,14 @@ export const stackConfigSchema = z.object({
   }),
 
   paths: z.object({
-    sourceRoot: z.string(),
-    componentsDir: z.string().nullable().default(null),
-    hooksDir: z.string().nullable().default(null),
-    utilsDir: z.string(),
-    testsDir: z.string().nullable().default(null),
-    designTokensFile: z.string().nullable().default(null),
-    i18nDir: z.string().nullable().default(null),
-    testConfigFile: z.string().nullable().default(null),
+    sourceRoot: safeProjectPath,
+    componentsDir: safeProjectPathNullable,
+    hooksDir: safeProjectPathNullable,
+    utilsDir: safeProjectPath,
+    testsDir: safeProjectPathNullable,
+    designTokensFile: safeProjectPathNullable,
+    i18nDir: safeProjectPathNullable,
+    testConfigFile: safeProjectPathNullable,
   }),
 
   commands: z.object({
@@ -122,6 +154,9 @@ export const stackConfigSchema = z.object({
   targets: z.object({
     claudeCode: z.boolean().default(true),
     codexCli: z.boolean().default(false),
+    cursor: z.boolean().default(false),
+    copilot: z.boolean().default(false),
+    windsurf: z.boolean().default(false),
   }),
 
   detectedAiAgents: z.object({

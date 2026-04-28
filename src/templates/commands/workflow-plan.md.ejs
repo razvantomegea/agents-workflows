@@ -21,10 +21,10 @@ git checkout <%= mainBranch %> && git pull origin <%= mainBranch %> && git check
 
 ### Phase 2 — Research & plan
 
-Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md`<% if (docsFile) { %> and `<%= docsFile %>`<% } %>. The architect agent will:
+Use the `architect` sub-agent for this phase. Pass it the user's request and relevant context from `CLAUDE.md`<% if (docsFile) { %> and <%- markdownCode(docsFile) %><% } %>. The architect agent will:
 
 <% if (docsFile) { -%>
-1. Read `<%= docsFile %>`, `CLAUDE.md`, and any other project docs — the planner must read `<%= docsFile %>` **first** so the plan reflects documented requirements and non-goals.
+1. Read <%- markdownCode(docsFile) %>, `CLAUDE.md`, and any other project docs — the planner must read <%- markdownCode(docsFile) %> **first** so the plan reflects documented requirements and non-goals.
 <% } else { -%>
 1. Read `CLAUDE.md` and any project docs.
 <% } -%>
@@ -100,12 +100,12 @@ After writing the plan, **immediately execute every task** in order:
 5. Record final summary inputs: what was implemented, files changed, any open questions, and any external errors.
 
 <% if (roadmapFile) { -%>
-### Phase 4 — Mark epic done in `<%= roadmapFile %>` (if applicable)
+### Phase 4 — Mark epic done in <%- markdownCode(roadmapFile) %> (if applicable)
 
-If the user's request referenced a documented epic in `<%= roadmapFile %>` (pattern: `## Epic N — <title>` with `[MUST]` / `[SHOULD]` / `[NICE]` tag, or a copy-pasted epic header):
+If the user's request referenced a documented epic in <%- markdownCode(roadmapFile) %> (pattern: `## Epic N — <title>` with `[MUST]` / `[SHOULD]` / `[NICE]` tag, or a copy-pasted epic header):
 
-1. Locate the epic header in `<%= roadmapFile %>`.
-2. Mark only `<%= roadmapFile %>` checklist items or task headings that are confirmed complete by the completed `PLAN.md` tasks.
+1. Locate the epic header in <%- markdownCode(roadmapFile) %>.
+2. Mark only <%- markdownCode(roadmapFile) %> checklist items or task headings that are confirmed complete by the completed `PLAN.md` tasks.
 3. Leave incomplete or unmatched items unchanged and report the mismatch in the final summary.
 4. Append `[DONE YYYY-MM-DD]` (today's date) to the epic header only when every task item under that epic is confirmed complete.
 5. Add a one-line `**Landed on** \`<branch-name>\`.` note under the header only when it is not already present.

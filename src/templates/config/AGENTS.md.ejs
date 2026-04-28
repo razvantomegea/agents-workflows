@@ -4,9 +4,11 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 
 <!-- agents-workflows:managed-start -->
 
-`<%= project.name %>` — <%= project.description %>.
+`<%= project.name %>` — <%- markdownText(project.description) %>.
 
 <%- include('../partials/stack-context.md.ejs', { stackItems }) %>
+
+<%- include('../partials/project-structure.md.ejs', { paths }) %>
 
 <%- include('../partials/docs-reference.md.ejs', { docsFile }) %>
 
@@ -186,6 +188,8 @@ Before any destructive operation, state: (1) what changes, (2) where
 (env), (3) reversibility, (4) blast radius (count of rows/files/users).
 
 ## Tooling / hooks
+
+This file is the universal surface — Copilot, Windsurf, Gemini CLI, Aider, and Continue.dev read it natively. Claude Code, Codex CLI, and Cursor additionally consume tool-native files under `.claude/`, `.codex/`, and `.cursor/`.
 
 `agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
 

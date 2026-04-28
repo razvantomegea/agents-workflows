@@ -1,4 +1,5 @@
 import type { StackConfig, SecurityConfig } from '../schema/stack-config.js';
+import type { MergeFunction } from './write-file.js';
 
 export interface CommandHook {
   type: 'command';
@@ -67,4 +68,5 @@ export interface GeneratorContext extends Record<string, unknown> {
 export interface GeneratedFile {
   path: string;
   content: string;
+  merge?: MergeFunction;
 }

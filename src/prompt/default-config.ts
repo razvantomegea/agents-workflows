@@ -6,6 +6,7 @@ import { isFrontendFramework, supportsReactTsStack } from '../constants/framewor
 import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 import { resolveCommands, resolvePackageManagerPrefix, type PackageScripts } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
+import { resolveTargetDefaultsSync } from './ask-targets.js';
 
 /**
  * Builds a complete StackConfig from detected stack information, optional package scripts, and optional package.json metadata.
@@ -29,10 +30,7 @@ export function createDefaultConfig(
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;
 
-  const targets = {
-    claudeCode: detected.aiAgents.hasClaudeCode || !detected.aiAgents.hasCodexCli,
-    codexCli: detected.aiAgents.hasCodexCli,
-  };
+  const targets = resolveTargetDefaultsSync({ detected: detected.aiAgents });
 
   return {
     project: {

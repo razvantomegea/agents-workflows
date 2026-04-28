@@ -1,1 +1,2 @@
-All good!
+- [x] Missing roadmap file and docsfile asking/confirmation on update. Only on init it is present
+- [x] Ability to generate the project structure in the CLAUDE.md and AGENTS.md

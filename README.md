@@ -254,11 +254,19 @@ Devcontainer alternative: scaffold `.devcontainer/devcontainer.json` based on `m
 
 ## What gets written
 
-| Target | Output paths |
-|---|---|
-| Always | `AGENTS.md`, `.agents-workflows.json` |
-| Claude Code | `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/scripts/*.sh`, `CLAUDE.md`, `.claude/settings.json` |
-| Codex CLI | `.codex/config.toml`, `.codex/rules/project.rules`, `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.sh`, `.codex/scripts/sync-codex.ps1` |
+`AGENTS.md` and `.agents-workflows.json` are emitted on every run regardless of which targets you select — they are the universal surface that every agent (Aider, Continue.dev, Gemini CLI, Copilot CLI, Cline/Roo) reads.
+
+### Supported targets
+
+| Tool | Output paths | Activation model | Detection signal |
+|---|---|---|---|
+| Claude Code | `.claude/agents/*.md`, `.claude/commands/*.md`, `.claude/scripts/*.sh`, `CLAUDE.md`, `.claude/settings.json` | Sub-agents per file; settings deny/allow lists | `claude` CLI on PATH, `~/.claude/`, `ANTHROPIC_API_KEY` |
+| Codex CLI | `.codex/config.toml`, `.codex/rules/project.rules`, `.codex/skills/*/SKILL.md`, `.codex/prompts/*.md`, `.codex/scripts/sync-codex.{sh,ps1}` | Skill files + project.rules deny/forbid | `codex` CLI on PATH, `~/.codex/config.toml`, `OPENAI_API_KEY` |
+| Cursor | `.cursor/rules/NN-<slug>.mdc`, `.cursor/commands/*.md` | MDC frontmatter (`alwaysApply`, `globs`, `description`); ordered `00-` always-on, `10-` glob, `20-` model-decision, `30-` manual | `cursor` CLI on PATH, `~/.cursor/` |
+| VSCode + GitHub Copilot | `.github/copilot-instructions.md`, `.github/prompts/*.prompt.md` | Single advisory instructions file + per-prompt YAML `tools:` allow-list | `copilot` CLI on PATH, `.github/` directory present, `GH_TOKEN`/`GITHUB_TOKEN` |
+| Windsurf | `.windsurf/rules/NN-<slug>.md`, `.windsurf/workflows/*.md` | YAML `activation:` header (`always_on`, `glob`, `model_decision`, `manual`); same ordering as Cursor | `windsurf` CLI on PATH, `~/.codeium/windsurf/` |
+
+GitHub branch protection (disallow force-push, require review) is the server-side backstop for the Copilot coding agent because client-side guards in `.github/copilot-instructions.md` and the `tools:` frontmatter are advisory. Cursor and Windsurf have no kernel sandbox; their always-on rules are agent-behaviour guidance, not enforcement.
 
 ## Project structure
 

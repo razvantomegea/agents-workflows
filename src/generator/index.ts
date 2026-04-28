@@ -1,22 +1,35 @@
 import type { StackConfig } from '../schema/stack-config.js';
-import type { GeneratedFile } from './types.js';
+import type { GeneratedFile, GeneratorContext } from './types.js';
 import { buildContext } from './build-context.js';
 import { generateAgents } from './generate-agents.js';
 import { generateCommands } from './generate-commands.js';
 import { generateRootConfig } from './generate-root-config.js';
 import { generateScripts } from './generate-scripts.js';
+import { generateCursorConfig } from './cursor/index.js';
+import { generateCopilotConfig } from './copilot/index.js';
+import { generateWindsurfConfig } from './windsurf/index.js';
+
+export type TargetGenerator = (
+  config: StackConfig,
+  context: GeneratorContext,
+) => Promise<GeneratedFile[]>;
+
+export const TARGET_GENERATORS: readonly TargetGenerator[] = [
+  generateAgents,
+  generateCommands,
+  generateRootConfig,
+  generateScripts,
+  generateCursorConfig,
+  generateCopilotConfig,
+  generateWindsurfConfig,
+];
 
 export async function generateAll(config: StackConfig): Promise<GeneratedFile[]> {
   const context = buildContext(config);
-
-  const [agents, commands, rootConfig, scripts] = await Promise.all([
-    generateAgents(config, context),
-    generateCommands(config, context),
-    generateRootConfig(config, context),
-    generateScripts(config, context),
-  ]);
-
-  return [...agents, ...commands, ...rootConfig, ...scripts];
+  const groups = await Promise.all(
+    TARGET_GENERATORS.map((generator: TargetGenerator) => generator(config, context)),
+  );
+  return groups.flat();
 }
 
 export { buildContext } from './build-context.js';

@@ -1,0 +1,13 @@
+---
+description: "<%= description %>"
+name: "<%= name %>"
+argument-hint: "<%= argumentHint %>"
+agent: "agent"
+model: "<%= model %>"
+tools:
+<% for (const tool of tools) { -%>
+  - <%= tool %>
+<% } -%>
+---
+
+<%- body %>

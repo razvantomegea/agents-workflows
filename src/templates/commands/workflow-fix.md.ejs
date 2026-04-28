@@ -69,8 +69,8 @@ Fix all QA issues listed in QA.md on the current feature branch.
 7. Record summary inputs: which issues were fixed, which were skipped (and why), files changed.
 
 <% if (roadmapFile) { -%>
-8. **Update `<%= roadmapFile %>` (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching `<%= roadmapFile %>` checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched `<%= roadmapFile %>` items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
-9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, `<%= roadmapFile %>` items marked done, any unmatched `<%= roadmapFile %>` items, and any unresolved issues.
+8. **Update <%- markdownCode(roadmapFile) %> (if applicable)**: if the QA pass was tied to a documented epic or known bug, mark only the matching <%- markdownCode(roadmapFile) %> checklist items or task headings that are confirmed complete. Append `[DONE YYYY-MM-DD]` to the epic header only when every task item under that epic is confirmed complete. Leave incomplete or unmatched <%- markdownCode(roadmapFile) %> items unchanged and report the mismatch in the final summary. Skip when QA was not tied to a documented epic or bug.
+9. Print a final summary: which issues were fixed, which were skipped (and why), files changed, <%- markdownCode(roadmapFile) %> items marked done, any unmatched <%- markdownCode(roadmapFile) %> items, and any unresolved issues.
 <% } else { -%>
 8. Print a final summary: which issues were fixed, which were skipped (and why), files changed, and any unresolved issues.
 <% } -%>

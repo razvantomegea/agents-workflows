@@ -1,7 +1,7 @@
 <% if (docsFile) { -%>
 ## Primary Documentation
 
-- The canonical source of project intent lives in `<%= docsFile %>`.
-- Read `<%= docsFile %>` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
-- When `<%= docsFile %>` and code disagree, flag the mismatch in your output instead of silently picking one.
+- The canonical source of project intent lives in <%- markdownCode(docsFile) %>.
+- Read <%- markdownCode(docsFile) %> before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
+- When <%- markdownCode(docsFile) %> and code disagree, flag the mismatch in your output instead of silently picking one.
 <% } -%>

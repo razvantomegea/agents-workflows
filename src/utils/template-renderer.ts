@@ -16,6 +16,22 @@ function tomlString(value: unknown): string {
   return `"${escaped}"`;
 }
 
+function markdownCode(value: unknown): string {
+  const normalized = String(value ?? '').replace(/[\r\n]+/g, ' ');
+  if (!normalized.includes('`')) return `\`${normalized}\``;
+  return `\`\` ${normalized.replace(/`/g, "'")} \`\``;
+}
+
+function markdownText(value: unknown): string {
+  return String(value ?? '')
+    .replace(/\\/g, '\\\\')
+    .replace(/`/g, '\\`')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/[\r\n]+/g, ' ');
+}
+
 export async function renderTemplate(
   templatePath: string,
   data: Record<string, unknown>,
@@ -23,7 +39,7 @@ export async function renderTemplate(
   const fullPath = join(TEMPLATES_DIR, templatePath);
   const template = await readFile(fullPath, 'utf-8');
 
-  const enrichedData = { ...data, jsonString, tomlString };
+  const enrichedData = { ...data, jsonString, tomlString, markdownCode, markdownText };
   const result = ejs.render(template, enrichedData, {
     async: false,
     filename: fullPath,

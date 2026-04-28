@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import type { GeneratedFile } from '../generator/types.js';
 import { writeFileSafe, _setPromptFn, _restoreDefaultPromptFn } from '../generator/write-file.js';
 import type { WriteFileResult, PromptFn, PromptAnswer } from '../generator/write-file.js';
@@ -28,13 +28,20 @@ export async function writeGeneratedFiles(
     _setPromptFn(promptAdapter);
   }
 
+  const rootResolved = resolve(projectRoot);
+
   try {
     for (const file of files) {
       const fullPath = join(projectRoot, file.path);
+      const resolvedPath = resolve(fullPath);
+      if (resolvedPath !== rootResolved && !resolvedPath.startsWith(rootResolved + sep)) {
+        throw new Error(`Refusing to write outside project root: ${file.path}`);
+      }
       const result: WriteFileResult = await writeFileSafe({
         path: fullPath,
         content: file.content,
         displayPath: file.path,
+        merge: file.merge,
       });
 
       if (result.status === 'written') {

@@ -1,0 +1,27 @@
+## Project Structure
+
+Use this map for quick orientation. Folder descriptions are generated only from configured project roles, not inferred from a filesystem crawl.
+
+```text
+.
+|-- <%= paths.sourceRoot %>    # source root
+<% if (paths.componentsDir) { -%>
+|-- <%= paths.componentsDir %>    # reusable UI components
+<% } -%>
+<% if (paths.hooksDir) { -%>
+|-- <%= paths.hooksDir %>    # application hooks
+<% } -%>
+|-- <%= paths.utilsDir %>    # utilities and business logic
+<% if (paths.testsDir) { -%>
+|-- <%= paths.testsDir %>    # tests
+<% } -%>
+<% if (paths.designTokensFile) { -%>
+|-- <%= paths.designTokensFile %>    # design tokens
+<% } -%>
+<% if (paths.i18nDir) { -%>
+|-- <%= paths.i18nDir %>    # internationalization resources
+<% } -%>
+<% if (paths.testConfigFile) { -%>
+`-- <%= paths.testConfigFile %>    # test configuration
+<% } -%>
+```

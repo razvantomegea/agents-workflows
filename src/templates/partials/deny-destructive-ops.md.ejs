@@ -1,0 +1,28 @@
+## Dangerous operations — require explicit confirmation
+
+These commands are forbidden across every workflow. Cursor, Copilot, and
+Windsurf have **no kernel sandbox** — refusal is the agent's responsibility.
+Pair with branch protection on `<%= mainBranch %>` and (where supported)
+workspace trust.
+
+NEVER execute without the user typing "yes" in the current session:
+
+- `rm -rf`, `rm -r` on any directory
+- `git push`, `git push --force`, `git push --force-with-lease`
+- `git commit`, `git commit --amend`
+- `git reset --hard`, `git clean -fd`, `git branch -D`
+- `Remove-Item -Recurse -Force`, `del /S /Q`, `rmdir /S /Q` (Windows)
+- `pwsh -Command`, `powershell -Command`, `cmd /c`, `cmd /k` (script-body bypass)
+- `Invoke-WebRequest`, `iwr`, `Invoke-RestMethod`, `irm`, `curl.exe`, `wget.exe`
+- `DROP`, `TRUNCATE`, `DELETE` / `UPDATE` without `WHERE`
+- `kubectl` / `terraform` targeting any non-local context
+- `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`
+- Writes outside the project root, modifications to shell rc files,
+  installing system packages
+
+Always prefer `--dry-run` / `terraform plan` / `kubectl diff` first.
+Always prefer `--force-with-lease` over `--force` when a force push is
+unavoidable, and ask first.
+
+Before any destructive operation, state: (1) what changes, (2) where
+(env), (3) reversibility, (4) blast radius (count of rows/files/users).

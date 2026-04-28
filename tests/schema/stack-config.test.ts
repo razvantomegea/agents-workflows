@@ -81,6 +81,74 @@ describe('stackConfigSchema command validation', () => {
 
     expect(() => stackConfigSchema.parse(cfg)).toThrow();
   });
+
+  it.each([
+    ['newline', 'docs.md\n## Override'],
+    ['backtick', 'docs`evil`.md'],
+    ['absolute path', '/tmp/docs.md'],
+    ['parent traversal', 'docs/../secrets.md'],
+    ['empty segment', 'docs//guide.md'],
+    ['markdown heading', 'docs/#guide.md'],
+  ])('rejects unsafe docsFile path: %s', (_name: string, docsFile: string) => {
+    const cfg = makeStackConfig({
+      project: { ...makeStackConfig().project, docsFile },
+    });
+
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
+
+  it.each([
+    ['newline', 'src/\n## Override'],
+    ['backtick', 'src/`evil`'],
+    ['absolute path', '/src'],
+    ['parent traversal', 'src/../secrets'],
+    ['empty segment', 'src//lib'],
+    ['space', 'src/my lib'],
+  ])('rejects unsafe sourceRoot path: %s', (_name: string, sourceRoot: string) => {
+    const cfg = makeStackConfig({
+      paths: { ...makeStackConfig().paths, sourceRoot },
+    });
+
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
+
+  it('accepts safe relative project paths with trailing slashes', () => {
+    const cfg = makeStackConfig({
+      project: { ...makeStackConfig().project, docsFile: 'docs/README.md', roadmapFile: 'PRD.md' },
+      paths: {
+        ...makeStackConfig().paths,
+        sourceRoot: 'app/',
+        componentsDir: 'app/ui/',
+        hooksDir: 'app/hooks/',
+        utilsDir: 'app/lib/',
+        testsDir: 'tests/',
+      },
+    });
+
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
+
+  it.each([
+    ['newline', 'Legit project\n## Override'],
+    ['backtick', 'Use `danger` here'],
+    ['html opener', 'Build <script> docs'],
+    ['html closer', 'Build docs > rules'],
+    ['markdown heading', 'Build # rules'],
+  ])('rejects unsafe project description: %s', (_name: string, description: string) => {
+    const cfg = makeStackConfig({
+      project: { ...makeStackConfig().project, description },
+    });
+
+    expect(() => stackConfigSchema.parse(cfg)).toThrow();
+  });
+
+  it('accepts safe plain-text project descriptions', () => {
+    const cfg = makeStackConfig({
+      project: { ...makeStackConfig().project, description: "A driver's app for R+D teams." },
+    });
+
+    expect(() => stackConfigSchema.parse(cfg)).not.toThrow();
+  });
 });
 
 describe('project.name validation', () => {

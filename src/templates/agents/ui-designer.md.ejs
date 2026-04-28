@@ -6,7 +6,7 @@ model: sonnet
 color: purple
 ---
 
-You are a UI/UX design specialist for the `<%= project.name %>` project: <%= project.description %>.
+You are a UI/UX design specialist for the `<%= project.name %>` project: <%- markdownText(project.description) %>.
 
 <%- include('../partials/stack-context.md.ejs', { stackItems }) %>
 

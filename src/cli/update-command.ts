@@ -7,7 +7,7 @@ import { generateAll, writeFileSafe } from '../generator/index.js';
 import { withSafetySession } from './safety-session.js';
 import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles } from '../installer/index.js';
-import { askMainBranch } from '../prompt/questions.js';
+import { askMainBranch, askProjectDocumentationFiles } from '../prompt/questions.js';
 import { resolveSecurityUpdate } from './resolve-security-update.js';
 import { hashConfig } from './hash-config.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
@@ -63,14 +63,14 @@ export async function updateCommand(
     acceptRisks: options.acceptRisks,
   });
 
+  const project = await resolveUpdateProjectConfig({
+    existing: parsed.data.config.project,
+    promptsSuppressed: Boolean(promptsSuppressed),
+  });
+
   const config: StackConfig = {
     ...parsed.data.config,
-    project: {
-      ...parsed.data.config.project,
-      mainBranch: promptsSuppressed
-        ? parsed.data.config.project.mainBranch
-        : await askMainBranch(parsed.data.config.project.mainBranch),
-    },
+    project,
     security: securityResolved,
   };
 
@@ -142,3 +142,25 @@ export async function updateCommand(
   });
 }
 
+export async function resolveUpdateProjectConfig(
+  params: Readonly<{
+    existing: StackConfig['project'];
+    promptsSuppressed: boolean;
+  }>,
+): Promise<StackConfig['project']> {
+  if (params.promptsSuppressed) {
+    return params.existing;
+  }
+
+  const projectDocumentation = await askProjectDocumentationFiles({
+    docsFile: params.existing.docsFile,
+    roadmapFile: params.existing.roadmapFile,
+  });
+  const mainBranch = await askMainBranch(params.existing.mainBranch);
+
+  return {
+    ...params.existing,
+    ...projectDocumentation,
+    mainBranch,
+  };
+}
