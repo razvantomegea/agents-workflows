@@ -11,6 +11,7 @@ import {
   LOCAL_GIT_ALLOWS,
   SANDBOX_WRAPPER_ALLOWS,
   SANDBOX_WRAPPER_DENIES,
+  SHELL_UTILITY_ALLOWS,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
@@ -25,6 +26,7 @@ export {
   LOCAL_GIT_ALLOWS,
   SANDBOX_WRAPPER_ALLOWS,
   SANDBOX_WRAPPER_DENIES,
+  SHELL_UTILITY_ALLOWS,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
@@ -34,6 +36,9 @@ export interface PermissionsInput {
 }
 
 const CURRENT_PROJECT_PERMISSIONS: readonly string[] = [
+  'Read(./**)',
+  'Glob',
+  'Grep',
   'Edit(./**)',
   'MultiEdit(./**)',
   'Write(./**)',
@@ -75,6 +80,12 @@ export function buildPermissions(input: PermissionsInput): string[] {
 
   // Cross-model handoff (§1.7.2): codex exec / claude -p subprocess fallback.
   for (const entry of CROSS_MODEL_HANDOFF_ALLOWS) {
+    if (!perms.includes(entry)) {
+      perms.push(entry);
+    }
+  }
+
+  for (const entry of SHELL_UTILITY_ALLOWS) {
     if (!perms.includes(entry)) {
       perms.push(entry);
     }

@@ -234,42 +234,13 @@ export const CROSS_MODEL_HANDOFF_ALLOWS: readonly string[] = [
   'Bash(claude -p:*)',
 ];
 
-/**
- * Inner commands that may be safely invoked through any sandbox wrapper from
- * the host. Combines the package-manager binaries, local read-only git, the
- * toolchain binaries, and the cross-model handoff binaries so a host-side
- * Claude Code or Codex session can drive a project that lives inside WSL,
- * a docker/podman container, or a devcontainer.
- *
- * Two patterns are emitted per (wrapper, inner) pair:
- *   `Bash(<wrapper> <inner>:*)`     — matches the bare form
- *                                     (e.g. `wsl pnpm test`)
- *   `Bash(<wrapper> * <inner>:*)`   — matches the flag-prefixed form
- *                                     (e.g. `wsl --distribution Ubuntu pnpm test`,
- *                                     `docker exec -i myc pnpm test`)
- *
- * The SANDBOX_WRAPPER_DENIES above run first, so a wrapper invocation that
- * targets a denied host command or raw interpreter (`wsl rm -rf`,
- * `wsl pwsh`, `docker exec myc bash -c "..."`, etc.) is blocked before allow
- * rules are evaluated.
- */
-const SANDBOX_INNER_ALLOWED: readonly string[] = [
-  'pnpm',
-  'npm',
-  'yarn',
-  'bun',
-  'git status',
-  'git diff',
-  'git log',
-  'git branch --list',
-  'tsc',
-  'jest',
-  'eslint',
-  'prettier',
-  'codex exec',
-  'claude -p',
-];
-
-export const SANDBOX_WRAPPER_ALLOWS: readonly string[] = SANDBOX_WRAPPER_PREFIXES.flatMap(
-  (wrapper: string) => expandWrapper(wrapper, SANDBOX_INNER_ALLOWED),
+// Deny rules restrict dangerous sub-commands within wrappers; a single wildcard
+// per wrapper is sufficient for the allow side.
+export const SANDBOX_WRAPPER_ALLOWS: readonly string[] = SANDBOX_WRAPPER_PREFIXES.map(
+  (wrapper: string) => `Bash(${wrapper} *)`,
 );
+
+export const SHELL_UTILITY_ALLOWS: readonly string[] = [
+  'Bash(ls:*)',
+  'Bash(cd:*)',
+];

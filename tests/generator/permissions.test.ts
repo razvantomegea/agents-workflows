@@ -106,28 +106,24 @@ describe('buildPermissions', () => {
     expect(perms).toContain('Bash(claude -p:*)');
   });
 
-  it('auto-allows sandbox-wrapped forms of pnpm / git-readonly / toolchain / handoff binaries', () => {
+  it('auto-allows sandbox-wrapped forms via single wildcard per wrapper', () => {
     const perms = buildPermissions(PNPM_INPUT);
-    // wsl
-    expect(perms).toContain('Bash(wsl pnpm:*)');
-    expect(perms).toContain('Bash(wsl * pnpm:*)');
-    expect(perms).toContain('Bash(wsl git status:*)');
-    expect(perms).toContain('Bash(wsl git branch --list:*)');
-    expect(perms).toContain('Bash(wsl tsc:*)');
-    expect(perms).toContain('Bash(wsl codex exec:*)');
-    expect(perms).toContain('Bash(wsl claude -p:*)');
-    // docker exec
-    expect(perms).toContain('Bash(docker exec pnpm:*)');
-    expect(perms).toContain('Bash(docker exec * pnpm:*)');
-    // docker compose exec
-    expect(perms).toContain('Bash(docker compose exec pnpm:*)');
-    expect(perms).toContain('Bash(docker compose exec * pnpm:*)');
-    // podman exec
-    expect(perms).toContain('Bash(podman exec pnpm:*)');
-    expect(perms).toContain('Bash(podman exec * pnpm:*)');
-    // devcontainer exec
-    expect(perms).toContain('Bash(devcontainer exec pnpm:*)');
-    expect(perms).toContain('Bash(devcontainer exec * pnpm:*)');
+    expect(perms).toContain('Bash(wsl *)');
+    expect(perms).toContain('Bash(docker exec *)');
+    expect(perms).toContain('Bash(docker compose exec *)');
+    expect(perms).toContain('Bash(podman exec *)');
+    expect(perms).toContain('Bash(devcontainer exec *)');
+    // Old granular forms are gone — the deny list restricts dangerous sub-commands
+    expect(perms).not.toContain('Bash(wsl pnpm:*)');
+    expect(perms).not.toContain('Bash(docker exec pnpm:*)');
+  });
+
+  it('allows Glob, Grep, ls, and cd', () => {
+    const perms = buildPermissions(PNPM_INPUT);
+    expect(perms).toContain('Glob');
+    expect(perms).toContain('Grep');
+    expect(perms).toContain('Bash(ls:*)');
+    expect(perms).toContain('Bash(cd:*)');
   });
 
   it('does NOT broaden the wrapper allow to opaque -c/-Command forms', () => {
@@ -142,8 +138,6 @@ describe('buildPermissions', () => {
     const perms = buildPermissions(PNPM_INPUT);
     expect(perms).toContain('Bash(git branch --list:*)');
     expect(perms).not.toContain('Bash(git branch:*)');
-    expect(perms).not.toContain('Bash(wsl git branch:*)');
-    expect(perms).not.toContain('Bash(docker exec git branch:*)');
   });
 });
 
