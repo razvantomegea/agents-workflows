@@ -25,7 +25,7 @@ function makeDetectedStack(workspacePaths: string[]): DetectedStack {
     docsFile: EMPTY_DETECTION,
     roadmapFile: EMPTY_DETECTION,
     languages: [],
-    workspaceStacks: workspacePaths.map((path) => ({
+    workspaceStacks: workspacePaths.map((path: string) => ({
       path,
       language: 'typescript',
       runtime: 'node',
@@ -53,21 +53,28 @@ describe('resolveWorkspaceSelection', () => {
 
   it('returns empty array immediately when no workspaces are detected', async () => {
     const detected = makeDetectedStack([]);
-    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: false });
+    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: false, nonInteractive: false });
     expect(result).toEqual([]);
     expect(mockAskWorkspaceSelection).not.toHaveBeenCalled();
   });
 
   it('returns all paths without prompting when yes is true', async () => {
     const detected = makeDetectedStack(['apps/web', 'apps/api']);
-    const result = await resolveWorkspaceSelection({ detected, yes: true, noPrompt: false });
+    const result = await resolveWorkspaceSelection({ detected, yes: true, noPrompt: false, nonInteractive: false });
     expect(result).toEqual(['apps/web', 'apps/api']);
     expect(mockAskWorkspaceSelection).not.toHaveBeenCalled();
   });
 
   it('returns all paths without prompting when noPrompt is true', async () => {
     const detected = makeDetectedStack(['services/worker']);
-    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: true });
+    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: true, nonInteractive: false });
+    expect(result).toEqual(['services/worker']);
+    expect(mockAskWorkspaceSelection).not.toHaveBeenCalled();
+  });
+
+  it('returns all paths without prompting when nonInteractive is true', async () => {
+    const detected = makeDetectedStack(['services/worker']);
+    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: false, nonInteractive: true });
     expect(result).toEqual(['services/worker']);
     expect(mockAskWorkspaceSelection).not.toHaveBeenCalled();
   });
@@ -75,7 +82,7 @@ describe('resolveWorkspaceSelection', () => {
   it('delegates to askWorkspaceSelection when interactive', async () => {
     mockAskWorkspaceSelection.mockResolvedValue(['apps/web']);
     const detected = makeDetectedStack(['apps/web', 'apps/api']);
-    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: false });
+    const result = await resolveWorkspaceSelection({ detected, yes: false, noPrompt: false, nonInteractive: false });
     expect(result).toEqual(['apps/web']);
     expect(mockAskWorkspaceSelection).toHaveBeenCalledWith({ detected });
   });

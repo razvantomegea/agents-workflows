@@ -49,14 +49,14 @@ interface WorkspacePatternsResult {
 }
 
 async function readWorkspacePatterns(projectRoot: string): Promise<WorkspacePatternsResult | null> {
+  const pnpm = await readPnpmWorkspace(projectRoot);
+  if (pnpm) return { patterns: pnpm, tool: 'pnpm' };
+
   const pkg = await readPackageJson(projectRoot);
   if (pkg?.workspaces) {
     const patterns = Array.isArray(pkg.workspaces) ? pkg.workspaces : pkg.workspaces.packages;
     if (patterns?.length) return { patterns, tool: inferNpmOrYarn(projectRoot) };
   }
-
-  const pnpm = await readPnpmWorkspace(projectRoot);
-  if (pnpm) return { patterns: pnpm, tool: 'pnpm' };
 
   const lerna = await readLernaPackages(projectRoot);
   if (lerna) return { patterns: lerna, tool: 'lerna' };

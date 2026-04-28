@@ -87,7 +87,7 @@ This snapshot captures epic-level status as of the latest stamped date in this d
 | 9 | Agent Permission & Sandbox Hardening | MUST | shipped 2026-04-28 — E9.T1–T8 and T10–T15 done (E9.T6/T7/T8 landed alongside Epic 11) |
 | 10 | Semi-Autonomous Non-Interactive Workflow Mode | MUST | shipped 2026-04-26 |
 | 11 | Multi-IDE Target Outputs (Cursor / Copilot / Windsurf) | MUST | shipped 2026-04-28 |
-| 12 | Polyglot Monorepo Support | SHOULD | planned |
+| 12 | Polyglot Monorepo Support | SHOULD | done 2026-04-28 — branch `feature/epic-12-polyglot-monorepo` |
 | 13 | Stack-Aware Implementer Variants | MUST | planned — `react-ts-senior.md.ejs` remains in templates until variants ship |
 | 14 | Post-Init Workspace Refinement Prompt (`AGENTS_REFINE.md`) | SHOULD | planned — no template or generator yet |
 | 15 | Core Logic Function Documentation | SHOULD | planned |

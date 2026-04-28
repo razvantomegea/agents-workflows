@@ -1,5 +1,8 @@
 import chalk from 'chalk';
 
+// eslint-disable-next-line no-control-regex -- reason: intentionally strips ANSI escape sequences
+const ANSI_ESCAPE_RE = /[\u001b\u009b][[\]()#;?]*(?:(?:(?:(?:;[-a-zA-Z\d/#&.:=?%@~_]+)*|[a-zA-Z\d]+(?:;[-a-zA-Z\d/#&.:=?%@~_]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]))/g;
+
 /**
  * Strips ANSI escape sequences, control characters, and newlines from a string
  * before it is included in a log message. Prevents log injection via
@@ -7,8 +10,7 @@ import chalk from 'chalk';
  */
 export function sanitizeForLog(value: string): string {
   return value
-    // eslint-disable-next-line no-control-regex -- reason: intentionally strips ANSI escape sequences
-    .replace(/\x1b\[[0-9;]*m/g, '')
+    .replace(ANSI_ESCAPE_RE, '')
     // eslint-disable-next-line no-control-regex -- reason: intentionally strips control characters
     .replace(/[\x00-\x1f\x7f]/g, '');
 }

@@ -5,11 +5,11 @@ import { join } from 'node:path';
 /**
  * Create a temporary directory with a configurable prefix and register it for cleanup.
  *
- * The returned `root` is the absolute path to the temp dir. The caller is responsible
- * for pushing the `root` into a `created: string[]` array and cleaning up in `afterEach`.
+ * The returned `root` is the absolute path to the temp dir. The helper pushes `root`
+ * into `created`; callers should clean up the registered entries in `afterEach`.
  *
  * @param options.prefix - Prefix for the OS temp dir name
- * @param options.created - Mutable array to push the new dir path into (for cleanup)
+ * @param options.created - Mutable cleanup registry updated by this helper
  * @returns The absolute path to the created temporary directory
  */
 export async function makeRoot({

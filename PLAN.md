@@ -80,7 +80,7 @@ _Branch: `feature/epic-12-polyglot-monorepo` | Date: 2026-04-28_
 - **Input**: PRD E12.T3 (lines 2587–2591). Existing schema lines 26–27 (`safeCommand`, `safeCommandNullable`), 177–181 (`monorepo` object).
 - **Output**:
   - New private schema constant `workspaceStackSchema` defined alongside the existing block (just before `stackConfigSchema`):
-    ```
+    ```ts
     const workspaceStackSchema = z.object({
       path: safeProjectPath,
       language: z.string(),
@@ -96,7 +96,7 @@ _Branch: `feature/epic-12-polyglot-monorepo` | Date: 2026-04-28_
     });
     ```
   - `monorepo` object (lines 177–181) becomes:
-    ```
+    ```ts
     monorepo: z.object({
       isRoot: z.boolean(),
       tool: z.enum(['pnpm','npm','yarn','lerna','turbo','nx','cargo','go-work','uv','poetry','dotnet-sln','cmake']).nullable(),
@@ -180,7 +180,7 @@ _Branch: `feature/epic-12-polyglot-monorepo` | Date: 2026-04-28_
   - File cap: `generate-root-config.ts` is currently 71 lines. After this task it must stay ≤200 — add a private helper `emitNestedAgentsFiles` and call it after the existing `agentsMd` push.
   - Windows-aware: nested `AGENTS.md` paths use `path.join(workspace.path, 'AGENTS.md')` then forward-slash normalize (`split(path.sep).join('/')`) for the manifest's `files: string[]` — the manifest stores POSIX-style paths regardless of host OS.
   - Comparison `language !== config.stack.language` is case-insensitive (`.toLowerCase()`).
-  - `workspace-AGENTS.md.ejs` body (≤30 lines): heading `# AGENTS.md (workspace: <%= workspace.path %>)`, a ` <!-- agents-workflows:managed-start -->` marker, language/runtime line, package manager line, DoD commands list, ` <!-- agents-workflows:managed-end -->`. Mirrors the marker convention from `src/templates/config/AGENTS.md.ejs` for Epic 7 merge compatibility.
+  - `workspace-AGENTS.md.ejs` body (≤30 lines): heading `# AGENTS.md (workspace: <%= workspace.path %>)`, a `<!-- agents-workflows:managed-start -->` marker, language/runtime line, package manager line, DoD commands list, `<!-- agents-workflows:managed-end -->`. Mirrors the marker convention from `src/templates/config/AGENTS.md.ejs` for Epic 7 merge compatibility.
 
 ### Task 7 — Prompt flow: confirm detected workspaces (multi-select + non-interactive flags) [LOGIC]
 
@@ -244,7 +244,7 @@ _Branch: `feature/epic-12-polyglot-monorepo` | Date: 2026-04-28_
 
 ## Dependency order
 
-```
+```text
 T1 ──> T2 ──> T3 ──> T4 [PARALLEL with T5]
                 ├──> T5 [PARALLEL with T4]
                 └──> T6

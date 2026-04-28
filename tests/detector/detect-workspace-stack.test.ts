@@ -76,11 +76,12 @@ describe('detectWorkspaceStack', () => {
     expect(result.commands.build).toBe('cargo build');
   });
 
-  it('returns language python and pytest test command for a Python workspace', async () => {
-    // Arrange — pyproject.toml triggers python language detection; no package.json means
-    // packageManager = null, so LANGUAGE_DEFAULT_COMMANDS['python'] is used.
+  it('returns language python and pytest test command for a Python workspace with Poetry', async () => {
+    // Arrange — pyproject.toml triggers python language detection, and poetry.lock triggers a native package manager.
+    // Non-JS workspaces still use language defaults.
     const root = await makeRoot({ prefix: 'aw-ws-py-', created });
     await writeFile(join(root, 'pyproject.toml'), '[project]\nname = "svc"\nversion = "0.1.0"\n', 'utf-8');
+    await writeFile(join(root, 'poetry.lock'), '', 'utf-8');
 
     // Act
     const result = await detectWorkspaceStack({ workspacePath: root, relativePath: 'services/api' });
@@ -88,6 +89,7 @@ describe('detectWorkspaceStack', () => {
     // Assert
     expect(result.path).toBe('services/api');
     expect(result.language).toBe('python');
+    expect(result.packageManager).toBe('poetry');
     expect(result.commands.test).toBe('pytest');
   });
 });

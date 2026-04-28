@@ -29,8 +29,8 @@ function resolveWorkspaceCommands(options: {
 }): WorkspaceCommands {
   const { packageManager, testFramework, linter, language, scripts } = options;
 
-  // Non-JS languages without a package manager use language-native tool defaults.
-  if (packageManager === null && language !== null && !JS_LANGUAGES.has(language.toLowerCase())) {
+  // Non-JS languages use language-native tool defaults even when a native package manager is detected.
+  if (language !== null && !JS_LANGUAGES.has(language.toLowerCase())) {
     return LANGUAGE_DEFAULT_COMMANDS[language.toLowerCase()] ?? {
       typeCheck: null, test: null, lint: null, build: null,
     };

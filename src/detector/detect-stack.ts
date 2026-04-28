@@ -40,7 +40,7 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
 
   const workspaceStacks = monorepo.workspaces.length > 0
     ? await Promise.all(
-        monorepo.workspaces.map((workspace) =>
+        monorepo.workspaces.map((workspace: string) =>
           detectWorkspaceStack({ workspacePath: join(projectRoot, workspace), relativePath: workspace }),
         ),
       )
@@ -80,9 +80,12 @@ export function aggregateLanguages(
   rootLanguage: string | null,
   workspaceStacks: readonly { language: string | null }[],
 ): readonly string[] {
-  const all = [rootLanguage, ...workspaceStacks.map((ws) => ws.language)];
-  const nonNull = all.filter((lang): lang is string => lang !== null);
-  const distinct = Array.from(new Set(nonNull.map((lang) => lang.toLowerCase())));
+  const all = [
+    rootLanguage,
+    ...workspaceStacks.map((workspaceStack: { language: string | null }) => workspaceStack.language),
+  ];
+  const nonNull = all.filter((language: string | null): language is string => language !== null);
+  const distinct = Array.from(new Set(nonNull.map((language: string) => language.toLowerCase())));
   return distinct.length <= 1 ? [] : distinct;
 }
 

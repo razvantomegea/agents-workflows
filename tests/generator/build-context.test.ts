@@ -156,9 +156,26 @@ describe('buildContext', () => {
     expect(ctx.isPolyglot).toBe(true);
   });
 
+  it('does not count duplicate or case-variant languages as polyglot', () => {
+    const ctx = buildContext(makeConfig({ languages: ['TypeScript', 'typescript', ' typescript '] }));
+    expect(ctx.isPolyglot).toBe(false);
+  });
+
+  it('ignores blank language entries when computing isPolyglot', () => {
+    const ctx = buildContext(makeConfig({ languages: ['typescript', '  '] }));
+    expect(ctx.isPolyglot).toBe(false);
+  });
+
   it('passes languages through onto the context', () => {
     const ctx = buildContext(makeConfig({ languages: ['typescript', 'rust', 'go'] }));
     expect(ctx.languages).toEqual(['typescript', 'rust', 'go']);
+  });
+
+  it('copies languages onto the context instead of aliasing config.languages', () => {
+    const config = makeConfig({ languages: ['typescript', 'python'] });
+    const ctx = buildContext(config);
+    config.languages.push('rust');
+    expect(ctx.languages).toEqual(['typescript', 'python']);
   });
 
   it('passes detectedAiAgents through unchanged', () => {

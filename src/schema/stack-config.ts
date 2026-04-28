@@ -172,7 +172,8 @@ export const stackConfigSchema = z.object({
     workspaces: z.preprocess(
       (val) => {
         if (!Array.isArray(val)) return val;
-        return val.filter((item) => typeof item === 'object' && item !== null);
+        if (val.every((item) => typeof item === 'string')) return [];
+        return val;
       },
       z.array(workspaceStackSchema).default([]),
     ),

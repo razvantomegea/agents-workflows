@@ -18,6 +18,7 @@ import type { MergeStrategy } from '../generator/index.js';
 import { parseNonInteractiveFlags } from './non-interactive-flags.js';
 import { hashConfig } from './hash-config.js';
 import { resolveWorkspaceSelection } from '../prompt/resolve-workspace-selection.js';
+import { safeProjectPath } from '../schema/stack-config.js';
 
 export interface InitCommandOptions {
   config?: StackConfig;
@@ -63,6 +64,7 @@ export async function initCommand(
     detected,
     yes: options.yes ?? false,
     noPrompt: options.noPrompt ?? false,
+    nonInteractive: resolvedOptions.nonInteractive ?? false,
   });
   const filteredDetected = filterDetectedByWorkspacePaths(detected, selectedPaths);
   const scope = await resolveInstallScope(filteredDetected, resolvedOptions);
@@ -93,7 +95,7 @@ async function resolveInstallScope(
   detected: DetectedStack,
   options: InitCommandOptions,
 ): Promise<InstallScope> {
-  if (options.config || options.yes || options.noPrompt) return 'root';
+  if (options.config || options.yes || options.noPrompt || options.nonInteractive) return 'root';
   logger.blank();
   return askInstallScope(detected.monorepo);
 }
@@ -113,9 +115,18 @@ async function installWorkspaces(
   options: InitCommandOptions,
 ): Promise<void> {
   for (const workspaceStack of detected.workspaceStacks) {
-    const workspacePath = join(rootDir, workspaceStack.path);
+    const pathResult = safeProjectPath.safeParse(workspaceStack.path);
+    if (!pathResult.success) {
+      logger.warn(
+        `Skipping workspace ${sanitizeForLog(workspaceStack.path)}: path validation failed (${pathResult.error.issues[0]?.message ?? 'unknown'})`,
+      );
+      continue;
+    }
+
+    const workspacePathSegment = pathResult.data;
+    const workspacePath = join(rootDir, workspacePathSegment);
     logger.blank();
-    logger.heading(`Workspace: ${sanitizeForLog(workspaceStack.path)}`);
+    logger.heading(`Workspace: ${sanitizeForLog(workspacePathSegment)}`);
     // Full detectStack per workspace: runPromptFlow needs fields (testLibrary, i18n, aiAgents) not in WorkspaceStackDetection.
     const workspaceDetected = await detectStack(workspacePath);
     printDetected(workspaceDetected);

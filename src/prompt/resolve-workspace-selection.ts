@@ -5,6 +5,7 @@ export interface ResolveWorkspaceSelectionOptions {
   detected: DetectedStack;
   yes: boolean;
   noPrompt: boolean;
+  nonInteractive: boolean;
 }
 
 /**
@@ -18,12 +19,12 @@ export interface ResolveWorkspaceSelectionOptions {
 export async function resolveWorkspaceSelection(
   options: ResolveWorkspaceSelectionOptions,
 ): Promise<readonly string[]> {
-  const { detected, yes, noPrompt } = options;
+  const { detected, yes, noPrompt, nonInteractive } = options;
 
   if (detected.workspaceStacks.length === 0) return [];
 
-  if (yes || noPrompt) {
-    return detected.workspaceStacks.map((ws) => ws.path);
+  if (yes || noPrompt || nonInteractive) {
+    return detected.workspaceStacks.map((workspaceStack: { path: string }) => workspaceStack.path);
   }
 
   return askWorkspaceSelection({ detected });

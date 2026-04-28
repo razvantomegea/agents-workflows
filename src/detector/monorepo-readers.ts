@@ -55,11 +55,14 @@ function extractQuotedValues(text: string, out: string[]): void {
   }
 }
 
-function extractIncludeValues(text: string, out: string[]): void {
-  const re = /include\s*=\s*["']([^"']+)["']/g;
+function extractIncludeAndFromValues(text: string, out: string[]): void {
+  const re = /\{([^{}]*)\}/g;
   let match: RegExpExecArray | null;
   while ((match = re.exec(text)) !== null) {
-    out.push(match[1]);
+    const include = match[1].match(/include\s*=\s*["']([^"']+)["']/)?.[1];
+    if (include === undefined) continue;
+    const from = match[1].match(/from\s*=\s*["']([^"']+)["']/)?.[1];
+    out.push(from === undefined ? include : posix.join(from, include));
   }
 }
 
@@ -126,6 +129,7 @@ function parsePoetryPackages(content: string): string[] | null {
   const results: string[] = [];
   let inSection = false;
   let inArray = false;
+  const arrayContent: string[] = [];
 
   for (const rawLine of lines) {
     const trimmed = rawLine.replace(/#.*$/, '').trim();
@@ -141,23 +145,29 @@ function parsePoetryPackages(content: string): string[] | null {
       if (/^packages\s*=\s*\[/.test(trimmed)) {
         inArray = true;
         const afterBracket = trimmed.replace(/^[^[]*\[/, '');
-        extractIncludeValues(afterBracket, results);
-        if (afterBracket.includes(']')) break;
+        arrayContent.push(afterBracket);
+        if (afterBracket.includes(']')) {
+          extractIncludeAndFromValues(arrayContent.join(' ').replace(/].*$/, ''), results);
+          break;
+        }
       }
       continue;
     }
+    arrayContent.push(trimmed);
     if (trimmed.includes(']')) {
-      extractIncludeValues(trimmed.replace(/].*$/, ''), results);
+      extractIncludeAndFromValues(arrayContent.join(' ').replace(/].*$/, ''), results);
       break;
     }
-    extractIncludeValues(trimmed, results);
   }
 
   return results.length > 0 ? results : null;
 }
 
 export async function readDotnetSolution(projectRoot: string): Promise<string[] | null> {
-  const entries = await readdir(projectRoot).catch(() => [] as string[]);
+  const entries = await readdir(projectRoot).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === 'ENOENT') return [] as string[];
+    throw error;
+  });
   const slnFile = entries.find((entry) => entry.endsWith('.sln'));
   if (!slnFile) return null;
   const content = await readFile(join(projectRoot, slnFile), 'utf-8');

@@ -86,9 +86,11 @@ function shouldEmitNestedAgents(options: {
   rootLanguage: string;
 }): boolean {
   const { workspace, rootLanguage } = options;
+  const workspaceLanguage = workspace.language.trim().toLowerCase();
+  const normalizedRootLanguage = rootLanguage.trim().toLowerCase();
   return (
-    workspace.language.length > 0 &&
-    workspace.language.toLowerCase() !== rootLanguage.toLowerCase()
+    workspaceLanguage.length > 0 &&
+    workspaceLanguage !== normalizedRootLanguage
   );
 }
 

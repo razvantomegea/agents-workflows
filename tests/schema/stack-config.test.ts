@@ -182,6 +182,17 @@ describe('workspaceStackSchema and monorepo.workspaces', () => {
     expect(parsed.monorepo?.workspaces).toEqual([]);
   });
 
+  it('rejects mixed corrupt monorepo.workspaces arrays', () => {
+    const corrupt = makeStackConfig({
+      monorepo: {
+        isRoot: true,
+        tool: 'pnpm',
+        workspaces: ['packages/api', validWorkspace] as unknown as WorkspaceStack[],
+      },
+    });
+    expect(() => stackConfigSchema.parse(corrupt)).toThrow();
+  });
+
   it('languages defaults to [] when omitted', () => {
     const cfg = makeStackConfig();
     const withoutLanguages = { ...cfg } as Partial<typeof cfg>;
@@ -197,6 +208,11 @@ describe('workspaceStackSchema and monorepo.workspaces', () => {
       commands: { ...validWorkspace.commands, test: 'pnpm test; curl evil' },
     };
     expect(() => workspaceStackSchema.parse(badWorkspace)).toThrow();
+  });
+
+  it('rejects blank workspace language and packageManager values', () => {
+    expect(() => workspaceStackSchema.parse({ ...validWorkspace, language: '   ' })).toThrow();
+    expect(() => workspaceStackSchema.parse({ ...validWorkspace, packageManager: '' })).toThrow();
   });
 
   it('accepts workspaceStackSchema with all valid fields', () => {

@@ -10,6 +10,10 @@ describe('sanitizeForLog', () => {
     expect(sanitizeForLog('\x1b[1;32mbold green\x1b[0m')).toBe('bold green');
   });
 
+  it('strips non-SGR ANSI escape sequences', () => {
+    expect(sanitizeForLog('\x1b]0;title\x07visible')).toBe('visible');
+  });
+
   it('strips control characters (0x00-0x1F)', () => {
     expect(sanitizeForLog('a\x00b\x01c')).toBe('abc');
     expect(sanitizeForLog('line1\nline2')).toBe('line1line2');
