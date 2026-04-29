@@ -191,6 +191,15 @@ export const stackConfigSchema = z.object({
     disclosureAcknowledgedAt: z.string().datetime().nullable().default(null),
   }).default(() => ({ ...SECURITY_DEFAULTS })),
 
+  plugins: z.object({
+    superpowers: z.boolean().default(false),
+    caveman: z.boolean().default(false),
+    claudeMdManagement: z.boolean().default(false),
+    featureDev: z.boolean().default(false),
+    codeReviewPlugin: z.boolean().default(false),
+    codeSimplifier: z.boolean().default(false),
+  }).default({}),
+
   cavemanStyle: z.boolean().default(false),
 });
 

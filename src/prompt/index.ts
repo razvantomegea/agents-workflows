@@ -12,6 +12,7 @@ export {
 export { askConventions } from './ask-conventions.js';
 export { askAgentSelection } from './ask-agent-selection.js';
 export { askCommandSelection } from './ask-command-selection.js';
+export { askPluginSelection } from './ask-plugin-selection.js';
 export { askTargets } from './ask-targets.js';
 export { askGovernance } from './ask-governance.js';
 export { askIsolation } from './ask-isolation.js';

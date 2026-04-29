@@ -18,6 +18,7 @@ import { askNonInteractiveMode } from './ask-non-interactive.js';
 import { askImplementerVariant } from './ask-implementer-variant.js';
 import { askIsolation } from './ask-isolation.js';
 import { askCavemanStyle } from './ask-caveman-style.js';
+import { askPluginSelection } from './ask-plugin-selection.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 import { resolveTargetDefaults } from './ask-targets.js';
@@ -64,7 +65,7 @@ export async function runPromptFlow(
       isolation,
       acceptRisks: options.acceptRisks,
     });
-    return { ...baseConfig, targets, security, cavemanStyle: false };
+    return { ...baseConfig, targets, security, plugins: baseConfig.plugins, cavemanStyle: false };
   }
 
   const identity = await askProjectIdentity(detected, pkg);
@@ -82,6 +83,7 @@ export async function runPromptFlow(
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets({ detected: detected.aiAgents, projectRoot });
   const governance = await askGovernance();
+  const plugins = await askPluginSelection();
   const cavemanStyle = await askCavemanStyle();
   const isolation = await askIsolation({ isolation: options.isolation });
   const security = await askNonInteractiveMode({
@@ -171,6 +173,7 @@ export async function runPromptFlow(
     languages: [...detected.languages],
     monorepo: null,
     security,
+    plugins,
     cavemanStyle,
   };
 }

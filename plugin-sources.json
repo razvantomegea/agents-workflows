@@ -1,0 +1,61 @@
+{
+  "caveman": {
+    "source": "JuliusBrussee/caveman",
+    "skills": {
+      "caveman": "caveman/SKILL.md",
+      "caveman-commit": "skills/caveman-commit/SKILL.md",
+      "caveman-compress": "caveman-compress/SKILL.md",
+      "caveman-help": "skills/caveman-help/SKILL.md",
+      "caveman-review": "skills/caveman-review/SKILL.md",
+      "compress": "skills/compress/SKILL.md"
+    }
+  },
+  "superpowers": {
+    "source": "obra/superpowers-marketplace",
+    "skills": {
+      "brainstorming": "skills/brainstorming/SKILL.md",
+      "writing-plans": "skills/writing-plans/SKILL.md",
+      "executing-plans": "skills/executing-plans/SKILL.md",
+      "test-driven-development": "skills/test-driven-development/SKILL.md",
+      "systematic-debugging": "skills/systematic-debugging/SKILL.md",
+      "requesting-code-review": "skills/requesting-code-review/SKILL.md",
+      "receiving-code-review": "skills/receiving-code-review/SKILL.md",
+      "verification-before-completion": "skills/verification-before-completion/SKILL.md",
+      "dispatching-parallel-agents": "skills/dispatching-parallel-agents/SKILL.md",
+      "subagent-driven-development": "skills/subagent-driven-development/SKILL.md",
+      "using-superpowers": "skills/using-superpowers/SKILL.md",
+      "using-git-worktrees": "skills/using-git-worktrees/SKILL.md",
+      "finishing-a-development-branch": "skills/finishing-a-development-branch/SKILL.md",
+      "writing-skills": "skills/writing-skills/SKILL.md"
+    }
+  },
+  "claude-md-management": {
+    "source": "anthropics/claude-plugins-official",
+    "basePath": "plugins/claude-md-management",
+    "skills": {
+      "claude-md-improver": "skills/claude-md-improver/SKILL.md",
+      "revise-claude-md": "skills/revise-claude-md/SKILL.md"
+    }
+  },
+  "feature-dev": {
+    "source": "anthropics/claude-plugins-official",
+    "basePath": "plugins/feature-dev",
+    "skills": {
+      "feature-dev": "skills/feature-dev/SKILL.md"
+    }
+  },
+  "code-review": {
+    "source": "anthropics/claude-plugins-official",
+    "basePath": "plugins/code-review",
+    "skills": {
+      "code-review": "skills/code-review/SKILL.md"
+    }
+  },
+  "code-simplifier": {
+    "source": "anthropics/claude-plugins-official",
+    "basePath": "plugins/code-simplifier",
+    "skills": {
+      "simplify": "skills/simplify/SKILL.md"
+    }
+  }
+}

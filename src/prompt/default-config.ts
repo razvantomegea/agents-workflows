@@ -104,6 +104,14 @@ export function createDefaultConfig(
     languages: [...detected.languages],
     monorepo: null,
     security: { ...SECURITY_DEFAULTS },
+    plugins: {
+      superpowers: false,
+      caveman: false,
+      claudeMdManagement: false,
+      featureDev: false,
+      codeReviewPlugin: false,
+      codeSimplifier: false,
+    },
     cavemanStyle: false,
   };
 }

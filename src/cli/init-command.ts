@@ -208,23 +208,14 @@ async function installSinglePackage({
   logger.info('  add rules → CLAUDE.md');
   logger.info('  config change → npx agents-workflows update');
 
-  if (config.cavemanStyle) {
+  const enabledPlugins = Object.entries(config.plugins)
+    .filter(([, enabled]) => enabled)
+    .map(([id]) => id);
+  if (enabledPlugins.length > 0) {
     logger.blank();
-    logger.info('caveman: install plugin');
-    if (config.targets.claudeCode) {
-      logger.info('  claude: claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman');
-    }
-    if (config.targets.codexCli) {
-      logger.info('  codex: npx skills add JuliusBrussee/caveman');
-    }
-    if (config.targets.cursor) {
-      logger.info('  cursor: npx skills add JuliusBrussee/caveman -a cursor');
-    }
-    if (config.targets.windsurf) {
-      logger.info('  windsurf: npx skills add JuliusBrussee/caveman -a windsurf');
-    }
-    if (config.targets.copilot) {
-      logger.info('  copilot: npx skills add JuliusBrussee/caveman -a copilot');
+    logger.info(`plugins: ${enabledPlugins.length} installed → .claude/skills/`);
+    for (const id of enabledPlugins) {
+      logger.info(`  ${id}`);
     }
   }
   logger.blank();

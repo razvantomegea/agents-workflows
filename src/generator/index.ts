@@ -5,6 +5,7 @@ import { buildContext } from './build-context.js';
 import { listPartials } from './list-partials.js';
 import { generateAgents } from './generate-agents.js';
 import { generateCommands } from './generate-commands.js';
+import { generatePlugins } from './generate-plugins.js';
 import { generateRootConfig } from './generate-root-config.js';
 import { generateScripts } from './generate-scripts.js';
 import { generateCursorConfig } from './cursor/index.js';
@@ -19,6 +20,7 @@ export type TargetGenerator = (
 export const TARGET_GENERATORS: readonly TargetGenerator[] = [
   generateAgents,
   generateCommands,
+  generatePlugins,
   generateRootConfig,
   generateScripts,
   generateCursorConfig,
