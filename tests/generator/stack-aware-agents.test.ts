@@ -25,7 +25,7 @@ describe('(a) variant routing', () => {
     ['frontend-svelte', 'svelte'],
     ['backend-node-nestjs', 'node-ts-backend'],
     ['nextjs-app', 'react-ts'],
-  ])('fixture %s produces variant %s', async (fixture, expected) => {
+  ])('fixture %s produces variant %s', async (fixture: string, expected: ImplementerVariant) => {
     const detected = await detectFixture(fixture);
     expect(getApplicableImplementerVariant(detected)).toBe(expected);
   });
@@ -61,7 +61,7 @@ describe('(b) createDefaultConfig wiring', () => {
     ['frontend-svelte', 'svelte'],
     ['backend-node-nestjs', 'node-ts-backend'],
     ['nextjs-app', 'react-ts'],
-  ])('fixture %s -> implementerVariant %s, no reactTsSenior', async (fixture, expected) => {
+  ])('fixture %s -> implementerVariant %s, no reactTsSenior', async (fixture: string, expected: ImplementerVariant) => {
     const detected = await detectFixture(fixture);
     const { createDefaultConfig } = await import('../../src/prompt/default-config.js');
     const config = createDefaultConfig(detected);
@@ -79,9 +79,9 @@ describe('(c) filename invariant', () => {
     'backend-node-nestjs', 'nextjs-app',
   ];
 
-  it.each(FIXTURES)('fixture %s: one implementer per target, zero senior files', async (fixture) => {
+  it.each(FIXTURES)('fixture %s: one implementer per target, zero senior files', async (fixture: string) => {
     const files = await generateForFixture(fixture);
-    const paths = files.map((f) => f.path);
+    const paths = files.map((generatedFile) => generatedFile.path);
     expect(paths.filter((p) => p === IMPLEMENTER_CLAUDE_PATH)).toHaveLength(1);
     expect(paths.filter((p) => p === IMPLEMENTER_CODEX_PATH)).toHaveLength(1);
     expect(paths.filter((p) => p.endsWith('-senior.md') || p.includes('/react-ts-senior/'))).toHaveLength(0);
@@ -131,7 +131,7 @@ describe('(d) variant body content', () => {
     expect(c).toContain('Component & Hook Details');
   });
 
-  it.each(['frontend-vue', 'frontend-angular'])('%s: Epic-17 placeholder body', async (fixture) => {
+  it.each(['frontend-vue', 'frontend-angular'])('%s: Epic-17 placeholder body', async (fixture: string) => {
     const c = await getImplementerContent(fixture);
     expect(c).toContain('Detailed body (citation-backed, top-5 anti-patterns) lands in Epic 17.');
   });
@@ -159,21 +159,21 @@ describe('(e) ui-designer gating', () => {
   ];
   const FRONTENDS = ['frontend-vue', 'frontend-angular', 'frontend-svelte', 'nextjs-app'];
 
-  it.each(BACKENDS)('backend %s excludes ui-designer.md', async (fixture) => {
+  it.each(BACKENDS)('backend %s excludes ui-designer.md', async (fixture: string) => {
     const files = await generateForFixture(fixture);
-    expect(files.map((f) => f.path)).not.toContain(UI_DESIGNER_CLAUDE_PATH);
+    expect(files.map((generatedFile) => generatedFile.path)).not.toContain(UI_DESIGNER_CLAUDE_PATH);
   });
 
-  it.each(BACKENDS)('backend %s AGENTS.md: no ui-designer sub-agent row', async (fixture) => {
+  it.each(BACKENDS)('backend %s AGENTS.md: no ui-designer sub-agent row', async (fixture: string) => {
     const files = await generateForFixture(fixture);
-    const agentsMd = files.find((f) => f.path === 'AGENTS.md');
+    const agentsMd = files.find((generatedFile) => generatedFile.path === 'AGENTS.md');
     expect(agentsMd).toBeDefined();
     expect(agentsMd?.content).not.toContain('UI/UX design & review');
   });
 
-  it.each(FRONTENDS)('frontend %s includes ui-designer.md', async (fixture) => {
+  it.each(FRONTENDS)('frontend %s includes ui-designer.md', async (fixture: string) => {
     const files = await generateForFixture(fixture);
-    expect(files.map((f) => f.path)).toContain(UI_DESIGNER_CLAUDE_PATH);
+    expect(files.map((generatedFile) => generatedFile.path)).toContain(UI_DESIGNER_CLAUDE_PATH);
   });
 });
 

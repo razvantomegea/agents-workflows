@@ -26,7 +26,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 |---|---|
 | Architecture, planning | `architect` (opus) |
 | Implementation | `implementer`<% if (implementerVariant !== 'generic') { %> (<%= implementerVariant %> variant)<% } %> (sonnet) |
-| Code review (after every file edit) | `code-reviewer` (sonnet) |
+| Code review (after every implementation session) | `code-reviewer` (sonnet) |
 <% if (hasSecurityReviewer) { -%>
 | Security review (parallel to code review) | `security-reviewer` (sonnet) |
 <% } -%>
@@ -59,7 +59,7 @@ Use sub-agents with independent, single, simple tasks as much as possible.
   - Features: `feature/<short-kebab-name>`
   - Bug fixes: `fix/<short-kebab-name>`
 - **NEVER commit or push** unless the user explicitly asks.
-- **Never advance a plan step or begin implementation** until ≥95% confident about scope and approach — ask clarifying questions until that threshold is met.
+- **Never advance a plan step or begin implementation** until ≥95% confident about scope, intent, and approach — ask clarifying questions until that threshold is met.
 
 ## Code Review Workflow
 
@@ -96,7 +96,7 @@ DRY and reusability are critical principles — enforced without exception:
 <% if (tooling.packageManagerPrefix) { -%>
 - Always use `<%= tooling.packageManagerPrefix %>` for running scripts.
 <% } -%>
-- Ask clarifying questions aggressively — as many as needed, until ≥95% confident — before acting on any ambiguous requirement. Never proceed with less than 95% confidence in scope or approach.
+- Ask clarifying questions aggressively — as many as needed, until ≥95% confident — before acting on any ambiguous requirement. Never proceed with less than 95% confidence in scope, intent, or approach.
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.

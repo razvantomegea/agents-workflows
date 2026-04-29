@@ -131,8 +131,9 @@ describe('Epic 16 — Claude + GPT cross-model routing', () => {
 
     it('.claude/settings.json allows scoped wsl-wrapped cross-model handoff commands', () => {
       const settings = getRootFileContent(files, '.claude/settings.json');
-      expect(settings).not.toContain('Bash(wsl *)');
+      expect(settings).not.toContain('Bash(wsl *:*)');
       expect(settings).toContain('Bash(wsl codex exec:*)');
+      expect(settings).toContain('Bash(wsl claude -p:*)');
       expect(settings).not.toContain('Bash(wsl * codex exec:*)');
     });
   });

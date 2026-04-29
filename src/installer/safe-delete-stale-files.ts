@@ -1,7 +1,7 @@
-import { rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { rm, lstat } from 'node:fs/promises';
+import { resolve, sep, isAbsolute } from 'node:path';
 import { confirm } from '@inquirer/prompts';
-import { fileExists, logger } from '../utils/index.js';
+import { logger } from '../utils/index.js';
 import { backupExistingFiles } from './backup.js';
 import type { GeneratedFile } from '../generator/types.js';
 
@@ -19,10 +19,24 @@ export async function safeDeleteStaleFiles(
 ): Promise<void> {
   const { projectRoot, candidates, suppressed } = params;
 
-  for (const candidate of candidates) {
-    const absolutePath = join(projectRoot, candidate);
+  const normalizedRoot = resolve(projectRoot) + sep;
 
-    if (!(await fileExists(absolutePath))) {
+  for (const candidate of candidates) {
+    if (isAbsolute(candidate)) {
+      logger.warn(`Skipping absolute candidate path: ${candidate}`);
+      continue;
+    }
+
+    const absolutePath = resolve(projectRoot, candidate);
+    if (!absolutePath.startsWith(normalizedRoot)) {
+      logger.warn(`Skipping candidate outside projectRoot: ${candidate}`);
+      continue;
+    }
+
+    const stat = await lstat(absolutePath).catch(() => null);
+    if (!stat) continue;
+    if (stat.isSymbolicLink()) {
+      logger.warn(`Skipping symlink candidate: ${candidate}`);
       continue;
     }
 
