@@ -1,8 +1,10 @@
 import { select } from '@inquirer/prompts';
-import type { DetectedStack } from '../detector/types.js';
 import type { ImplementerVariant } from '../schema/stack-config.js';
 import { IMPLEMENTER_VARIANTS } from '../schema/stack-config.js';
-import { getApplicableImplementerVariant } from '../generator/implementer-routing.js';
+import {
+  getApplicableImplementerVariantForStack,
+  type ImplementerVariantStack,
+} from '../generator/implementer-routing.js';
 
 const VARIANT_CHOICE_LABELS: Readonly<Record<ImplementerVariant, string>> = {
   'generic': 'generic — Stack-agnostic baseline',
@@ -28,15 +30,17 @@ const VARIANT_CHOICES: ReadonlyArray<Readonly<{ name: string; value: Implementer
 
 /**
  * Prompt the user to select an implementer variant.
- * Defaults to the variant best matching the detected stack.
+ * Defaults to the variant best matching the user-confirmed stack.
  *
- * @param detected - Detected stack used to pre-select the best default variant.
+ * @param stack - User-confirmed stack used to pre-select the best default variant.
  * @returns The selected implementer variant string.
  */
-export async function askImplementerVariant(detected: DetectedStack): Promise<ImplementerVariant> {
+export async function askImplementerVariant(
+  stack: Readonly<ImplementerVariantStack>,
+): Promise<ImplementerVariant> {
   return select<ImplementerVariant>({
     message: 'Implementer agent variant:',
     choices: [...VARIANT_CHOICES],
-    default: getApplicableImplementerVariant(detected),
+    default: getApplicableImplementerVariantForStack(stack),
   });
 }

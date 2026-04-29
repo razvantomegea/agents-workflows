@@ -123,11 +123,6 @@ export async function updateCommand(
 
   await withSafetySession(safetyFlags, async () => {
     await backupExistingFiles(projectRoot, changedFiles);
-    await safeDeleteStaleFiles({
-      projectRoot,
-      candidates: STALE_IMPLEMENTER_VARIANT_FILES,
-      suppressed: promptsSuppressed,
-    });
     const writeResult = await writeGeneratedFiles(projectRoot, changedFiles);
     const nextManifest: AgentsWorkflowsManifest = {
       ...parsed.data,
@@ -140,6 +135,11 @@ export async function updateCommand(
       path: manifestPath,
       content: JSON.stringify(nextManifest, null, 2),
       displayPath: '.agents-workflows.json',
+    });
+    await safeDeleteStaleFiles({
+      projectRoot,
+      candidates: STALE_IMPLEMENTER_VARIANT_FILES,
+      suppressed: promptsSuppressed,
     });
 
     logger.success(`Updated ${writeResult.writtenPaths.length} file(s).`);

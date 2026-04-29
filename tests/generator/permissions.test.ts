@@ -106,16 +106,25 @@ describe('buildPermissions', () => {
     expect(perms).toContain('Bash(claude -p:*)');
   });
 
-  it('auto-allows sandbox-wrapped forms via single wildcard per wrapper', () => {
+  it('auto-allows sandbox-wrapped forms from explicit host Bash allows', () => {
     const perms = buildPermissions(PNPM_INPUT);
-    expect(perms).toContain('Bash(wsl *)');
-    expect(perms).toContain('Bash(docker exec *)');
-    expect(perms).toContain('Bash(docker compose exec *)');
-    expect(perms).toContain('Bash(podman exec *)');
-    expect(perms).toContain('Bash(devcontainer exec *)');
-    // Old granular forms are gone — the deny list restricts dangerous sub-commands
-    expect(perms).not.toContain('Bash(wsl pnpm:*)');
+    expect(perms).not.toContain('Bash(wsl *)');
+    expect(perms).not.toContain('Bash(docker exec *)');
+    expect(perms).not.toContain('Bash(docker compose exec *)');
+    expect(perms).not.toContain('Bash(podman exec *)');
+    expect(perms).not.toContain('Bash(devcontainer exec *)');
+    expect(perms).toContain('Bash(wsl pnpm:*)');
+    expect(perms).toContain('Bash(wsl git status:*)');
+    expect(perms).not.toContain('Bash(wsl * pnpm:*)');
     expect(perms).not.toContain('Bash(docker exec pnpm:*)');
+    expect(perms).not.toContain('Bash(docker exec * pnpm:*)');
+    expect(perms).not.toContain('Bash(docker compose exec pnpm:*)');
+    expect(perms).not.toContain('Bash(docker compose exec * pnpm:*)');
+    expect(perms).not.toContain('Bash(podman exec pnpm:*)');
+    expect(perms).not.toContain('Bash(podman exec * pnpm:*)');
+    expect(perms).not.toContain('Bash(devcontainer exec pnpm:*)');
+    expect(perms).not.toContain('Bash(devcontainer exec * pnpm:*)');
+    expect(perms).not.toContain('Bash(wsl * git status:*)');
   });
 
   it('allows Glob, Grep, ls, and cd', () => {

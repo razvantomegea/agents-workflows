@@ -37,7 +37,7 @@ describe('buildContext', () => {
     expect(ctx.isFrontend).toBe(false);
     expect(ctx.isMobile).toBe(false);
     expect(ctx.stackItems).not.toContain('Null');
-    expect(ctx.stackItems).toContain('Typescript (node)');
+    expect(ctx.stackItems).toContain('TypeScript (node)');
   });
 
   it('passes implementerVariant through onto the context', () => {
@@ -52,7 +52,7 @@ describe('buildContext', () => {
 
   it('builds stack items list', () => {
     const ctx = buildContext(makeConfig());
-    expect(ctx.stackItems).toContain('Typescript (node)');
+    expect(ctx.stackItems).toContain('TypeScript (node)');
     expect(ctx.stackItems).toContain('Nextjs');
     expect(ctx.stackItems).toContain('Tailwind');
     expect(ctx.stackItems).toContain('Zustand');

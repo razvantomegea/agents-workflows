@@ -16,7 +16,7 @@ jest.unstable_mockModule('@inquirer/prompts', () => ({
   checkbox: jest.fn<() => Promise<string[]>>(),
 }));
 
-const { askPaths, askProjectDocumentationFiles, askProjectIdentity } = await import('../../src/prompt/questions.js');
+const { askPaths, askProjectDocumentationFiles, askProjectIdentity } = await import('../../src/prompt/index.js');
 
 describe('project documentation prompts', () => {
   beforeEach(() => {

@@ -6,7 +6,7 @@ import {
   IMPLEMENTER_CLAUDE_PATH,
   IMPLEMENTER_CODEX_PATH,
   UI_DESIGNER_CLAUDE_PATH,
-} from './stack-aware-helpers.js';
+} from './stack-aware-helpers/index.js';
 import { getApplicableImplementerVariant } from '../../src/generator/implementer-routing.js';
 import { makeDetectedStack } from './fixtures.js';
 import type { ImplementerVariant } from '../../src/schema/stack-config.js';
@@ -105,8 +105,6 @@ describe('(d) variant body content', () => {
     expect(c).toContain('cargo test');
   });
 
-  // NOTE: go test assertion — T3 gap: go.md.ejs is missing "go test" per PLAN.md spec (d).
-  // This test intentionally fails to flag the T3 deliverable as incomplete.
   it('go: context.Context, go test', async () => {
     const c = await getImplementerContent('backend-go');
     expect(c).toContain('context.Context');
@@ -169,7 +167,8 @@ describe('(e) ui-designer gating', () => {
   it.each(BACKENDS)('backend %s AGENTS.md: no ui-designer sub-agent row', async (fixture) => {
     const files = await generateForFixture(fixture);
     const agentsMd = files.find((f) => f.path === 'AGENTS.md');
-    expect(agentsMd?.content ?? '').not.toContain('UI/UX design & review');
+    expect(agentsMd).toBeDefined();
+    expect(agentsMd?.content).not.toContain('UI/UX design & review');
   });
 
   it.each(FRONTENDS)('frontend %s includes ui-designer.md', async (fixture) => {

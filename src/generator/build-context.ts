@@ -10,6 +10,11 @@ import {
   isReactFramework,
 } from '../constants/frameworks.js';
 
+const CANONICAL_LABELS: Readonly<Record<string, string>> = {
+  eslint: 'ESLint',
+  typescript: 'TypeScript',
+};
+
 /**
  * Constructs a GeneratorContext object from the provided StackConfig.
  *
@@ -109,5 +114,5 @@ function buildStackItems(config: StackConfig): string[] {
 }
 
 function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return CANONICAL_LABELS[str.toLowerCase()] ?? str.charAt(0).toUpperCase() + str.slice(1);
 }

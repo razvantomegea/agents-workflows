@@ -6,6 +6,7 @@ import { makeStackConfig } from '../tests/generator/fixtures.js';
 async function main(): Promise<void> {
   const config = makeStackConfig({
     stack: { language: 'typescript', runtime: 'node', framework: 'nextjs', uiLibrary: 'tailwind', stateManagement: 'zustand', database: 'prisma', auth: null, i18nLibrary: null },
+    agents: { implementerVariant: 'generic' },
   });
   const ctx = buildContext(config);
   const rendered = await renderTemplate('agents/implementer-variants/generic.md.ejs', ctx);

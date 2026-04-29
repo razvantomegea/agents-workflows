@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, it, expect } from '@jest/globals';
 import { generateAll } from '../../src/generator/index.js';
 import { makeStackConfig } from './fixtures.js';
-import { IMPLEMENTER_CLAUDE_PATH } from './stack-aware-helpers.js';
+import { IMPLEMENTER_CLAUDE_PATH } from './stack-aware-helpers/index.js';
 
 const CURRENT_DIR = dirname(fileURLToPath(import.meta.url));
 

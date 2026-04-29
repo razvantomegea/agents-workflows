@@ -7,7 +7,6 @@ import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults
 import {
   askProjectDocumentationFiles,
   askMainBranch,
-  type ProjectDocumentationFiles,
 } from './ask-project-docs.js';
 
 function useDetectedOr<T>(detection: { value: T | null; confidence: number }, fallback: T): T {
@@ -63,9 +62,6 @@ export async function askProjectIdentity(
 
   return { name, description, locale, localeRules, ...projectDocumentation, mainBranch };
 }
-
-export type { ProjectDocumentationFiles } from './ask-project-docs.js';
-export { askProjectDocumentationFiles, askMainBranch } from './ask-project-docs.js';
 
 export async function askStack(detected: DetectedStack): Promise<{
   language: string;
@@ -150,14 +146,3 @@ function validateRequiredProjectPath(value: string): true | string {
     ? true
     : 'Use a relative project path without spaces, parent traversal, control characters, or markdown metacharacters.';
 }
-
-export { askConventions } from './ask-conventions.js';
-export { askAgentSelection } from './ask-agent-selection.js';
-export { askCommandSelection } from './ask-command-selection.js';
-export { askTargets } from './ask-targets.js';
-export { askGovernance } from './ask-governance.js';
-export { askIsolation } from './ask-isolation.js';
-export { askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } from './ask-non-interactive.js';
-export { enableNonInteractiveWithIsolation } from './enable-non-interactive-with-isolation.js';
-export { askWorkspaceSelection } from './ask-workspace-selection.js';
-export { askImplementerVariant } from './ask-implementer-variant.js';

@@ -117,7 +117,7 @@ export const BASH_DENY_COMMAND_PATTERNS: readonly string[] = [
  * — they have the same prefix_rule-bypass shape as `pwsh -Command` (PRD
  * §1.9.1 item 10.3) and stay disallowed.
  */
-const SANDBOX_WRAPPER_PREFIXES: readonly string[] = [
+export const SANDBOX_WRAPPER_PREFIXES: readonly string[] = [
   'wsl',
   'docker exec',
   'docker compose exec',
@@ -233,12 +233,6 @@ export const CROSS_MODEL_HANDOFF_ALLOWS: readonly string[] = [
   'Bash(codex exec:*)',
   'Bash(claude -p:*)',
 ];
-
-// Deny rules restrict dangerous sub-commands within wrappers; a single wildcard
-// per wrapper is sufficient for the allow side.
-export const SANDBOX_WRAPPER_ALLOWS: readonly string[] = SANDBOX_WRAPPER_PREFIXES.map(
-  (wrapper: string) => `Bash(${wrapper} *)`,
-);
 
 export const SHELL_UTILITY_ALLOWS: readonly string[] = [
   'Bash(ls:*)',

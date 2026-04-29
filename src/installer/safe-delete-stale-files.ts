@@ -27,9 +27,6 @@ export async function safeDeleteStaleFiles(
     }
 
     try {
-      const fileEntry: GeneratedFile = { path: candidate, content: '' };
-      await backupExistingFiles(projectRoot, [fileEntry]);
-
       if (!suppressed) {
         const confirmed = await confirm({
           message: `Removing stale file replaced by implementer variant: ${candidate}. Delete?`,
@@ -42,6 +39,8 @@ export async function safeDeleteStaleFiles(
         }
       }
 
+      const fileEntry: GeneratedFile = { path: candidate, content: '' };
+      await backupExistingFiles(projectRoot, [fileEntry]);
       await rm(absolutePath);
       logger.info(`Removed stale: ${candidate}`);
     } catch (error) {

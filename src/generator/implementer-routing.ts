@@ -1,4 +1,3 @@
-// Order is significant — first match wins.
 import type { DetectedStack } from '../detector/types.js';
 import { supportsReactTsStack } from '../constants/frameworks.js';
 import type { ImplementerVariant } from '../schema/stack-config.js';
@@ -6,13 +5,20 @@ import type { ImplementerVariant } from '../schema/stack-config.js';
 const NODE_TS_BACKEND_FRAMEWORKS = new Set(['nestjs', 'express', 'fastify', 'hono']);
 const VUE_FRAMEWORKS = new Set(['vue', 'nuxt']);
 
+export interface ImplementerVariantStack {
+  language: string | null;
+  framework: string | null;
+}
+
 /**
- * Determine the implementer variant to use based on the detected stack.
+ * Determine the implementer variant to use based on a confirmed stack.
  * Evaluation order matters — the first matching rule wins.
  */
-export function getApplicableImplementerVariant(detected: DetectedStack): ImplementerVariant {
-  const framework = detected.framework.value;
-  const language = detected.language.value;
+export function getApplicableImplementerVariantForStack(
+  stack: Readonly<ImplementerVariantStack>,
+): ImplementerVariant {
+  const framework = stack.framework;
+  const language = stack.language;
 
   // 1. Spring Boot
   if (framework === 'spring-boot') return 'java-spring';
@@ -59,4 +65,15 @@ export function getApplicableImplementerVariant(detected: DetectedStack): Implem
 
   // 13. Generic fallback
   return 'generic';
+}
+
+/**
+ * Determine the implementer variant to use based on the detected stack.
+ * Evaluation order matters — the first matching rule wins.
+ */
+export function getApplicableImplementerVariant(detected: DetectedStack): ImplementerVariant {
+  return getApplicableImplementerVariantForStack({
+    framework: detected.framework.value,
+    language: detected.language.value,
+  });
 }

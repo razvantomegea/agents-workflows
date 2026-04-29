@@ -10,14 +10,14 @@ You are a senior nextjs / typescript implementation agent for the `test-app` pro
 
 ## Stack Context
 
-- Typescript (node)
+- TypeScript (node)
 - Nextjs
 - Tailwind
 - Zustand
 - Prisma
 - Jest (testing)
 - React-testing-library
-- Eslint (linter)
+- ESLint (linter)
 - Prettier (formatter)
 - pnpm (package manager)
 

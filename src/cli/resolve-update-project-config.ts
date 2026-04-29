@@ -1,4 +1,4 @@
-import { askMainBranch, askProjectDocumentationFiles } from '../prompt/questions.js';
+import { askMainBranch, askProjectDocumentationFiles } from '../prompt/index.js';
 import type { StackConfig } from '../schema/stack-config.js';
 
 export async function resolveUpdateProjectConfig(

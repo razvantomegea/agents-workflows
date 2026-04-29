@@ -4,78 +4,84 @@ import { makeDetectedStack } from './fixtures.js';
 import type { ImplementerVariant } from '../../src/schema/stack-config.js';
 
 describe('getApplicableImplementerVariant — 13-row decision table', () => {
-  it.each<[string, Parameters<typeof makeDetectedStack>[0], ImplementerVariant]>([
-    [
-      'spring-boot framework → java-spring',
-      { framework: { value: 'spring-boot', confidence: 0.9 }, language: { value: 'java', confidence: 0.9 } },
-      'java-spring',
-    ],
-    [
-      'aspnetcore framework → dotnet-csharp',
-      { framework: { value: 'aspnetcore', confidence: 0.9 }, language: { value: 'csharp', confidence: 0.9 } },
-      'dotnet-csharp',
-    ],
-    [
-      'vue framework → vue',
-      { framework: { value: 'vue', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
-      'vue',
-    ],
-    [
-      'nuxt framework → vue',
-      { framework: { value: 'nuxt', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
-      'vue',
-    ],
-    [
-      'angular framework → angular',
-      { framework: { value: 'angular', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
-      'angular',
-    ],
-    [
-      'sveltekit framework → svelte',
-      { framework: { value: 'sveltekit', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
-      'svelte',
-    ],
-    [
-      'nextjs + typescript → react-ts',
-      { framework: { value: 'nextjs', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
-      'react-ts',
-    ],
-    [
-      'nestjs + typescript → node-ts-backend',
-      { framework: { value: 'nestjs', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
-      'node-ts-backend',
-    ],
-    [
-      'python language → python',
-      { framework: { value: null, confidence: 0 }, language: { value: 'python', confidence: 0.9 } },
-      'python',
-    ],
-    [
-      'go language → go',
-      { framework: { value: null, confidence: 0 }, language: { value: 'go', confidence: 0.9 } },
-      'go',
-    ],
-    [
-      'rust language → rust',
-      { framework: { value: null, confidence: 0 }, language: { value: 'rust', confidence: 0.9 } },
-      'rust',
-    ],
-    [
-      'typescript + no framework → typescript',
-      { framework: { value: null, confidence: 0 }, language: { value: 'typescript', confidence: 0.9 } },
-      'typescript',
-    ],
-    [
-      'javascript + no framework → javascript',
-      { framework: { value: null, confidence: 0 }, language: { value: 'javascript', confidence: 0.9 } },
-      'javascript',
-    ],
-    [
-      'unknown language + no framework → generic',
-      { framework: { value: null, confidence: 0 }, language: { value: 'kotlin', confidence: 0.9 } },
-      'generic',
-    ],
-  ])('%s', (_label, overrides, expected) => {
+  type ImplementerRoutingCase = Readonly<{
+    label: string;
+    overrides: Parameters<typeof makeDetectedStack>[0];
+    expected: ImplementerVariant;
+  }>;
+
+  it.each<ImplementerRoutingCase>([
+    {
+      label: 'spring-boot framework → java-spring',
+      overrides: { framework: { value: 'spring-boot', confidence: 0.9 }, language: { value: 'java', confidence: 0.9 } },
+      expected: 'java-spring',
+    },
+    {
+      label: 'aspnetcore framework → dotnet-csharp',
+      overrides: { framework: { value: 'aspnetcore', confidence: 0.9 }, language: { value: 'csharp', confidence: 0.9 } },
+      expected: 'dotnet-csharp',
+    },
+    {
+      label: 'vue framework → vue',
+      overrides: { framework: { value: 'vue', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'vue',
+    },
+    {
+      label: 'nuxt framework → vue',
+      overrides: { framework: { value: 'nuxt', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'vue',
+    },
+    {
+      label: 'angular framework → angular',
+      overrides: { framework: { value: 'angular', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'angular',
+    },
+    {
+      label: 'sveltekit framework → svelte',
+      overrides: { framework: { value: 'sveltekit', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'svelte',
+    },
+    {
+      label: 'nextjs + typescript → react-ts',
+      overrides: { framework: { value: 'nextjs', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'react-ts',
+    },
+    {
+      label: 'nestjs + typescript → node-ts-backend',
+      overrides: { framework: { value: 'nestjs', confidence: 0.9 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'node-ts-backend',
+    },
+    {
+      label: 'python language → python',
+      overrides: { framework: { value: null, confidence: 0 }, language: { value: 'python', confidence: 0.9 } },
+      expected: 'python',
+    },
+    {
+      label: 'go language → go',
+      overrides: { framework: { value: null, confidence: 0 }, language: { value: 'go', confidence: 0.9 } },
+      expected: 'go',
+    },
+    {
+      label: 'rust language → rust',
+      overrides: { framework: { value: null, confidence: 0 }, language: { value: 'rust', confidence: 0.9 } },
+      expected: 'rust',
+    },
+    {
+      label: 'typescript + no framework → typescript',
+      overrides: { framework: { value: null, confidence: 0 }, language: { value: 'typescript', confidence: 0.9 } },
+      expected: 'typescript',
+    },
+    {
+      label: 'javascript + no framework → javascript',
+      overrides: { framework: { value: null, confidence: 0 }, language: { value: 'javascript', confidence: 0.9 } },
+      expected: 'javascript',
+    },
+    {
+      label: 'unknown language + no framework → generic',
+      overrides: { framework: { value: null, confidence: 0 }, language: { value: 'kotlin', confidence: 0.9 } },
+      expected: 'generic',
+    },
+  ])('$label', ({ overrides, expected }: ImplementerRoutingCase) => {
     const detected = makeDetectedStack(overrides);
     expect(getApplicableImplementerVariant(detected)).toBe(expected);
   });

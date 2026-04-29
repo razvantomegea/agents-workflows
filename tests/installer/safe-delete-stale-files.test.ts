@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
-const mockConfirm = jest.fn<() => Promise<boolean>>();
+const MOCK_CONFIRM = jest.fn<() => Promise<boolean>>();
 
 jest.unstable_mockModule('@inquirer/prompts', () => ({
-  confirm: mockConfirm,
+  confirm: MOCK_CONFIRM,
   select: jest.fn<() => Promise<string>>(),
   input: jest.fn<() => Promise<string>>(),
   checkbox: jest.fn<() => Promise<string[]>>(),
@@ -19,7 +19,7 @@ describe('safeDeleteStaleFiles', () => {
 
   beforeEach(async () => {
     projectRoot = await mkdtemp(join(tmpdir(), 'agents-safe-del-'));
-    mockConfirm.mockReset();
+    MOCK_CONFIRM.mockReset();
   });
 
   afterEach(async () => {
@@ -51,7 +51,7 @@ describe('safeDeleteStaleFiles', () => {
 
     // File should be deleted
     await expect(readFile(staleAbsPath, 'utf-8')).rejects.toThrow();
-    expect(mockConfirm).not.toHaveBeenCalled();
+    expect(MOCK_CONFIRM).not.toHaveBeenCalled();
   });
 
   it('keeps file when suppressed is false and user answers no', async () => {
@@ -60,7 +60,7 @@ describe('safeDeleteStaleFiles', () => {
     await mkdir(join(projectRoot, '.claude/agents'), { recursive: true });
     await writeFile(staleAbsPath, 'stale content', 'utf-8');
 
-    mockConfirm.mockResolvedValueOnce(false);
+    MOCK_CONFIRM.mockResolvedValueOnce(false);
 
     await safeDeleteStaleFiles({
       projectRoot,
@@ -71,7 +71,8 @@ describe('safeDeleteStaleFiles', () => {
     // File should still exist
     const content = await readFile(staleAbsPath, 'utf-8');
     expect(content).toBe('stale content');
-    expect(mockConfirm).toHaveBeenCalledTimes(1);
+    await expect(readFile(join(projectRoot, '.agents-workflows-backup', staleRelPath), 'utf-8')).rejects.toThrow();
+    expect(MOCK_CONFIRM).toHaveBeenCalledTimes(1);
   });
 
   it('deletes file when suppressed is false and user confirms yes', async () => {
@@ -80,7 +81,7 @@ describe('safeDeleteStaleFiles', () => {
     await mkdir(join(projectRoot, '.claude/agents'), { recursive: true });
     await writeFile(staleAbsPath, 'stale content', 'utf-8');
 
-    mockConfirm.mockResolvedValueOnce(true);
+    MOCK_CONFIRM.mockResolvedValueOnce(true);
 
     await safeDeleteStaleFiles({
       projectRoot,
@@ -90,6 +91,6 @@ describe('safeDeleteStaleFiles', () => {
 
     // File should be deleted after confirmation
     await expect(readFile(staleAbsPath, 'utf-8')).rejects.toThrow();
-    expect(mockConfirm).toHaveBeenCalledTimes(1);
+    expect(MOCK_CONFIRM).toHaveBeenCalledTimes(1);
   });
 });

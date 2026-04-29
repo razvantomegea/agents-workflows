@@ -10,7 +10,7 @@ const SKIP_DIRS: ReadonlySet<string> = new Set([
   'node_modules', '.git', 'bin', 'obj', '.agents-workflows-backup', 'dist',
 ]);
 
-async function findFirstCsproj(projectRoot: string): Promise<string | null> {
+async function findCsprojFiles(projectRoot: string): Promise<string[]> {
   const collected: string[] = [];
 
   let rootEntries: Dirent[];
@@ -18,7 +18,7 @@ async function findFirstCsproj(projectRoot: string): Promise<string | null> {
     rootEntries = await readdir(projectRoot, { withFileTypes: true });
   } catch {
     // reason: ENOENT or permission errors on root are silently skipped per spec
-    return null;
+    return [];
   }
 
   for (const entry of rootEntries) {
@@ -39,18 +39,16 @@ async function findFirstCsproj(projectRoot: string): Promise<string | null> {
   }
 
   collected.sort();
-  return collected.length > 0 ? collected[0] : null;
+  return collected;
 }
 
 export async function detectDotnetFramework(projectRoot: string): Promise<Detection> {
-  const csprojPath = await findFirstCsproj(projectRoot);
-  if (csprojPath === null) {
-    return { value: null, confidence: 0 };
-  }
-
-  const content = await tryReadFile(csprojPath);
-  if (content !== null && containsAny(content, ASPNETCORE_NEEDLES)) {
-    return { value: 'aspnetcore', confidence: BACKEND_FRAMEWORK_CONFIDENCE['aspnetcore'] };
+  const csprojPaths = await findCsprojFiles(projectRoot);
+  for (const csprojPath of csprojPaths) {
+    const content = await tryReadFile(csprojPath);
+    if (content !== null && containsAny(content, ASPNETCORE_NEEDLES)) {
+      return { value: 'aspnetcore', confidence: BACKEND_FRAMEWORK_CONFIDENCE['aspnetcore'] };
+    }
   }
 
   return { value: null, confidence: 0 };

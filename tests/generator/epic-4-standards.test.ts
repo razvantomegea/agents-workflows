@@ -114,7 +114,7 @@ describe('Implementation agent description omits "none" framework placeholder', 
 });
 
 describe('Epic 4 T5 — api-design conditional', () => {
-  const BACKEND = ['express', 'fastify', 'hono', 'nestjs', 'fastapi', 'django', 'flask'] as const;
+  const BACKEND = ['express', 'fastify', 'hono', 'nestjs', 'fastapi', 'django', 'flask', 'spring-boot', 'aspnetcore'] as const;
   const NON_BACKEND = ['nextjs', 'react', 'vue', null] as const;
 
   it.each(BACKEND.map((fw) => [fw]))(

@@ -122,7 +122,10 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 | Plain JavaScript (no framework) | `javascript` | Epic 17 body |
 | Unknown / polyglot root | `generic` | Stack-agnostic baseline |
 
-The emitted filename is always `.claude/agents/implementer.md` and `.codex/skills/implementer/SKILL.md`; the active variant is recorded in `.agents-workflows.json` under `agents.implementerVariant`. Existing manifests carrying the legacy `reactTsSenior: true` field migrate automatically on first `update` to `implementerVariant: 'react-ts'`; any pre-existing `.claude/agents/react-ts-senior.md` and `.codex/skills/react-ts-senior/SKILL.md` are removed via the Epic 7 safe-delete confirmation flow (`--yes` skips the prompt; a backup is always written first).
+- The emitted filename is always `.claude/agents/implementer.md` and `.codex/skills/implementer/SKILL.md`.
+- The active variant is recorded in `.agents-workflows.json` under `agents.implementerVariant`.
+- Existing manifests carrying the legacy `reactTsSenior: true` field migrate automatically on first `update` to `implementerVariant: 'react-ts'`.
+- Any pre-existing `.claude/agents/react-ts-senior.md` and `.codex/skills/react-ts-senior/SKILL.md` are removed via the Epic 7 safe-delete confirmation flow (`--yes` skips the prompt; backups are written only after deletion is confirmed or prompts are suppressed).
 
 ## Workflow patterns
 
