@@ -42,11 +42,11 @@ export async function initCommand(
   });
 
   logger.heading('agents-workflows');
-  logger.info('Detecting project stack...\n');
+  logger.info('detect: stack');
 
   const detected = await detectStack(projectRoot);
 
-  logger.heading('Detected:');
+  logger.heading('stack:');
   printDetected(detected);
   printDetectedAiTools(detected.aiAgents.agents);
 
@@ -126,7 +126,7 @@ async function installWorkspaces(
     const workspacePathSegment = pathResult.data;
     const workspacePath = join(rootDir, workspacePathSegment);
     logger.blank();
-    logger.heading(`Workspace: ${sanitizeForLog(workspacePathSegment)}`);
+    logger.heading(`ws: ${sanitizeForLog(workspacePathSegment)}`);
     // Full detectStack per workspace: runPromptFlow needs fields (testLibrary, i18n, aiAgents) not in WorkspaceStackDetection.
     const workspaceDetected = await detectStack(workspacePath);
     printDetected(workspaceDetected);
@@ -162,7 +162,7 @@ async function installSinglePackage({
   const config: StackConfig = { ...baseConfig, monorepo: monorepoOverride ?? baseConfig.monorepo };
 
   logger.blank();
-  logger.info('Generating files...\n');
+  logger.info('generate');
 
   const files = await generateAll(config);
   const backup = await backupExistingFiles(projectRoot, files);
@@ -184,7 +184,7 @@ async function installSinglePackage({
 
   try {
     await withSafetySession(safetyFlags, async () => {
-      logger.info('Writing files:');
+      logger.info('write:');
       const writeResult = await writeGeneratedFiles(projectRoot, files);
       await writeFileSafe({
         path: manifestPath,
@@ -192,7 +192,7 @@ async function installSinglePackage({
         displayPath: '.agents-workflows.json',
       });
       if (writeResult.skippedPaths.length > 0) {
-        logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+        logger.warn(`skip: ${writeResult.skippedPaths.length} md files unchanged`);
       }
     });
   } catch (error) {
@@ -201,30 +201,30 @@ async function installSinglePackage({
   }
 
   logger.blank();
-  logger.success(`Done! ${files.length} files processed at ${resolve(projectRoot)}`);
+  logger.success(`done. ${files.length} files → ${resolve(projectRoot)}`);
   logger.blank();
-  logger.info('Next steps:');
-  logger.info('  1. Review the generated files and customize as needed');
-  logger.info('  2. Add project-specific rules to CLAUDE.md');
-  logger.info('  3. Run `npx agents-workflows update` after changing .agents-workflows.json');
+  logger.info('next:');
+  logger.info('  review generated files');
+  logger.info('  add rules → CLAUDE.md');
+  logger.info('  config change → npx agents-workflows update');
 
   if (config.cavemanStyle) {
     logger.blank();
-    logger.info('Caveman style enabled. Install the caveman plugin for your tools:');
+    logger.info('caveman: install plugin');
     if (config.targets.claudeCode) {
-      logger.info('  Claude Code:   claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman');
+      logger.info('  claude: claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman');
     }
     if (config.targets.codexCli) {
-      logger.info('  Codex / other: npx skills add JuliusBrussee/caveman');
+      logger.info('  codex: npx skills add JuliusBrussee/caveman');
     }
     if (config.targets.cursor) {
-      logger.info('  Cursor:        npx skills add JuliusBrussee/caveman -a cursor');
+      logger.info('  cursor: npx skills add JuliusBrussee/caveman -a cursor');
     }
     if (config.targets.windsurf) {
-      logger.info('  Windsurf:      npx skills add JuliusBrussee/caveman -a windsurf');
+      logger.info('  windsurf: npx skills add JuliusBrussee/caveman -a windsurf');
     }
     if (config.targets.copilot) {
-      logger.info('  Copilot:       npx skills add JuliusBrussee/caveman -a copilot');
+      logger.info('  copilot: npx skills add JuliusBrussee/caveman -a copilot');
     }
   }
   logger.blank();

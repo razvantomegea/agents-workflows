@@ -25,20 +25,22 @@ This file provides guidance to Claude Code when working with code in this reposi
 | Task | Agent |
 |---|---|
 | Architecture, planning | `architect` (opus) |
-| Implementation | `implementer`<% if (implementerVariant !== 'generic') { %> (<%= implementerVariant %> variant)<% } %> |
-| Code review (after every file edit) | `code-reviewer` |
+| Implementation | `implementer`<% if (implementerVariant !== 'generic') { %> (<%= implementerVariant %> variant)<% } %> (sonnet) |
+| Code review (after every file edit) | `code-reviewer` (sonnet) |
 <% if (hasSecurityReviewer) { -%>
-| Security review (parallel to code review) | `security-reviewer` |
+| Security review (parallel to code review) | `security-reviewer` (sonnet) |
 <% } -%>
-| Review loop orchestration (post-task) | `reviewer` |
-| Optimization pass | `code-optimizer` |
-| Unit tests | `test-writer` |
+| Review loop orchestration (post-task) | `reviewer` (haiku) |
+| Optimization pass | `code-optimizer` (sonnet) |
+| Unit tests | `test-writer` (haiku) |
 <% if (hasE2eTester) { -%>
-| E2E tests | `e2e-tester` |
+| E2E tests | `e2e-tester` (haiku) |
 <% } -%>
 <% if (hasUiDesigner) { -%>
-| UI/UX design & review | `ui-designer` |
+| UI/UX design & review | `ui-designer` (opus) |
 <% } -%>
+
+**Model tiering rationale.** Deep-reasoning roles (`architect`<% if (hasUiDesigner) { %>, `ui-designer`<% } %>) → opus. Code-judgement roles (`implementer`, `code-reviewer`<% if (hasSecurityReviewer) { %>, `security-reviewer`<% } %>, `code-optimizer`) → sonnet. Rule-following roles (`reviewer` orchestrator, `test-writer`<% if (hasE2eTester) { %>, `e2e-tester`<% } %>) → **haiku** — cuts token cost ~3-5× per call without hurting quality, since the high-judgement agents they invoke still run on sonnet.
 
 Use sub-agents with independent, single, simple tasks as much as possible.
 <% if (hasUiDesigner) { -%>
@@ -57,6 +59,7 @@ Use sub-agents with independent, single, simple tasks as much as possible.
   - Features: `feature/<short-kebab-name>`
   - Bug fixes: `fix/<short-kebab-name>`
 - **NEVER commit or push** unless the user explicitly asks.
+- **Never advance a plan step or begin implementation** until ≥95% confident about scope and approach — ask clarifying questions until that threshold is met.
 
 ## Code Review Workflow
 
@@ -93,10 +96,20 @@ DRY and reusability are critical principles — enforced without exception:
 <% if (tooling.packageManagerPrefix) { -%>
 - Always use `<%= tooling.packageManagerPrefix %>` for running scripts.
 <% } -%>
-- Ask clarifying questions when requirements are ambiguous.
+- Ask clarifying questions aggressively — as many as needed, until ≥95% confident — before acting on any ambiguous requirement. Never proceed with less than 95% confidence in scope or approach.
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
+
+## Communication Style
+
+Write telegraphically. No filler. No pleasantries. Fragments OK.
+
+- Drop: articles (a/an/the), hedges (just/really/basically), openers (sure/certainly/of course)
+- Short synonyms: fix not "implement a solution for", big not "extensive", use not "utilize"
+- Pattern: `[thing] [action] [reason]. [next step].`
+- State results directly. No trailing summary of what was just done.
+- Code, paths, commands: exact and unchanged.
 
 ## Shared agent policy
 

@@ -37,6 +37,7 @@ export interface PermissionsInput {
 
 const CURRENT_PROJECT_PERMISSIONS: readonly string[] = [
   'Read(./**)',
+  'Read',
   'Glob',
   'Grep',
   'Edit(./**)',

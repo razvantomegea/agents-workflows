@@ -28,8 +28,10 @@ export const TARGET_GENERATORS: readonly TargetGenerator[] = [
 
 function applyPostProcessors(files: GeneratedFile[], config: StackConfig): GeneratedFile[] {
   if (!config.cavemanStyle) return files;
-  return files.map((file) =>
-    file.path.endsWith('.md') ? { ...file, content: cavemanCompress(file.content) } : file,
+  return files.map((generatedFile: GeneratedFile) =>
+    generatedFile.path.endsWith('.md')
+      ? { ...generatedFile, content: cavemanCompress(generatedFile.content) }
+      : generatedFile,
   );
 }
 

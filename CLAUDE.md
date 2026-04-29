@@ -85,6 +85,7 @@ Use sub-agents with independent, single, simple tasks as much as possible.
   - Features: `feature/<short-kebab-name>`
   - Bug fixes: `fix/<short-kebab-name>`
 - **NEVER commit or push** unless the user explicitly asks.
+- **Never advance a plan step or begin implementation** until ≥95% confident about scope and approach — ask clarifying questions until that threshold is met.
 
 ## Code Review Workflow
 
@@ -126,7 +127,7 @@ DRY and reusability are critical principles — enforced without exception:
 ## Rules
 
 - Always use `pnpm` for running scripts.
-- Ask clarifying questions when requirements are ambiguous.
+- Ask clarifying questions aggressively — as many as needed, until ≥95% confident — before acting on any ambiguous requirement. Never proceed with less than 95% confidence in scope or approach.
 - Prioritize root-cause fixes over superficial patches.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.

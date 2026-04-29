@@ -37,8 +37,9 @@ If the tree is dirty, on an unexpected branch, or a rebase/merge is in
 progress, STOP and report. Do not auto-stash, auto-commit, or switch.
 
 If the request is ambiguous in a way that would materially change the plan,
-ask ONE precise clarifying question before proposing or finalizing a plan.
-Do not silently pick an interpretation.
+ask clarifying questions — as many as needed — before proposing or finalizing
+a plan. Never proceed to planning with less than 95% confidence in scope,
+intent, and approach. Do not silently pick an interpretation.
 
 If you attempt the same plan twice and it fails twice, STOP. Summarize
 what you've learned and ask the user to re-scope to avoid repeated
@@ -136,8 +137,9 @@ sees their raw tool output.
 <planning_protocol>
 1. EXPLORE (read-only): read `PRD.md` and use grep/glob/read to understand affected code.
    Do not edit. Write nothing yet.
-2. CLARIFY: if the request is ambiguous, ask up to 5 high-signal
-   questions. Do not ask obvious questions.
+2. CLARIFY: if confidence in scope, intent, or approach is below 95%,
+   ask clarifying questions — as many as needed — until ≥95% confident.
+   Do not proceed to PLAN until threshold is met.
 3. PLAN: produce PLAN.md (≤8 tasks) with:
    - Goal in one sentence
    - Files to be created or modified (explicit paths)
@@ -281,4 +283,4 @@ _Branch: `feature/short-name` | Date: YYYY-MM-DD_
 - Do not omit required checklist sections.
 </constraints>
 
-<uncertainty>If the requested scope, target files, or user intent is unclear, stop and ask the user before proceeding.</uncertainty>
+<uncertainty>If confidence in scope, target files, user intent, or approach is below 95%, stop and ask clarifying questions before proceeding. Never advance to the next step with less than 95% confidence. Prefer multiple focused questions over one broad one.</uncertainty>

@@ -26,19 +26,23 @@ describe('Epic 20 — caveman style post-processor', () => {
     });
 
     it('strips filler from every generated .md file', () => {
-      const mdFiles = files.filter((f) => f.path.endsWith('.md'));
+      const mdFiles = files.filter((generatedFile) => generatedFile.path.endsWith('.md'));
       expect(mdFiles.length).toBeGreaterThan(0);
 
-      const withFiller = mdFiles.filter((f) => hasFiller(f.content));
-      expect(withFiller.map((f) => f.path)).toEqual([]);
+      const withFiller = mdFiles.filter((generatedFile) => hasFiller(generatedFile.content));
+      expect(withFiller.map((generatedFile) => generatedFile.path)).toEqual([]);
     });
 
     it('does not modify non-.md files', () => {
-      const nonMd = files.filter((f) => !f.path.endsWith('.md'));
       const config = makeStackConfig({ cavemanStyle: false });
       return generateAll(config).then((baseline) => {
+        const nonMd = files.filter((generatedFile) => !generatedFile.path.endsWith('.md'));
+        const baselineNonMd = baseline.filter((baselineFile) => !baselineFile.path.endsWith('.md'));
+        expect(nonMd.map((generatedFile) => generatedFile.path).sort()).toEqual(
+          baselineNonMd.map((baselineFile) => baselineFile.path).sort(),
+        );
         for (const file of nonMd) {
-          const base = baseline.find((b) => b.path === file.path);
+          const base = baseline.find((baselineFile) => baselineFile.path === file.path);
           if (base) expect(file.content).toBe(base.content);
         }
       });
@@ -50,21 +54,26 @@ describe('Epic 20 — caveman style post-processor', () => {
       const off = await generateAll(makeStackConfig({ cavemanStyle: false }));
       const on = await generateAll(makeStackConfig({ cavemanStyle: true }));
 
-      const offMd = off.filter((f) => f.path.endsWith('.md'));
-      const onMd = on.filter((f) => f.path.endsWith('.md'));
+      const offMd = off.filter((generatedFile) => generatedFile.path.endsWith('.md'));
+      const onMd = on.filter((generatedFile) => generatedFile.path.endsWith('.md'));
 
-      expect(offMd.length).toBe(onMd.length);
+      expect(offMd.map((generatedFile) => generatedFile.path).sort()).toEqual(
+        onMd.map((generatedFile) => generatedFile.path).sort(),
+      );
     });
 
     it('does not apply compression to non-.md files', async () => {
       const off = await generateAll(makeStackConfig({ cavemanStyle: false }));
       const on = await generateAll(makeStackConfig({ cavemanStyle: true }));
 
-      const offNonMd = off.filter((f) => !f.path.endsWith('.md'));
-      const onNonMd = on.filter((f) => !f.path.endsWith('.md'));
+      const offNonMd = off.filter((generatedFile) => !generatedFile.path.endsWith('.md'));
+      const onNonMd = on.filter((generatedFile) => !generatedFile.path.endsWith('.md'));
 
+      expect(onNonMd.map((generatedFile) => generatedFile.path).sort()).toEqual(
+        offNonMd.map((generatedFile) => generatedFile.path).sort(),
+      );
       for (const file of onNonMd) {
-        const match = offNonMd.find((b) => b.path === file.path);
+        const match = offNonMd.find((offFile) => offFile.path === file.path);
         if (match) expect(file.content).toBe(match.content);
       }
     });

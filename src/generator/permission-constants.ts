@@ -237,4 +237,8 @@ export const CROSS_MODEL_HANDOFF_ALLOWS: readonly string[] = [
 export const SHELL_UTILITY_ALLOWS: readonly string[] = [
   'Bash(ls:*)',
   'Bash(cd:*)',
+  'Bash(find:*)',
+  'Ls',
+  'Cd',
+  'Find',
 ];

@@ -4,6 +4,7 @@
     "disableBypassPermissionsMode": "disable",
     "allow": [
       "Read(./**)",
+      "Read",
       "Glob",
       "Grep",
       "Edit(./**)",
@@ -23,6 +24,10 @@
       "Bash(claude -p:*)",
       "Bash(ls:*)",
       "Bash(cd:*)",
+      "Bash(find:*)",
+      "Ls",
+      "Cd",
+      "Find",
       "Bash(wsl pnpm:*)",
       "Bash(wsl git status:*)",
       "Bash(wsl git diff:*)",
@@ -35,7 +40,8 @@
       "Bash(wsl codex exec:*)",
       "Bash(wsl claude -p:*)",
       "Bash(wsl ls:*)",
-      "Bash(wsl cd:*)"
+      "Bash(wsl cd:*)",
+      "Bash(wsl find:*)"
     ],
     "deny": [
       "Bash(rm -rf:*)",

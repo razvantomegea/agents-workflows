@@ -21,6 +21,7 @@ describe('buildPermissions', () => {
     expect(perms).toContain('Edit(./**)');
     expect(perms).toContain('MultiEdit(./**)');
     expect(perms).toContain('Write(./**)');
+    expect(perms).toContain('Read');
     expect(perms).toContain('Bash(pnpm:*)');
     expect(perms).toContain('WebSearch');
   });
@@ -127,12 +128,16 @@ describe('buildPermissions', () => {
     expect(perms).not.toContain('Bash(wsl * git status:*)');
   });
 
-  it('allows Glob, Grep, ls, and cd', () => {
+  it('allows Glob, Grep, Ls/Cd/Find in both Bash and plain forms', () => {
     const perms = buildPermissions(PNPM_INPUT);
     expect(perms).toContain('Glob');
     expect(perms).toContain('Grep');
     expect(perms).toContain('Bash(ls:*)');
     expect(perms).toContain('Bash(cd:*)');
+    expect(perms).toContain('Bash(find:*)');
+    expect(perms).toContain('Ls');
+    expect(perms).toContain('Cd');
+    expect(perms).toContain('Find');
   });
 
   it('does NOT broaden the wrapper allow to opaque -c/-Command forms', () => {

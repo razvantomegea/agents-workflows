@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 
 URL_REGEX = re.compile(r"https?://[^\s)]+")
+INLINE_CODE_REGEX = re.compile(r"`[^`\n]+`")
 FENCE_OPEN_REGEX = re.compile(r"^(\s{0,3})(`{3,}|~{3,})(.*)$")
 HEADING_REGEX = re.compile(r"^(#{1,6})\s+(.*)", re.MULTILINE)
 BULLET_REGEX = re.compile(r"^\s*[-*+]\s+", re.MULTILINE)
@@ -81,6 +82,24 @@ def extract_code_blocks(text):
     return blocks
 
 
+def extract_inline_code(text: str) -> list[str]:
+    return INLINE_CODE_REGEX.findall(text)
+
+
+def extract_indented_code_blocks(text: str) -> list[str]:
+    blocks = []
+    current: list[str] = []
+    for line in text.splitlines():
+        if line.startswith(("    ", "\t")):
+            current.append(line)
+        elif current:
+            blocks.append("\n".join(current))
+            current = []
+    if current:
+        blocks.append("\n".join(current))
+    return blocks
+
+
 def extract_urls(text):
     return set(URL_REGEX.findall(text))
 
@@ -113,6 +132,16 @@ def validate_code_blocks(orig, comp, result):
 
     if c1 != c2:
         result.add_error("Code blocks not preserved exactly")
+
+
+def validate_inline_code(orig: str, comp: str, result: ValidationResult) -> None:
+    if extract_inline_code(orig) != extract_inline_code(comp):
+        result.add_error("Inline code not preserved exactly")
+
+
+def validate_indented_code_blocks(orig: str, comp: str, result: ValidationResult) -> None:
+    if extract_indented_code_blocks(orig) != extract_indented_code_blocks(comp):
+        result.add_error("Indented code blocks not preserved exactly")
 
 
 def validate_urls(orig, comp, result):
@@ -155,6 +184,8 @@ def validate(original_path: Path, compressed_path: Path) -> ValidationResult:
 
     validate_headings(orig, comp, result)
     validate_code_blocks(orig, comp, result)
+    validate_indented_code_blocks(orig, comp, result)
+    validate_inline_code(orig, comp, result)
     validate_urls(orig, comp, result)
     validate_paths(orig, comp, result)
     validate_bullets(orig, comp, result)

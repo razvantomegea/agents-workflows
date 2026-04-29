@@ -42,7 +42,10 @@ def main():
 
     # Check if compressible
     if not should_compress(filepath):
-        print("Skipping: file is not natural language (code/config)")
+        if filepath.name.endswith(".original.md"):
+            print("Skipping: backup files are never recompressed")
+        else:
+            print(f"Skipping: detected {file_type}")
         sys.exit(0)
 
     print("Starting caveman compression...\n")

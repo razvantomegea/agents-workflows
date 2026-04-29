@@ -42,6 +42,10 @@ def print_table(rows):
 
 
 def main():
+    if len(sys.argv) not in {1, 3}:
+        print("Usage: python3 benchmark.py [original.md compressed.md]")
+        sys.exit(1)
+
     # Direct file pair: python3 benchmark.py original.md compressed.md
     if len(sys.argv) == 3:
         orig = Path(sys.argv[1]).resolve()
@@ -56,7 +60,8 @@ def main():
         return
 
     # Glob mode: repo_root/tests/caveman-compress/
-    tests_dir = Path(__file__).parent.parent.parent / "tests" / "caveman-compress"
+    repo_root = Path(__file__).resolve().parents[4]
+    tests_dir = repo_root / "tests" / "caveman-compress"
     if not tests_dir.exists():
         print(f"❌ Tests dir not found: {tests_dir}")
         sys.exit(1)
