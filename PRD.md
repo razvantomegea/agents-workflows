@@ -2540,6 +2540,143 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 
 ---
 
+## Epic 21 — Vibe Coding Practices + Doc-Pointer Convention [SHOULD]
+
+**Goal.** Fold concrete best-practice from `awesomeclaude.ai` (vibe-coding-guide, code-cheatsheet, ralph-wiggum) into generated agents, commands, partials, and config templates so every project from `agents-workflows init` ships with: the **Vibe Loop** (Frame → Scope → Generate → Vibe Check → Objective Check → Integrate), **Prompt DNA** (Goal/Constraints/Context/IO/Acceptance/Non-goals), tiered **Quality Gates**, **Pre-Release Checklist**, **Handoff Format**, **Debug Ladder**, and the small-diffs / one-feature-per-prompt rule. Add an opt-in **Ralph-loop** command. Audit command/skill/agent frontmatter against the cheatsheet schema. Switch `AGENTS.md` and `CLAUDE.md` from inline content to a **canonical-docs link table** (PRD, ARCHITECTURE, PROJECT_STRUCTURE, STYLE_GUIDE, DESIGN_SYSTEM, ADRs).
+
+**Rationale.** The vibe-coding-guide codifies named, checklistable patterns the repo currently embeds only implicitly (small diffs, plan-before-code, three-tier review). Naming them and including them as partials makes them auditable, testable, and reusable. The cheatsheet supplies the authoritative slash-command and skill frontmatter schema (`argument-hint`, `allowed-tools`, `model`, `disable-model-invocation`) plus the MCP-no-wildcard caveat — both quietly violated today. The doc-pointer convention enforces the existing CLAUDE.md rule *"Do not paste docs here — link them"* by replacing inline architecture/style content with a fixed roster of `docs/*.md` references, which scales better across projects and keeps `CLAUDE.md` short.
+
+**Sources.** `https://awesomeclaude.ai/vibe-coding-guide`, `/code-cheatsheet`, `/ralph-wiggum`. The `/how-to` MCP recipes are explicitly out of scope.
+
+**Acceptance.**
+
+- 7 new partials exist under `src/templates/partials/`: `vibe-loop`, `prompt-dna`, `quality-gates`, `pre-release-checklist`, `small-diffs`, `debug-ladder`, `handoff-format`.
+- 1 new partial `canonical-docs.md.ejs` renders a link table (PRD / ARCHITECTURE / PROJECT_STRUCTURE / STYLE_GUIDE / DESIGN_SYSTEM / ADRs / README) and only emits rows whose target file exists in the installed project (fs probe at generator time).
+- `CLAUDE.md.ejs` and `AGENTS.md.ejs` include `vibe-loop` and `canonical-docs`; any inline architecture / PRD / project-structure (beyond the brief map) / style-guide / design-system content is removed and replaced with a link.
+- `architect.md.ejs` and every `implementer-variants/*.md.ejs` include `prompt-dna` and `small-diffs`.
+- `reviewer.md.ejs` and `code-reviewer.md.ejs` include `quality-gates` and `debug-ladder`.
+- `definition-of-done.md.ejs` appends `pre-release-checklist`; `session-hygiene.md.ejs` appends `handoff-format`; `implementer-core.md.ejs` appends `small-diffs`.
+- `workflow-plan.md.ejs` wires `pre-release-checklist`; `workflow-fix.md.ejs` wires `debug-ladder`.
+- New `commands/vibe-check.md.ejs` slash command runs the 3-tier gate over current branch diff, calls existing `code-reviewer` + `security-reviewer` in parallel.
+- New `commands/ralph-loop.md.ejs` slash command documents the Stop-hook iteration pattern with `--completion-promise` and `--max-iterations`; **Stop hook is opt-in**, not on by default.
+- All `commands/*.md.ejs` have explicit `allowed-tools`, `argument-hint`, and `model` frontmatter (cheatsheet schema).
+- Agent descriptions where auto-routing is intended include "proactively" or "MUST BE USED" phrasing (architect, code-reviewer, security-reviewer, test-writer).
+- All skills under `.agents/skills/*` have `allowed-tools` set to minimum.
+- `permission-constants.ts` carries a comment block warning that MCP perms do not support wildcards; a test guard fails on `mcp__*__*` patterns.
+- `settings.json.ejs` carries an opt-in optional hooks block (PostToolUse prettier, Stop activity log) gated behind `optionalHooks` config field, default `false`.
+- `pnpm check-types && pnpm lint && pnpm test` green; reviewer 5-step gate passes.
+- **Non-goals (this epic):** no MCP server bundling from `/how-to`; no default-on Stop hook; no new sub-agents; no copilot/cursor/windsurf template edits beyond what existing surfaces already publish; no expansion of deny patterns; generator does **not** create `docs/*.md` content — only links to them.
+
+### E21.T1 — `vibe-loop` partial — S
+
+- **Files**: `src/templates/partials/vibe-loop.md.ejs` (new).
+- **Change**: 6-step ordered list — Frame outcome / Scope change / Generate draft / Vibe Check / Objective Check / Integrate. ≤30 lines, no EJS logic. Pattern matches `review-checklist.md.ejs`.
+- **Done when**: snapshot test renders partial; `pnpm test` green.
+
+### E21.T2 — `prompt-dna` partial — S
+
+- **Files**: `src/templates/partials/prompt-dna.md.ejs` (new).
+- **Change**: 6-field block — Goal / Constraints / Context / Inputs+Outputs / Acceptance / Non-goals. One line each.
+- **Done when**: snapshot asserts all 6 field names present.
+
+### E21.T3 — `quality-gates` partial — S
+
+- **Files**: `src/templates/partials/quality-gates.md.ejs` (new).
+- **Change**: Three-tier gate list — Vibe Check (core flow / UI feel / no console errors), Objective Check (read diff / tests / perf paths / deps exist), Release Ready (docs / rollback / monitoring / follow-ups).
+- **Done when**: snapshot asserts all 3 gate headers present.
+
+### E21.T4 — `pre-release-checklist` partial — S
+
+- **Files**: `src/templates/partials/pre-release-checklist.md.ejs` (new).
+- **Change**: 8-item ✓ checklist — requirements written, prompt scope small, code reviewed, app runs locally, tests pass, docs updated, commit clear, follow-ups captured.
+- **Done when**: snapshot asserts 8 ✓ rows.
+
+### E21.T5 — `small-diffs` partial — S
+
+- **Files**: `src/templates/partials/small-diffs.md.ejs` (new).
+- **Change**: Two rules — request patches not whole-file rewrites; one feature per prompt. Each with one-line rationale.
+- **Done when**: snapshot asserts both rules present.
+
+### E21.T6 — `debug-ladder` partial — S
+
+- **Files**: `src/templates/partials/debug-ladder.md.ejs` (new).
+- **Change**: 5-step ladder — reproduce minimal → isolate failing file/function → read diff → request targeted patch → roll back and reframe if looping.
+- **Done when**: snapshot asserts 5 steps.
+
+### E21.T7 — `handoff-format` partial — S
+
+- **Files**: `src/templates/partials/handoff-format.md.ejs` (new).
+- **Change**: 5-field handoff template — Context / Files touched / Checks run / Open issues / Recommended next prompt.
+- **Done when**: snapshot asserts all 5 fields.
+
+### E21.T8 — `canonical-docs` partial + doc-pointer convention — M
+
+- **Files**: `src/templates/partials/canonical-docs.md.ejs` (new); `src/generator/utils/doc-probe.ts` (new helper, ≤200 lines).
+- **Change**: Render a 7-row link table (`README.md`, `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/PROJECT_STRUCTURE.md`, `docs/STYLE_GUIDE.md`, `docs/DESIGN_SYSTEM.md`, `docs/decisions/*.md`). Helper `probeCanonicalDocs(projectRoot: string): CanonicalDoc[]` returns only rows whose target exists. EJS partial iterates the array. Helper has its own Jest unit test in `tests/generator/utils/doc-probe.test.ts` (per CLAUDE.md "simple functions + Jest tests" rule).
+- **Done when**: rendering against a fixture project containing only some `docs/*.md` files emits only those rows; helper unit test green.
+
+### E21.T9 — Wire partials into config + agents + commands — M
+
+- **Files**: `src/templates/config/CLAUDE.md.ejs`, `src/templates/config/AGENTS.md.ejs`, `src/templates/agents/architect.md.ejs`, `src/templates/agents/reviewer.md.ejs`, `src/templates/agents/code-reviewer.md.ejs`, `src/templates/agents/implementer-variants/*.md.ejs` (17 files), `src/templates/partials/definition-of-done.md.ejs`, `src/templates/partials/session-hygiene.md.ejs`, `src/templates/partials/implementer-core.md.ejs`, `src/templates/commands/workflow-plan.md.ejs`, `src/templates/commands/workflow-fix.md.ejs`.
+- **Change**: Insert the right `<%- include(...) %>` line per the table in the partial-routing matrix (vibe-loop + canonical-docs into config; prompt-dna + small-diffs into architect+implementers; quality-gates + debug-ladder into reviewers; pre-release-checklist into definition-of-done; handoff-format into session-hygiene; debug-ladder into workflow-fix; pre-release-checklist into workflow-plan). Remove any inline architecture/PRD/style content from `CLAUDE.md.ejs` and `AGENTS.md.ejs` that duplicates what `canonical-docs` now points at; keep the brief project-structure map but append "See `docs/PROJECT_STRUCTURE.md` for the full tree."
+- **Done when**: snapshots updated; rendered files contain each partial exactly once; no orphan inline architecture/PRD/style content remains.
+
+### E21.T10 — `vibe-check` slash command — M
+
+- **Files**: `src/templates/commands/vibe-check.md.ejs` (new).
+- **Change**: `/vibe-check` runs the 3-tier gate over `git diff` against the base branch. Frontmatter: `argument-hint: [base-ref]`, `allowed-tools: Bash(git diff:*) Bash(pnpm test:*) Bash(pnpm lint:*) Bash(pnpm check-types:*) Read Grep Glob`, `model: inherit`. Body delegates to `code-reviewer` + `security-reviewer` in parallel and reports against `quality-gates` partial.
+- **Done when**: snapshot asserts frontmatter fields and the 3 gate names appear in the rendered command body.
+
+### E21.T11 — `ralph-loop` slash command (opt-in) — M
+
+- **Files**: `src/templates/commands/ralph-loop.md.ejs` (new); `src/templates/config/settings.json.ejs` (update — add commented Stop-hook recipe).
+- **Change**: `/ralph-loop "<prompt>" --completion-promise "<exact-text>" --max-iterations <n>` documents the iterative Stop-hook pattern. Frontmatter limits `allowed-tools` to read/edit/test only. Body **explicitly warns** that the Stop hook is opt-in: it auto-restarts the session on every Stop event with full credentials, so it must only be enabled inside a sandboxed devcontainer or worktree. The corresponding Stop-hook block in `settings.json.ejs` is commented out by default.
+- **Done when**: rendered command file contains the warning verbatim; settings template's Stop-hook block is commented unless `optionalHooks: true`.
+
+### E21.T12 — Command + agent + skill frontmatter audit — M
+
+- **Files**: every `src/templates/commands/*.md.ejs`, every `src/templates/agents/*.md.ejs` and `src/templates/agents/implementer-variants/*.md.ejs`, every `.agents/skills/*/SKILL.md`.
+- **Change**: Commands — ensure `allowed-tools`, `argument-hint`, `model` frontmatter set per cheatsheet schema. Agents — for architect / code-reviewer / security-reviewer / test-writer descriptions, add "proactively" or "MUST BE USED" wording where the routing table in CLAUDE.md already specifies auto-invocation. Skills — add `allowed-tools` minimum set where missing.
+- **Done when**: new test `tests/generator/command-frontmatter.test.ts` parses every rendered command's frontmatter and asserts the three fields exist; new test `tests/generator/agent-proactive-wording.test.ts` asserts the four named agents contain the trigger phrase.
+
+### E21.T13 — MCP wildcard guard — S
+
+- **Files**: `src/generator/permission-constants.ts` (comment block + export of regex), `tests/generator/mcp-wildcard-guard.test.ts` (new).
+- **Change**: Add a doc comment in `permission-constants.ts` explaining `mcp__server__*` is invalid; only `mcp__server` (all tools) or `mcp__server__tool_name` (single tool) are accepted by Claude Code. Test runs `generateAll` against all fixtures and asserts no rendered permission string matches `/mcp__[^_]+__\*$/`.
+- **Done when**: guard test green; intentionally introducing `mcp__github__*` into a fixture causes the test to fail.
+
+### E21.T14 — Optional hooks block — M
+
+- **Files**: `src/templates/config/settings.json.ejs`, `src/generator/permissions.ts` (or stack-config schema — add `optionalHooks?: boolean` field, default `false`), `tests/generator/optional-hooks.test.ts` (new).
+- **Change**: Two opt-in hook recipes from the cheatsheet — PostToolUse prettier auto-format on `Edit|Write`, Stop activity logger appending to `~/.claude/activity.log`. Rendered as commented JSON when `optionalHooks: false`, active JSON when `true`. Each helper for serializing the hook block is its own ≤200-line file with a Jest test (CLAUDE.md rule).
+- **Done when**: rendering with default config emits commented block; rendering with `optionalHooks: true` emits valid active JSON that `JSON.parse` accepts after stripping the wrapper comment.
+
+### E21.T15 — Generator wiring — S
+
+- **Files**: `src/generator/index.ts`, `tests/generator/generate-all.test.ts`.
+- **Change**: Append `vibe-check.md.ejs` and `ralph-loop.md.ejs` to the commands roster if hard-coded. Bump expected file count in `generate-all.test.ts` accordingly.
+- **Done when**: `generateAll()` emits both new commands across all fixtures.
+
+### E21.T16 — Snapshot tests — M
+
+- **Files**: `tests/generator/epic-21-vibe-coding.test.ts` (new), extend `tests/generator/list-partials.test.ts`.
+- **Change**: Across at least two fixtures (TS/React + Python), assert: (a) all 8 new partials exist; (b) `CLAUDE.md` and `AGENTS.md` contain the canonical-docs link table and the Vibe Loop section; (c) rendered architect / implementer-variant outputs contain Prompt DNA + small-diffs; (d) rendered reviewer / code-reviewer contain Quality Gates + Debug Ladder; (e) `definition-of-done` partial output contains the Pre-Release Checklist; (f) `commands/vibe-check.md` and `commands/ralph-loop.md` are emitted with correct frontmatter; (g) negative — removing the canonical-docs include from `CLAUDE.md.ejs` causes the assertion to fail.
+- **Done when**: `pnpm test` green; negative case verified.
+
+### E21.T17 — README + AGENTS-DEPLOYMENT note — S
+
+- **Files**: `README.md` (new "Vibe Coding Practices" subsection), `src/templates/config/AGENTS-DEPLOYMENT.md.ejs` (note that the generator does not author `docs/*.md` — installer must).
+- **Change**: README subsection lists the 7 patterns shipped with one-line each and points to the partial filenames. Deployment doc adds a one-line installer reminder: "Author `docs/PRD.md`, `docs/ARCHITECTURE.md`, `docs/PROJECT_STRUCTURE.md`, `docs/STYLE_GUIDE.md`, `docs/DESIGN_SYSTEM.md` — generator only links to them, does not create them."
+- **Done when**: README section renders; deployment doc snapshot updated.
+
+### E21.T18 — Delivery-plan row — S
+
+- **Files**: [PRD.md](PRD.md) (delivery plan table).
+- **Change**: Add `| 16 | Vibe coding practices + doc-pointer convention | Epic 21 (depends on Epic 1/2 partials + Epic 7 safe-writes + Epic 13 agent variants) |` before the `Backlog` row.
+- **Done when**: delivery plan table renders with Epic 21; no other rows displaced.
+
+---
+
 ## Delivery plan
 
 | Sprint | Focus | Epics |
@@ -2559,6 +2696,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 | 13 | Framework-agnostic implementer variants + multi-framework UI/UX designer | Epic 17 + Epic 18 (both depend on Epic 13's variant infrastructure + Epic 7 safe-writes) |
 | 14 | Architect second-opinion plan review | Epic 19 (depends on Epic 16 cross-model routing) |
 | 15 | Caveman communication style for all agents | Epic 20 (independent — no blocking dependencies) |
+| 16 | Vibe coding practices + doc-pointer convention | Epic 21 (depends on Epic 1/2 partials + Epic 7 safe-writes + Epic 13 agent variants) |
 | Backlog | Situational | Epic 8 |
 
 **Per-epic exit gate:** `pnpm check-types && pnpm lint && pnpm test` clean + `reviewer` agent 5-step review run against the epic's branch + manual `agents-workflows init` dry run on a sample project to eyeball rendered outputs across **all five** selected targets (Claude Code, Codex CLI, Cursor, VSCode+Copilot, Windsurf) where applicable to the epic.
