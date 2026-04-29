@@ -207,5 +207,25 @@ async function installSinglePackage({
   logger.info('  1. Review the generated files and customize as needed');
   logger.info('  2. Add project-specific rules to CLAUDE.md');
   logger.info('  3. Run `npx agents-workflows update` after changing .agents-workflows.json');
+
+  if (config.cavemanStyle) {
+    logger.blank();
+    logger.info('Caveman style enabled. Install the caveman plugin for your tools:');
+    if (config.targets.claudeCode) {
+      logger.info('  Claude Code:   claude plugin marketplace add JuliusBrussee/caveman && claude plugin install caveman@caveman');
+    }
+    if (config.targets.codexCli) {
+      logger.info('  Codex / other: npx skills add JuliusBrussee/caveman');
+    }
+    if (config.targets.cursor) {
+      logger.info('  Cursor:        npx skills add JuliusBrussee/caveman -a cursor');
+    }
+    if (config.targets.windsurf) {
+      logger.info('  Windsurf:      npx skills add JuliusBrussee/caveman -a windsurf');
+    }
+    if (config.targets.copilot) {
+      logger.info('  Copilot:       npx skills add JuliusBrussee/caveman -a copilot');
+    }
+  }
   logger.blank();
 }

@@ -104,5 +104,6 @@ export function createDefaultConfig(
     languages: [...detected.languages],
     monorepo: null,
     security: { ...SECURITY_DEFAULTS },
+    cavemanStyle: false,
   };
 }

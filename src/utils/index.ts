@@ -8,3 +8,4 @@ export { renderTemplate, markdownText, markdownCode } from './template-renderer.
 export { convertToSkill } from './convert-to-skill.js';
 export { renderUnifiedDiff, computeUnifiedPatch, DIFF_LINE_CAP } from './diff.js';
 export type { RenderDiffInput } from './diff.js';
+export { cavemanCompress } from './caveman-compress.js';

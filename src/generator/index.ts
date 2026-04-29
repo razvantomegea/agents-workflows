@@ -1,5 +1,6 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratedFile, GeneratorContext } from './types.js';
+import { cavemanCompress } from '../utils/caveman-compress.js';
 import { buildContext } from './build-context.js';
 import { listPartials } from './list-partials.js';
 import { generateAgents } from './generate-agents.js';
@@ -25,6 +26,13 @@ export const TARGET_GENERATORS: readonly TargetGenerator[] = [
   generateWindsurfConfig,
 ];
 
+function applyPostProcessors(files: GeneratedFile[], config: StackConfig): GeneratedFile[] {
+  if (!config.cavemanStyle) return files;
+  return files.map((file) =>
+    file.path.endsWith('.md') ? { ...file, content: cavemanCompress(file.content) } : file,
+  );
+}
+
 export async function generateAll(config: StackConfig): Promise<GeneratedFile[]> {
   const baseContext = buildContext(config);
   const discoveredPartials = await listPartials();
@@ -32,7 +40,7 @@ export async function generateAll(config: StackConfig): Promise<GeneratedFile[]>
   const groups = await Promise.all(
     TARGET_GENERATORS.map((generator: TargetGenerator) => generator(config, context)),
   );
-  return groups.flat();
+  return applyPostProcessors(groups.flat(), config);
 }
 
 export { buildContext } from './build-context.js';

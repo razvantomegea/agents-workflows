@@ -17,6 +17,7 @@ import {
   askImplementerVariant,
 } from './questions.js';
 import { askIsolation } from './ask-isolation.js';
+import { askCavemanStyle } from './ask-caveman-style.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 import { resolveTargetDefaults } from './ask-targets.js';
@@ -62,7 +63,7 @@ export async function runPromptFlow(
       isolation,
       acceptRisks: options.acceptRisks,
     });
-    return { ...baseConfig, targets, security };
+    return { ...baseConfig, targets, security, cavemanStyle: false };
   }
 
   const identity = await askProjectIdentity(detected, pkg);
@@ -77,6 +78,7 @@ export async function runPromptFlow(
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets({ detected: detected.aiAgents, projectRoot });
   const governance = await askGovernance();
+  const cavemanStyle = await askCavemanStyle();
   const isolation = await askIsolation({ isolation: options.isolation });
   const security = await askNonInteractiveMode({
     nonInteractive: options.nonInteractive,
@@ -165,5 +167,6 @@ export async function runPromptFlow(
     languages: [...detected.languages],
     monorepo: null,
     security,
+    cavemanStyle,
   };
 }

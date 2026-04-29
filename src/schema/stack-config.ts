@@ -190,6 +190,8 @@ export const stackConfigSchema = z.object({
     runsIn: z.enum(ISOLATION_CHOICES).nullable().default(null),
     disclosureAcknowledgedAt: z.string().datetime().nullable().default(null),
   }).default(() => ({ ...SECURITY_DEFAULTS })),
+
+  cavemanStyle: z.boolean().default(false),
 });
 
 export type StackConfig = z.infer<typeof stackConfigSchema>;

@@ -2469,6 +2469,8 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 
 **Rationale.** Token efficiency and signal-to-noise ratio matter in agentic loops. Agents that emit pleasantries, hedging, and filler waste context budget and slow developer feedback cycles. The `caveman` style (ultra-compressed, technically accurate, no articles/filler/hedging) and `caveman-review` style (one-line `L<n>: problem. fix.` review comments) cut token usage ~75% while preserving full technical accuracy. Baking them into all generated agent templates ensures every project that runs `agents-workflows init` gets terse, robot-style agents out of the box.
 
+**Attribution.** Credit the original caveman skills work to Julius Brussee's repository: [https://github.com/juliusbrussee/caveman](https://github.com/juliusbrussee/caveman).
+
 **Acceptance.**
 
 - `src/templates/codex-skills/caveman/SKILL.md.ejs` exists and renders a valid Codex skill with full caveman rules, intensity table (lite/full/ultra/wenyan variants), and auto-clarity guard.
@@ -2478,6 +2480,7 @@ Each Epic 17 variant template's `specificsBlock` (≤80 lines, raised from E13.T
 - Every generated agent template (architect, implementer, code-reviewer, code-optimizer, test-writer, e2e-tester, reviewer, security-reviewer, ui-designer, and all stack-aware variants) contains a `<communication_style>` block declaring caveman-full as default.
 - `AGENTS.md.ejs` and `CLAUDE.md.ejs` each contain a `## Communication style` section declaring caveman-full as the project default; cross-reference `/caveman` and `/caveman-review` for intensity control.
 - Cursor (`.cursor/rules/communication-style.mdc`), Copilot (`.github/copilot-instructions.md`), and Windsurf (`.windsurf/rules/communication-style.md`) outputs include the caveman communication directive.
+- Generated caveman skill/command/rule files include a short attribution line linking to [https://github.com/juliusbrussee/caveman](https://github.com/juliusbrussee/caveman).
 - `pnpm check-types && pnpm lint && pnpm test` green; reviewer 5-step gate passes.
 - **Non-goals (this epic):** no changes to wenyan levels beyond the skill definitions; code/commits/PRs inside agent outputs remain normal style (per caveman boundary rule); no new generator schema fields for toggling caveman mode on/off.
 

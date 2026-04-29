@@ -101,6 +101,7 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
     languages: overrides.languages ?? [],
     monorepo: overrides.monorepo !== undefined ? overrides.monorepo : null,
     security: { ...SECURITY_DEFAULTS, ...overrides.security },
+    cavemanStyle: overrides.cavemanStyle ?? false,
   };
 
   return baseConfig;
