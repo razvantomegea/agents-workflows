@@ -66,7 +66,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await expect(readFile(path, 'utf-8')).resolves.toBe('base|patch');
   });
 
-  it('falls back to overwrite with a warn when override is merge but no merge fn provided', async () => {
+  it('skips with a warn when override is merge but no merge fn provided', async () => {
     const prompt = makePrompt('n');
     configureWriteSession({ override: 'merge' });
     const path = join(tmpDir, 'file.md');
@@ -74,13 +74,13 @@ describe('writeFileSafe — session overrides and special cases', () => {
 
     const result = await writeFileSafe({ path, content: 'new' });
 
-    expect(result).toEqual({ status: 'written', path });
+    expect(result).toEqual({ status: 'skipped', path });
     expect(prompt).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalled();
-    await expect(readFile(path, 'utf-8')).resolves.toBe('new');
+    await expect(readFile(path, 'utf-8')).resolves.toBe('old');
   });
 
-  it('S4: fallback-overwrite warn message contains merge and overwriting', async () => {
+  it('S4: fallback-skip warn message contains merge and skipping', async () => {
     makePrompt('n');
     configureWriteSession({ override: 'merge' });
     const path = join(tmpDir, 'file.md');
@@ -89,7 +89,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await writeFileSafe({ path, content: 'new' });
 
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringMatching(/merge.*overwriting/i),
+      expect.stringMatching(/merge.*skipping/i),
     );
   });
 

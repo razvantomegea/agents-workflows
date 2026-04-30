@@ -3,6 +3,8 @@ import { renderTemplate } from '../utils/template-renderer.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { WorkspaceStack } from '../schema/workspace-stack.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
+import { mergeManagedTail } from './managed-sentinel.js';
+import { mergeJson } from './merge-json.js';
 
 /**
  * Generate root-level configuration and documentation files based on the provided stack configuration.
@@ -22,10 +24,10 @@ export async function generateRootConfig(
 
   if (config.targets.claudeCode) {
     const claudeMd = await renderTemplate('config/CLAUDE.md.ejs', context);
-    files.push({ path: 'CLAUDE.md', content: claudeMd });
+    files.push({ path: 'CLAUDE.md', content: claudeMd, merge: mergeManagedTail });
 
     const settings = await renderTemplate('config/settings.json.ejs', context);
-    files.push({ path: '.claude/settings.json', content: settings });
+    files.push({ path: '.claude/settings.json', content: settings, merge: mergeJson });
   }
 
   if (config.targets.codexCli) {
@@ -37,7 +39,7 @@ export async function generateRootConfig(
   }
 
   const agentsMd = await renderTemplate('config/AGENTS.md.ejs', context);
-  files.push({ path: 'AGENTS.md', content: agentsMd });
+  files.push({ path: 'AGENTS.md', content: agentsMd, merge: mergeManagedTail });
 
   const agentsDeploymentMd = await renderTemplate('config/AGENTS-DEPLOYMENT.md.ejs', context);
   files.push({ path: 'AGENTS-DEPLOYMENT.md', content: agentsDeploymentMd });
@@ -123,6 +125,6 @@ async function emitNestedAgentsFiles(options: {
 
     const content = await renderTemplate('config/workspace-AGENTS.md.ejs', { workspace });
     const filePath = posixPath.join(workspace.path, 'AGENTS.md');
-    files.push({ path: filePath, content });
+    files.push({ path: filePath, content, merge: mergeManagedTail });
   }
 }

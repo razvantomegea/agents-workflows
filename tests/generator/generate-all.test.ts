@@ -1,4 +1,6 @@
 import { generateAll } from '../../src/generator/index.js';
+import { mergeManagedTail } from '../../src/generator/managed-sentinel.js';
+import { mergeJson } from '../../src/generator/merge-json.js';
 import { makeStackConfig } from './fixtures.js';
 import { CODE_REVIEWER_MAX_LINES } from './code-reviewer-config.js';
 
@@ -69,6 +71,38 @@ describe('generateAll', () => {
       expect(file.content).toContain('## Primary Documentation');
       expect(file.content).toContain('`PRD.md`');
     }
+  });
+
+  it('attaches merge callbacks to generated root files with supported merge semantics', async () => {
+    const files = await generateAll(makeConfig());
+    const filesByPath = new Map(files.map((file) => [file.path, file]));
+
+    expect(filesByPath.get('CLAUDE.md')?.merge).toBe(mergeManagedTail);
+    expect(filesByPath.get('AGENTS.md')?.merge).toBe(mergeManagedTail);
+    expect(filesByPath.get('.claude/settings.json')?.merge).toBe(mergeJson);
+  });
+
+  it('attaches a managed-tail merge callback to nested AGENTS.md files', async () => {
+    const config = makeConfig();
+    config.monorepo = {
+      isRoot: true,
+      tool: 'pnpm',
+      workspaces: [
+        {
+          path: 'api',
+          language: 'python',
+          runtime: 'python',
+          framework: null,
+          packageManager: 'uv',
+          commands: { typeCheck: null, test: 'pytest', lint: null, build: null },
+        },
+      ],
+    };
+
+    const files = await generateAll(config);
+    const nestedAgentsMd = files.find((file) => file.path === 'api/AGENTS.md');
+
+    expect(nestedAgentsMd?.merge).toBe(mergeManagedTail);
   });
 
   it('renders configured project structure paths in CLAUDE.md and AGENTS.md', async () => {
@@ -182,6 +216,7 @@ describe('generateAll', () => {
     expect(nestedAgents?.content).toContain('mypy .');
     expect(nestedAgents?.content).toContain('agents-workflows:managed-start');
     expect(nestedAgents?.content).toContain('agents-workflows:managed-end');
+    expect(nestedAgents?.merge).toBe(mergeManagedTail);
   });
 
   it('renders the configured primary branch in workflow and git guidance', async () => {
