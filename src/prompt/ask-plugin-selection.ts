@@ -1,8 +1,9 @@
 import { checkbox } from '@inquirer/prompts';
 import { PLUGIN_REGISTRY } from '../generator/plugin-registry.js';
 import type { StackConfig } from '../schema/stack-config.js';
+import type { PluginDef } from '../generator/plugin-registry.js';
 
-const PLUGIN_CHOICES = PLUGIN_REGISTRY.map((plugin) => ({
+const PLUGIN_CHOICES = PLUGIN_REGISTRY.map((plugin: PluginDef) => ({
   name: `${plugin.name} — ${plugin.description}`,
   value: plugin.id,
   checked: false,

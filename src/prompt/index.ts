@@ -20,6 +20,7 @@ export { askNonInteractiveMode, HOST_OS_ACCEPT_PHRASE } from './ask-non-interact
 export { enableNonInteractiveWithIsolation } from './enable-non-interactive-with-isolation.js';
 export { askWorkspaceSelection } from './ask-workspace-selection.js';
 export { askImplementerVariant } from './ask-implementer-variant.js';
+export { askCavemanStyle } from './ask-caveman-style.js';
 export { runPromptFlow, type PromptFlowOptions } from './prompt-flow.js';
 export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 export { createDefaultConfig } from './default-config.js';

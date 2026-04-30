@@ -1,6 +1,7 @@
-import { mkdtemp, rm, writeFile, readFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile, readFile, mkdir, symlink } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { createHash } from 'node:crypto';
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 
 const MOCK_CONFIRM = jest.fn<() => Promise<boolean>>();
@@ -13,6 +14,12 @@ jest.unstable_mockModule('@inquirer/prompts', () => ({
 }));
 
 const { safeDeleteStaleFiles } = await import('../../src/installer/safe-delete-stale-files.js');
+
+function buildBackupFileName(relativePath: string): string {
+  const safeName = relativePath.replace(/[^A-Za-z0-9_.-]/g, '_');
+  const digest = createHash('sha256').update(relativePath).digest('hex').slice(0, 12);
+  return `${digest}-${safeName}`;
+}
 
 async function createStaleFile(
   projectRoot: string,
@@ -56,6 +63,27 @@ describe('safeDeleteStaleFiles', () => {
     expect(MOCK_CONFIRM).not.toHaveBeenCalled();
   });
 
+  it('skips candidate that resolves outside projectRoot through a symlinked parent', async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-safe-del-outside-'));
+    try {
+      await mkdir(join(outsideRoot, 'agents'), { recursive: true });
+      await writeFile(join(outsideRoot, 'agents', 'react-ts-senior.md'), 'outside content', 'utf-8');
+      await symlink(outsideRoot, join(projectRoot, '.claude'), 'dir');
+
+      await safeDeleteStaleFiles({
+        projectRoot,
+        candidates: ['.claude/agents/react-ts-senior.md'],
+        suppressed: true,
+      });
+
+      const content = await readFile(join(outsideRoot, 'agents', 'react-ts-senior.md'), 'utf-8');
+      expect(content).toBe('outside content');
+      await expect(readFile(join(projectRoot, '.agents-workflows-backup', '.claude/agents/react-ts-senior.md'), 'utf-8')).rejects.toThrow();
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
   it('deletes file and writes backup when suppressed is true', async () => {
     const staleRelPath = '.claude/agents/react-ts-senior.md';
     const staleAbsPath = await createStaleFile(projectRoot, staleRelPath);
@@ -69,9 +97,53 @@ describe('safeDeleteStaleFiles', () => {
     await expect(readFile(staleAbsPath, 'utf-8')).rejects.toThrow();
     expect(MOCK_CONFIRM).not.toHaveBeenCalled();
 
-    const backupPath = join(projectRoot, '.agents-workflows-backup', staleRelPath);
+    const backupPath = join(projectRoot, '.agents-workflows-backup', buildBackupFileName(staleRelPath));
     const backupContent = await readFile(backupPath, 'utf-8');
     expect(backupContent).toBe('stale content');
+  });
+
+  it('skips deletion when backup directory is a symlink outside projectRoot', async () => {
+    const staleRelPath = '.claude/agents/react-ts-senior.md';
+    const staleAbsPath = await createStaleFile(projectRoot, staleRelPath);
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-safe-backup-outside-'));
+    try {
+      await symlink(outsideRoot, join(projectRoot, '.agents-workflows-backup'), 'dir');
+
+      await safeDeleteStaleFiles({
+        projectRoot,
+        candidates: [staleRelPath],
+        suppressed: true,
+      });
+
+      const content = await readFile(staleAbsPath, 'utf-8');
+      expect(content).toBe('stale content');
+      await expect(readFile(join(outsideRoot, staleRelPath), 'utf-8')).rejects.toThrow();
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('does not follow a symlinked nested backup ancestor', async () => {
+    const staleRelPath = '.claude/agents/react-ts-senior.md';
+    const staleAbsPath = await createStaleFile(projectRoot, staleRelPath);
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-safe-backup-child-outside-'));
+    try {
+      await mkdir(join(projectRoot, '.agents-workflows-backup'), { recursive: true });
+      await symlink(outsideRoot, join(projectRoot, '.agents-workflows-backup', '.claude'), 'dir');
+
+      await safeDeleteStaleFiles({
+        projectRoot,
+        candidates: [staleRelPath],
+        suppressed: true,
+      });
+
+      await expect(readFile(staleAbsPath, 'utf-8')).rejects.toThrow();
+      await expect(readFile(join(outsideRoot, 'agents', 'react-ts-senior.md'), 'utf-8')).rejects.toThrow();
+      const backupContent = await readFile(join(projectRoot, '.agents-workflows-backup', buildBackupFileName(staleRelPath)), 'utf-8');
+      expect(backupContent).toBe('stale content');
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
   });
 
   it('keeps file when suppressed is false and user answers no', async () => {
@@ -88,7 +160,7 @@ describe('safeDeleteStaleFiles', () => {
 
     const content = await readFile(staleAbsPath, 'utf-8');
     expect(content).toBe('stale content');
-    await expect(readFile(join(projectRoot, '.agents-workflows-backup', staleRelPath), 'utf-8')).rejects.toThrow();
+    await expect(readFile(join(projectRoot, '.agents-workflows-backup', buildBackupFileName(staleRelPath)), 'utf-8')).rejects.toThrow();
     expect(MOCK_CONFIRM).toHaveBeenCalledTimes(1);
   });
 

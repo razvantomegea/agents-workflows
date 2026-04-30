@@ -1,28 +1,22 @@
 import { jest } from '@jest/globals';
 import { makeStackConfig } from './fixtures.js';
+import type { GeneratedFile } from '../../src/generator/types.js';
 
 jest.unstable_mockModule('node:fs/promises', () => ({
   readFile: jest.fn(),
 }));
 
-jest.unstable_mockModule('../../src/utils/file-exists.js', () => ({
-  fileExists: jest.fn(),
-}));
-
 const { readFile } = await import('node:fs/promises');
-const { fileExists } = await import('../../src/utils/file-exists.js');
 const { generatePlugins } = await import('../../src/generator/generate-plugins.js');
 
 const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
-const mockFileExists = fileExists as jest.MockedFunction<typeof fileExists>;
 
 const makeContext = () => ({} as Parameters<typeof generatePlugins>[1]);
 
 describe('generatePlugins', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockFileExists.mockResolvedValue(true);
-    mockReadFile.mockResolvedValue('# SKILL content' as Parameters<typeof readFile>[0] extends string ? string : never);
+    mockReadFile.mockResolvedValue('# SKILL content' as Awaited<ReturnType<typeof readFile>>);
   });
 
   it('returns empty array when claudeCode target disabled', async () => {
@@ -58,18 +52,29 @@ describe('generatePlugins', () => {
       plugins: { superpowers: true, caveman: true, claudeMdManagement: false, featureDev: false, codeReviewPlugin: false, codeSimplifier: false },
     });
     const files = await generatePlugins(config, makeContext());
-    const paths = files.map((f) => f.path);
+    const paths = files.map((generatedFile: GeneratedFile) => generatedFile.path);
     expect(paths.some((p) => p.includes('brainstorming'))).toBe(true);
     expect(paths.some((p) => p.includes('caveman'))).toBe(true);
   });
 
   it('skips skill file when missing (does not throw)', async () => {
-    mockFileExists.mockResolvedValue(false);
+    const missingFileError = Object.assign(new Error('missing'), { code: 'ENOENT' });
+    mockReadFile.mockRejectedValue(missingFileError);
     const config = makeStackConfig({
       plugins: { superpowers: false, caveman: true, claudeMdManagement: false, featureDev: false, codeReviewPlugin: false, codeSimplifier: false },
     });
     const files = await generatePlugins(config, makeContext());
     expect(files).toHaveLength(0);
-    expect(mockReadFile).not.toHaveBeenCalled();
+    expect(mockReadFile).toHaveBeenCalled();
+  });
+
+  it('rethrows unexpected read failures', async () => {
+    const permissionError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    mockReadFile.mockRejectedValue(permissionError);
+    const config = makeStackConfig({
+      plugins: { superpowers: false, caveman: true, claudeMdManagement: false, featureDev: false, codeReviewPlugin: false, codeSimplifier: false },
+    });
+
+    await expect(generatePlugins(config, makeContext())).rejects.toThrow('permission denied');
   });
 });

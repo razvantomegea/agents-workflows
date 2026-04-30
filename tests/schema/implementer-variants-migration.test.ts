@@ -58,6 +58,7 @@ describe('manifestSchema legacy migration via parse', () => {
       ...baseConfig.agents,
       reactTsSenior: true,
     };
+    delete (legacyAgents as Record<string, unknown>)['implementerVariant'];
     const manifest = {
       version: '1',
       generatedAt: new Date().toISOString(),

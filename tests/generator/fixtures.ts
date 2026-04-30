@@ -13,7 +13,7 @@ export const COMPLIANCE_PATH = 'docs/COMPLIANCE.md';
 export const OSCAL_PATH = 'docs/oscal/component-definition.json';
 
 export function findFile(files: GeneratedFile[], filePath: string): GeneratedFile | undefined {
-  return files.find((f: GeneratedFile) => f.path === filePath);
+  return files.find((generatedFile: GeneratedFile) => generatedFile.path === filePath);
 }
 
 /**
@@ -78,7 +78,7 @@ export function makeStackConfig(overrides: Partial<StackConfig> = {}): StackConf
   const baseTargets: StackConfig['targets'] = { claudeCode: true, codexCli: true, cursor: false, copilot: false, windsurf: false };
   const baseSelectedCommands: StackConfig['selectedCommands'] = { workflowPlan: true, workflowFix: true, externalReview: true, workflowLonghorizon: false, workflowTcr: false };
   const baseGovernance: StackConfig['governance'] = { enabled: false };
-  const baseAgents: StackConfig['agents'] = { architect: true, implementer: true, implementerVariant: 'react-ts', codeReviewer: true, securityReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true };
+  const baseAgents: StackConfig['agents'] = { architect: true, implementer: true, implementerVariant: 'generic', codeReviewer: true, securityReviewer: true, codeOptimizer: true, testWriter: true, e2eTester: true, reviewer: true, uiDesigner: true };
 
   const mergedStack: StackConfig['stack'] = { ...baseStack, ...overrides.stack };
   const mergedTargets: StackConfig['targets'] = { ...baseTargets, ...overrides.targets };
