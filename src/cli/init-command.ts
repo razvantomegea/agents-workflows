@@ -31,6 +31,42 @@ export interface InitCommandOptions {
   refinePrompt?: boolean;
 }
 
+/**
+ * Detects the project stack, collects configuration interactively or from supplied options,
+ * generates agent files, and writes them to disk.
+ *
+ * @param projectRoot - Absolute path to the project root where files will be written.
+ * @param options - Optional run modifiers.
+ * @param options.config - Pre-built `StackConfig` that skips the interactive prompt flow entirely.
+ * @param options.yes - When `true`, overwrites every existing file without prompting (`--yes`).
+ * @param options.noPrompt - When `true`, keeps existing files and only creates new ones (`--no-prompt`).
+ * @param options.mergeStrategy - Default per-file conflict resolution strategy (`keep | overwrite | merge`).
+ * @param options.nonInteractive - Enables headless/CI mode when `true`; requires `isolation`.
+ * @param options.isolation - Isolation environment for non-interactive mode (`host-os | devcontainer | ...`).
+ * @param options.acceptRisks - Must be `true` when `isolation === 'host-os'` and non-interactive is enabled.
+ * @param options.refinePrompt - When `true` (default), emits `AGENTS_REFINE.md` and the post-init guidance message.
+ *
+ * @returns Resolves when all files have been written (or a backup was restored on error).
+ *
+ * @throws `NonInteractiveFlagsError` when `--non-interactive` is used without `--isolation`
+ *   or when `--isolation=host-os` is used without `--accept-risks`; propagates to
+ *   `handleSafetyErrors` which sets `process.exitCode = 1`.
+ * @throws Re-throws any other unexpected error after restoring backed-up files.
+ *
+ * @remarks
+ * Side effects on the working directory:
+ * - Writes generated agent/command/config files under `projectRoot`.
+ * - Writes `.agents-workflows.json` manifest.
+ * - Optionally writes `AGENTS_REFINE.md` when `refinePrompt !== false`.
+ * - Creates a `.agents-workflows-backup-*` directory before writing; removes it on success,
+ *   restores it on error.
+ *
+ * Interactive vs non-interactive branches:
+ * - `options.config` supplied → skips prompt flow entirely.
+ * - `options.yes`, `options.noPrompt`, or `options.nonInteractive` → skips install-scope prompt
+ *   and forces `root` scope; prompt flow is replaced by `createDefaultConfig`.
+ * - Otherwise → full interactive prompt flow via `runPromptFlow`.
+ */
 export async function initCommand(
   projectRoot: string,
   options: InitCommandOptions = {},

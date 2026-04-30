@@ -13,6 +13,14 @@ function useDetectedOr<T>(detection: { value: T | null; confidence: number }, fa
   return detection.confidence >= 0.7 && detection.value !== null ? detection.value : fallback;
 }
 
+/**
+ * Interactively collects project identity (name, description, locale, docs, branch).
+ *
+ * @param detected - Detected stack for default locale and doc file paths.
+ * @param pkg - Parsed package.json or null; seeds default name and description.
+ * @returns Object: name, description, locale, localeRules, docsFile, roadmapFile, mainBranch.
+ * @remarks Non-interactive: skipped under --yes. Description validated with safeProjectDescription.
+ */
 export async function askProjectIdentity(
   detected: DetectedStack,
   pkg: PackageJson | null = null,
@@ -63,6 +71,13 @@ export async function askProjectIdentity(
   return { name, description, locale, localeRules, ...projectDocumentation, mainBranch };
 }
 
+/**
+ * Interactively confirms or collects the primary stack choices (language, runtime, framework).
+ *
+ * @param detected - Detected stack for language, runtime, framework defaults (confidence >= 0.7).
+ * @returns Object: language, runtime, framework (nullable), uiLibrary, stateManagement, database.
+ * @remarks Non-interactive: skipped under --yes. Only language, runtime, framework are prompted.
+ */
 export async function askStack(detected: DetectedStack): Promise<{
   language: string;
   runtime: string;
@@ -92,6 +107,13 @@ export async function askStack(detected: DetectedStack): Promise<{
   };
 }
 
+/**
+ * Interactively confirms or collects tooling choices (package manager, test framework).
+ *
+ * @param detected - Detected stack for packageManager and testFramework defaults (confidence >= 0.7).
+ * @returns Object: packageManager, testFramework, e2eFramework (null), linter (null), formatter (null).
+ * @remarks Non-interactive: skipped under --yes. E2E framework, linter, formatter are detection-only.
+ */
 export async function askTooling(detected: DetectedStack): Promise<{
   packageManager: string;
   testFramework: string;
@@ -111,6 +133,13 @@ export async function askTooling(detected: DetectedStack): Promise<{
   };
 }
 
+/**
+ * Interactively collects source directory paths.
+ *
+ * @param framework - Detected or confirmed framework; if frontend, componentsDir is prompted.
+ * @returns Object: sourceRoot, componentsDir (null for non-frontend), utilsDir.
+ * @remarks Non-interactive: skipped under --yes. All paths validated with safeProjectPath.
+ */
 export async function askPaths(framework: string | null): Promise<{
   sourceRoot: string;
   componentsDir: string | null;

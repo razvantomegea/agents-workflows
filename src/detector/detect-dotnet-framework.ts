@@ -42,6 +42,22 @@ async function findCsprojFiles(projectRoot: string): Promise<string[]> {
   return collected;
 }
 
+/**
+ * Detects whether the project uses the ASP.NET Core framework.
+ *
+ * Scans `*.csproj` files in the project root and one level of subdirectories
+ * (excluding `node_modules`, `.git`, `bin`, `obj`, `dist`, and
+ * `.agents-workflows-backup`). Each `.csproj` file is read and checked for
+ * the string `"Microsoft.AspNetCore."`.
+ *
+ * @param projectRoot - Absolute path to the project root directory.
+ * @returns A `Detection` with `value: "aspnetcore"` when an ASP.NET Core project
+ *   file is found, or `{ value: null, confidence: 0 }` otherwise.
+ * @remarks Performs one `readdir` on `projectRoot` and potentially one additional
+ *   `readdir` per non-skipped subdirectory, plus one `readFile` per `.csproj`.
+ *   `readdir` and `readFile` errors on subdirectories are silently skipped;
+ *   an ENOENT or permission error on `projectRoot` itself returns `[]` (no matches).
+ */
 export async function detectDotnetFramework(projectRoot: string): Promise<Detection> {
   const csprojPaths = await findCsprojFiles(projectRoot);
   for (const csprojPath of csprojPaths) {

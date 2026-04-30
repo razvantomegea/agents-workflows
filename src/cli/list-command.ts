@@ -33,6 +33,16 @@ const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   { category: 'command', templatePath: 'commands/external-review.md.ejs' },
 ];
 
+/**
+ * Prints all available agents and commands to stdout, indicating which are already installed.
+ *
+ * @param projectRoot - Absolute path to the project root used to check installation status
+ *   (looks for `.claude/agents/<name>.md` and `.claude/commands/<name>.md`).
+ *
+ * @remarks
+ * Side effects: writes formatted output to stdout via `logger`.
+ * Does not modify the filesystem.
+ */
 export async function listCommand(projectRoot: string): Promise<void> {
   logger.heading('Available agents and commands');
 
@@ -56,6 +66,13 @@ export async function listCommand(projectRoot: string): Promise<void> {
   }
 }
 
+/**
+ * Reads template frontmatter for every registered template and returns typed `AgentInfo` records.
+ *
+ * @returns An array of `AgentInfo` objects derived from EJS template frontmatter (`name`, `description`, `category`, `templatePath`).
+ *
+ * @throws `Error` if a template is missing its YAML frontmatter block or if `name`/`description` fields are absent.
+ */
 export async function readAvailableItems(): Promise<AgentInfo[]> {
   return Promise.all(TEMPLATE_DEFINITIONS.map(async (definition) => {
     const metadata = await readTemplateMetadata(definition.templatePath);

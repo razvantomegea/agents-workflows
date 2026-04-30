@@ -24,6 +24,17 @@ export const COPILOT_FORBIDDEN_TOOLS: readonly string[] = [
   'runCommand',
 ];
 
+/**
+ * Returns the scoped Copilot Agent `tools:` allow-list for the given prompt key.
+ *
+ * Each workflow surface has a tightly-scoped set of tools (see `COPILOT_PROMPT_TOOLS`).
+ * No entry includes `bash`, `shell`, `runInTerminal`, or other unbounded command
+ * tools (see `COPILOT_FORBIDDEN_TOOLS`).
+ *
+ * @param key - The Copilot prompt identifier: `'workflowPlan'`, `'workflowFix'`,
+ *   or `'externalReview'`.
+ * @returns A read-only array of tool name strings for the specified prompt.
+ */
 export function getCopilotPromptTools(key: CopilotPromptKey): readonly string[] {
   return COPILOT_PROMPT_TOOLS[key];
 }

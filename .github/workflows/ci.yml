@@ -36,5 +36,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Check docstrings
+        run: pnpm check-docs
+
       - name: Run tests
         run: pnpm test
