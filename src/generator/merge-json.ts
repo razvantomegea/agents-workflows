@@ -6,10 +6,17 @@ export interface JsonObject {
 export type JsonArray = JsonValue[];
 
 /**
- * Keys controlled by the generator; incoming value wins for these keys.
- * Extend this array as new managed keys are identified.
+ * Legacy key-level managed list. Prefer MANAGED_JSON_PATHS for new entries so
+ * common leaf names such as "mode" do not become generator-controlled globally.
  */
 export const MANAGED_JSON_KEYS: readonly string[] = [];
+
+const MANAGED_JSON_PATHS: readonly string[] = [
+  'permissions.disableBypassPermissionsMode',
+  'sandbox.autoAllowBashIfSandboxed',
+  'sandbox.enabled',
+  'sandbox.mode',
+];
 
 function isJsonObject(value: JsonValue): value is JsonObject {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -32,7 +39,9 @@ function sortKeys(value: JsonValue): JsonValue {
     }
     return value;
   }
-  const sorted: JsonObject = {};
+  // Null-prototype objects prevent special keys like "__proto__" from
+  // mutating prototypes while we recursively copy parsed JSON data.
+  const sorted = Object.create(null) as JsonObject;
   for (const key of Object.keys(value).sort()) {
     sorted[key] = sortKeys(value[key]);
   }
@@ -88,28 +97,35 @@ function mergeArrays(existing: JsonArray, incoming: JsonArray): JsonArray {
   return unionMixedArrays(existing, incoming);
 }
 
-function deepMerge(existing: JsonValue, incoming: JsonValue, key: string): JsonValue {
+function isManagedJsonPath(path: string): boolean {
+  return MANAGED_JSON_PATHS.includes(path);
+}
+
+function deepMerge(existing: JsonValue, incoming: JsonValue, key: string, path: string): JsonValue {
   if (isJsonObject(existing) && isJsonObject(incoming)) {
-    return mergeObjects(existing, incoming);
+    return mergeObjects(existing, incoming, path);
   }
   if (Array.isArray(existing) && Array.isArray(incoming)) {
     return mergeArrays(existing as JsonArray, incoming as JsonArray);
   }
   // Scalar conflict: user (existing) wins unless key is managed
-  if (MANAGED_JSON_KEYS.includes(key)) {
+  if (MANAGED_JSON_KEYS.includes(key) || isManagedJsonPath(path)) {
     return incoming;
   }
   return existing;
 }
 
-function mergeObjects(existing: JsonObject, incoming: JsonObject): JsonObject {
-  const result: JsonObject = {};
+function mergeObjects(existing: JsonObject, incoming: JsonObject, basePath = ''): JsonObject {
+  // See sortKeys: keep intermediate merge objects null-prototype so attacker-
+  // controlled JSON keys are treated as data, not prototype setters.
+  const result = Object.create(null) as JsonObject;
   const allKeys = new Set([...Object.keys(existing), ...Object.keys(incoming)]);
   for (const key of allKeys) {
+    const childPath = basePath.length > 0 ? `${basePath}.${key}` : key;
     const inExisting = Object.prototype.hasOwnProperty.call(existing, key);
     const inIncoming = Object.prototype.hasOwnProperty.call(incoming, key);
     if (inExisting && inIncoming) {
-      result[key] = deepMerge(existing[key], incoming[key], key);
+      result[key] = deepMerge(existing[key], incoming[key], key, childPath);
     } else if (inExisting) {
       result[key] = existing[key];
     } else {

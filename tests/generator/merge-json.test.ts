@@ -49,6 +49,58 @@ describe('mergeJson', () => {
     expect(result.outer.shared).toBe('user');
   });
 
+  it('preserves __proto__ as data without changing the merged object prototype', () => {
+    const existing = '{"__proto__":{"polluted":true},"safe":"user"}';
+    const incoming = json({ generated: true });
+
+    const result = parse(mergeJson({ existing, incoming })) as Record<string, unknown>;
+    const protoDescriptor = Object.getOwnPropertyDescriptor(result, '__proto__');
+
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.prototype).not.toHaveProperty('polluted');
+    expect(protoDescriptor?.value).toEqual({ polluted: true });
+    expect(result.generated).toBe(true);
+  });
+
+  it('lets generator-controlled hard safety scalars win during conflicts', () => {
+    const existing = json({
+      permissions: {
+        defaultMode: 'default',
+        disableBypassPermissionsMode: 'enable',
+      },
+      sandbox: {
+        enabled: false,
+        mode: 'danger-full-access',
+      },
+    });
+    const incoming = json({
+      permissions: {
+        defaultMode: 'acceptEdits',
+        disableBypassPermissionsMode: 'disable',
+      },
+      sandbox: {
+        enabled: true,
+        mode: 'workspace-write',
+      },
+    });
+
+    const result = parse(mergeJson({ existing, incoming })) as {
+      permissions: {
+        defaultMode: string;
+        disableBypassPermissionsMode: string;
+      };
+      sandbox: {
+        enabled: boolean;
+        mode: string;
+      };
+    };
+
+    expect(result.permissions.defaultMode).toBe('default');
+    expect(result.permissions.disableBypassPermissionsMode).toBe('disable');
+    expect(result.sandbox.enabled).toBe(true);
+    expect(result.sandbox.mode).toBe('workspace-write');
+  });
+
   it('scalar conflict — user value wins', () => {
     const existing = json({ x: 1 });
     const incoming = json({ x: 2 });

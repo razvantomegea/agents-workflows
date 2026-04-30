@@ -132,9 +132,8 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
       await performWrite(path, merged);
       return { status: 'merged', path };
     }
-    logger.warn(`No merge function provided for ${label}; overwriting instead.`);
-    await performWrite(path, content);
-    return { status: 'written', path };
+    logger.warn(`No merge function provided for ${label}; skipping to avoid overwriting.`);
+    return { status: 'skipped', path };
   }
 
   const diff = renderUnifiedDiff({ path: label, before: existing, after: content });
