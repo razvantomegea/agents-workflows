@@ -89,7 +89,7 @@ This snapshot captures epic-level status as of the latest stamped date in this d
 | 11 | Multi-IDE Target Outputs (Cursor / Copilot / Windsurf) | MUST | shipped 2026-04-28 |
 | 12 | Polyglot Monorepo Support | SHOULD | done 2026-04-28 — branch `feature/epic-12-polyglot-monorepo` |
 | 13 | Stack-Aware Implementer Variants | MUST | planned — `react-ts-senior.md.ejs` remains in templates until variants ship |
-| 14 | Post-Init Workspace Refinement Prompt (`AGENTS_REFINE.md`) | SHOULD | planned — no template or generator yet |
+| 14 | Post-Init Workspace Refinement Prompt (`AGENTS_REFINE.md`) | SHOULD | DONE 2026-04-30 — template/generator implemented on branch `feature/epic-14-refine-prompt` |
 | 15 | Core Logic Function Documentation | SHOULD | planned |
 | 16 | Cross-Model Claude + GPT Workflow Routing | SHOULD | planned — §1.7.1 pairing table is the spec |
 | 17 | Framework-agnostic & non-React implementer variants | MUST | planned |
@@ -977,7 +977,7 @@ flowchart LR
 
 **Filename choice.** The artifact is a dedicated file (`AGENTS_REFINE.md`), not `PLAN.md` and not `QA.md`. `PLAN.md` is already the single source of truth for feature-level work (§1.13, Epic 2); reusing it would clobber in-flight plans. `QA.md` is a thin status file (currently single-line). Using a distinct name avoids both collisions and makes the artifact's purpose self-documenting.
 
-**Verdict.** **Missing.** Today [src/cli/init-command.ts](src/cli/init-command.ts) prints a 3-line "Next steps" block (review / add project rules / re-run `update`) with no handoff to a refinement agent. [src/cli/update-command.ts](src/cli/update-command.ts) does not print a comparable next-step message at all. Users are left without a structured way to move the generated agents from "detector-accurate" to "workspace-accurate."
+**Verdict.** **Implemented in Epic 14.** [src/cli/init-command.ts](src/cli/init-command.ts) and [src/cli/update-command.ts](src/cli/update-command.ts) now print the refinement handoff line when `AGENTS_REFINE.md` is emitted. [src/generator/generate-refine-prompt.ts](src/generator/generate-refine-prompt.ts) renders the dedicated prompt from [src/templates/refine/AGENTS_REFINE.md.ejs](src/templates/refine/AGENTS_REFINE.md.ejs), giving users a structured way to move generated agents from "detector-accurate" to "workspace-accurate."
 
 **Priority.** **[SHOULD].**
 
@@ -987,14 +987,14 @@ flowchart LR
 
 **Prompt anatomy (sections that must render):**
 
-1. **Your mission** — one paragraph stating the agent's job: audit `.claude/agents/*.md` and `.codex/skills/**/SKILL.md` against this workspace and propose file-level changes.
-2. **Inputs to read first** — explicit list: `PRD.md`, `AGENTS.md`, `CLAUDE.md` (if present), `<%= project.docsFile %>` (if set, intent reference for agents), `<%= project.roadmapFile %>` (if set, mutable epic checklist consumed only by `/workflow-plan` Phase 4 and `/workflow-fix` Phase 8), every file under `.claude/agents/` and `.codex/skills/`, plus representative source files from `<%= paths.sourceRoot %>`.
+1. **Your mission** — one paragraph stating the agent's job: audit the generated agent files listed in the prompt against this workspace and propose file-level changes.
+2. **Inputs to read first** — explicit list: `PRD.md`, `AGENTS.md`, `CLAUDE.md` (if present), `<%= project.docsFile %>` (if set, intent reference for agents), `<%= project.roadmapFile %>` (if set, mutable epic checklist consumed only by `/workflow-plan` Phase 4 and `/workflow-fix` Phase 8), every generated agent file listed in the prompt, plus representative source files from `<%= paths.sourceRoot %>`.
 3. **Audit targets** — the agent set emitted in this repo is the single canonical `implementer.md` (rendered from the matching variant per §1.19), plus `architect.md`, `code-reviewer.md`, `security-reviewer.md`, `code-optimizer.md`, `test-writer.md`, `reviewer.md`, optionally `ui-designer.md` (frontend only) and `e2e-tester.md`. For each generated agent file, check: (a) does the stack-context partial match the real primary modules? (b) do the DoD commands match what actually runs in CI? (c) are the cited paths present? (d) do the language/framework idioms match the codebase's conventions? (e) are domain-specific nouns and services named? For `implementer.md` specifically, verify the rendered variant matches the actual primary stack (e.g., if the repo is majority Go but the variant is `generic`, flag the mismatch).
 4. **Propose changes (do not edit yet)** — output format is a numbered list: `agent file path` → `section heading` → `proposed diff` (as a unified-diff or before/after block) → `rationale citing PRD § or code path`.
 5. **Stop conditions** — explicit rules: do not edit any file until the user replies "apply"; if more than ~15 change items accumulate, chunk by agent file; if uncertain about a domain term, ask the user per §1.3.
 6. **Verification hand-off** — after edits are applied, run the §1.6 DoD commands (`<%= commands.typeCheck %>`, `<%= commands.test %>`, `<%= commands.lint %>`) and loop through the reviewer agent per §2.1.
 
-**Console message contract.** Both `init` and `update` append to the "Next steps" block: `N. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.` The `N` renumbers relative to existing next steps.
+**Console message contract.** Both `init` and `update` append this unnumbered line to the "Next steps" block: `  Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.`
 
 ---
 
@@ -2003,7 +2003,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 14 — Post-Init Workspace Refinement Prompt [SHOULD]
+## Epic 14 — Post-Init Workspace Refinement Prompt [SHOULD] [DONE 2026-04-30]
+
+**Landed on** `feature/epic-14-refine-prompt`.
 
 **Goal.** Emit a dedicated `AGENTS_REFINE.md` prompt at the project root after every `init` and `update`, and print a console "next step" line pointing to it. The prompt is the executable handoff users give their agent to tailor the generated agent files to workspace reality (domain vocabulary, architecture, preferred libraries, deployment targets, data layer, team conventions). The prompt is **planning-only** (§1.13): the agent audits and proposes changes; it does not edit files until the user confirms (§1.3 fail-safe).
 
@@ -2011,7 +2013,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 - `AGENTS_REFINE.md` renders with full detected-stack metadata: project name/description, detected language / framework / runtime, enabled agents (from `config.agents`), paths (`sourceRoot`, `utilsDir`, `componentsDir` if set), commands (`typeCheck`, `test`, `lint`, `build`), and the list of generated agent file paths.
 - Prompt body implements the six mandated sections from §1.20 (Your mission / Inputs to read first / Audit targets / Propose changes (do not edit yet) / Stop conditions / Verification hand-off) and cross-references PRD §1.3, §1.6, §1.13, §2.1 by number.
-- Init and update "Next steps" console blocks include the new line: `N. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.`
+- Init and update "Next steps" console blocks include the new unnumbered line: `  Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.`
 - All writes go through `writeFileSafe` (Epic 7). First run creates `AGENTS_REFINE.md`; subsequent runs regenerate only when the user has not hand-edited it, otherwise surface a diff and preserve hand-edits.
 - CLI flag `--no-refine-prompt` on both `init` and `update` skips emission entirely (for CI runs that already consume the template out-of-band).
 - `pnpm test` green with a new snapshot covering required sections and cross-references.
@@ -2031,7 +2033,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 ### E14.T3 — Init next-step message [§1.20] — S
 
 - **Files**: [src/cli/init-command.ts](src/cli/init-command.ts).
-- **Change**: After the existing `Next steps:` block, append a new numbered line: `  N. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.` — renumber so it becomes step 4 (existing steps 1–3 shift unchanged). Suppress the line only when `--no-refine-prompt` is passed.
+- **Change**: After the existing `Next steps:` block, append a new unnumbered line: `  Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.` Suppress the line only when `--no-refine-prompt` is passed.
 - **Done when**: running `init` with the flag omits both the file and the message; running without the flag emits both.
 
 ### E14.T4 — Update command parity [§1.20] — S

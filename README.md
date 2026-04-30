@@ -31,6 +31,27 @@ The CLI will:
 3. **Generate** adapted agent configurations in `.claude/agents/`, `.codex/skills/`, and root config files
 4. **Write** a manifest (`.agents-workflows.json`) for future updates
 
+## After init — refine the generated agents
+
+`init` (and every subsequent `update`) emits an `AGENTS_REFINE.md` prompt at the project root. This file is the executable handoff you give your agent so the generated agent files under `.claude/agents/` and `.codex/skills/` get tailored to **this** workspace's domain vocabulary, architectural patterns, preferred libraries, and team conventions that the stack detector cannot infer.
+
+The prompt is **planning-only**: per PRD §1.3 fail-safe, the agent audits the generated files and proposes changes — it does not edit anything until you reply `apply`.
+
+```bash
+# Claude Code
+claude "$(cat AGENTS_REFINE.md)"
+
+# Codex CLI
+codex exec "$(cat AGENTS_REFINE.md)"
+```
+
+To skip emission (useful for CI that consumes the templates out-of-band), pass `--no-refine-prompt` to either command:
+
+```bash
+agents-workflows init --no-refine-prompt
+agents-workflows update --no-refine-prompt
+```
+
 ## Re-running on an existing project
 
 Running `init` or `update` on a project that already has generated files is safe. Before writing any file that already exists, the CLI pauses and asks what to do:

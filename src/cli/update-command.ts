@@ -23,6 +23,7 @@ export interface UpdateCommandOptions {
   nonInteractive?: boolean;
   isolation?: IsolationChoice;
   acceptRisks?: boolean;
+  refinePrompt?: boolean;
 }
 
 export async function updateCommand(
@@ -79,7 +80,7 @@ export async function updateCommand(
   logger.heading('agents-workflows update');
   logger.info('Re-generating files from config...\n');
 
-  const files = await generateAll(config);
+  const files = await generateAll(config, { refinePrompt: options.refinePrompt });
   const diffs = await diffFiles(projectRoot, files);
 
   const changed = diffs.filter((d) => d.hasChanges);
@@ -147,6 +148,11 @@ export async function updateCommand(
       logger.warn(
         `${writeResult.skippedPaths.length} existing file(s) were left unchanged: ${writeResult.skippedPaths.join(', ')}`,
       );
+    }
+    if (options.refinePrompt !== false) {
+      logger.blank();
+      logger.info('next:');
+      logger.info('  Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.');
     }
   });
 }

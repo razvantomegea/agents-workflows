@@ -11,6 +11,12 @@ import { generateScripts } from './generate-scripts.js';
 import { generateCursorConfig } from './cursor/index.js';
 import { generateCopilotConfig } from './copilot/index.js';
 import { generateWindsurfConfig } from './windsurf/index.js';
+import { generateRefinePrompt } from './generate-refine-prompt.js';
+
+export interface GenerateAllOptions {
+  /** Emit `AGENTS_REFINE.md` (default `true`). */
+  refinePrompt?: boolean;
+}
 
 export type TargetGenerator = (
   config: StackConfig,
@@ -37,14 +43,21 @@ function applyPostProcessors(files: GeneratedFile[], config: StackConfig): Gener
   );
 }
 
-export async function generateAll(config: StackConfig): Promise<GeneratedFile[]> {
+export async function generateAll(
+  config: StackConfig,
+  options: GenerateAllOptions = {},
+): Promise<GeneratedFile[]> {
   const baseContext = buildContext(config);
   const discoveredPartials = await listPartials();
   const context: GeneratorContext = { ...baseContext, discoveredPartials };
   const groups = await Promise.all(
     TARGET_GENERATORS.map((generator: TargetGenerator) => generator(config, context)),
   );
-  return applyPostProcessors(groups.flat(), config);
+  const files = groups.flat();
+  if (options.refinePrompt !== false) {
+    files.push(await generateRefinePrompt(config, context));
+  }
+  return applyPostProcessors(files, config);
 }
 
 export { buildContext } from './build-context.js';

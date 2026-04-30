@@ -25,8 +25,14 @@ const SAFE_PROJECT_NAME_MESSAGE = 'project.name must contain only letters, digit
 const SAFE_PROJECT_NAME_WHITESPACE_MESSAGE = 'project.name cannot be empty or whitespace only';
 const SAFE_PROJECT_DESCRIPTION_MESSAGE = 'project.description must contain only plain single-line text characters';
 
-const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
-const safeProjectPathNullable = safeProjectPath.nullable().default(null);
+const SAFE_BRANCH = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
+const SAFE_PROJECT_PATH_NULLABLE = safeProjectPath.nullable().default(null);
+
+const SAFE_STACK_VALUE_RE = /^[a-zA-Z0-9 ._/+#-]+$/;
+const SAFE_STACK_VALUE_MESSAGE =
+  'stack/tooling values must contain only letters, digits, space, dot, underscore, slash, plus, hash, hyphen';
+const SAFE_STACK_VALUE = z.string().trim().min(1).max(100).regex(SAFE_STACK_VALUE_RE, SAFE_STACK_VALUE_MESSAGE);
+const SAFE_STACK_VALUE_NULLABLE = SAFE_STACK_VALUE.nullable().default(null);
 
 function isSafeProjectDescription(value: string): boolean {
   for (const char of value) {
@@ -38,7 +44,7 @@ function isSafeProjectDescription(value: string): boolean {
   return true;
 }
 
-export const safeProjectDescription = z
+export const SAFE_PROJECT_DESCRIPTION = z
   .string()
   .trim()
   .min(1, 'project.description cannot be empty')
@@ -55,7 +61,7 @@ export const SECURITY_DEFAULTS = {
   disclosureAcknowledgedAt: string | null;
 };
 
-export const stackConfigSchema = z.object({
+export const STACK_CONFIG_SCHEMA = z.object({
   project: z.object({
     name: z
       .string()
@@ -63,44 +69,44 @@ export const stackConfigSchema = z.object({
       .max(100)
       .regex(SAFE_PROJECT_NAME_RE, SAFE_PROJECT_NAME_MESSAGE)
       .refine((value: string) => value.trim().length > 0, SAFE_PROJECT_NAME_WHITESPACE_MESSAGE),
-    description: safeProjectDescription,
+    description: SAFE_PROJECT_DESCRIPTION,
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),
-    docsFile: safeProjectPathNullable,
-    roadmapFile: safeProjectPathNullable,
-    mainBranch: safeBranch.default('main'),
+    docsFile: SAFE_PROJECT_PATH_NULLABLE,
+    roadmapFile: SAFE_PROJECT_PATH_NULLABLE,
+    mainBranch: SAFE_BRANCH.default('main'),
   }),
 
   stack: z.object({
-    language: z.string(),
-    runtime: z.string(),
-    framework: z.string().nullable().default(null),
-    uiLibrary: z.string().nullable().default(null),
-    stateManagement: z.string().nullable().default(null),
-    database: z.string().nullable().default(null),
-    auth: z.string().nullable().default(null),
-    i18nLibrary: z.string().nullable().default(null),
+    language: SAFE_STACK_VALUE,
+    runtime: SAFE_STACK_VALUE,
+    framework: SAFE_STACK_VALUE_NULLABLE,
+    uiLibrary: SAFE_STACK_VALUE_NULLABLE,
+    stateManagement: SAFE_STACK_VALUE_NULLABLE,
+    database: SAFE_STACK_VALUE_NULLABLE,
+    auth: SAFE_STACK_VALUE_NULLABLE,
+    i18nLibrary: SAFE_STACK_VALUE_NULLABLE,
   }),
 
   tooling: z.object({
-    packageManager: z.string(),
+    packageManager: SAFE_STACK_VALUE,
     packageManagerPrefix: z.union([z.literal(''), safeCommand]),
-    testFramework: z.string(),
-    testLibrary: z.string().nullable().default(null),
-    e2eFramework: z.string().nullable().default(null),
-    linter: z.string().nullable().default(null),
-    formatter: z.string().nullable().default(null),
+    testFramework: SAFE_STACK_VALUE,
+    testLibrary: SAFE_STACK_VALUE_NULLABLE,
+    e2eFramework: SAFE_STACK_VALUE_NULLABLE,
+    linter: SAFE_STACK_VALUE_NULLABLE,
+    formatter: SAFE_STACK_VALUE_NULLABLE,
   }),
 
   paths: z.object({
     sourceRoot: safeProjectPath,
-    componentsDir: safeProjectPathNullable,
-    hooksDir: safeProjectPathNullable,
+    componentsDir: SAFE_PROJECT_PATH_NULLABLE,
+    hooksDir: SAFE_PROJECT_PATH_NULLABLE,
     utilsDir: safeProjectPath,
-    testsDir: safeProjectPathNullable,
-    designTokensFile: safeProjectPathNullable,
-    i18nDir: safeProjectPathNullable,
-    testConfigFile: safeProjectPathNullable,
+    testsDir: SAFE_PROJECT_PATH_NULLABLE,
+    designTokensFile: SAFE_PROJECT_PATH_NULLABLE,
+    i18nDir: SAFE_PROJECT_PATH_NULLABLE,
+    testConfigFile: SAFE_PROJECT_PATH_NULLABLE,
   }),
 
   commands: z.object({
@@ -203,7 +209,10 @@ export const stackConfigSchema = z.object({
   cavemanStyle: z.boolean().default(false),
 });
 
-export type StackConfig = z.infer<typeof stackConfigSchema>;
-export type SecurityConfig = z.infer<typeof stackConfigSchema>['security'];
+export const safeProjectDescription = SAFE_PROJECT_DESCRIPTION;
+export const stackConfigSchema = STACK_CONFIG_SCHEMA;
+
+export type StackConfig = z.infer<typeof STACK_CONFIG_SCHEMA>;
+export type SecurityConfig = z.infer<typeof STACK_CONFIG_SCHEMA>['security'];
 export { workspaceStackSchema } from './workspace-stack.js';
 export type { WorkspaceStack } from './workspace-stack.js';

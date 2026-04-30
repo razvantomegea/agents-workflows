@@ -35,6 +35,7 @@ export function createCli(): Command {
       .option('-c, --config <path>', 'Path to a StackConfig JSON file for non-interactive init')
       .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
       .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
+      .option('--no-refine-prompt', 'Skip emitting AGENTS_REFINE.md and the related next-step message')
       .addOption(
         new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
           .choices(['keep', 'overwrite', 'merge']),
@@ -45,6 +46,7 @@ export function createCli(): Command {
       config?: string;
       yes: boolean;
       prompt: boolean;
+      refinePrompt: boolean;
       mergeStrategy?: MergeStrategy;
       nonInteractive?: boolean;
       isolation?: IsolationChoice;
@@ -59,6 +61,7 @@ export function createCli(): Command {
           nonInteractive: options.nonInteractive,
           isolation: options.isolation,
           acceptRisks: options.acceptRisks,
+          refinePrompt: options.refinePrompt,
         });
       });
     });
@@ -70,6 +73,7 @@ export function createCli(): Command {
       .option('-d, --dir <path>', 'Project root directory', process.cwd())
       .option('-y, --yes', 'Non-interactive: overwrite every existing file', false)
       .option('--no-prompt', 'Non-interactive: keep every existing file, create new ones only')
+      .option('--no-refine-prompt', 'Skip emitting AGENTS_REFINE.md and the related next-step message')
       .addOption(
         new Option('--merge-strategy <strategy>', 'Default action for conflicts (keep, overwrite, merge)')
           .choices(['keep', 'overwrite', 'merge']),
@@ -79,6 +83,7 @@ export function createCli(): Command {
       dir: string;
       yes: boolean;
       prompt: boolean;
+      refinePrompt: boolean;
       mergeStrategy?: MergeStrategy;
       nonInteractive?: boolean;
       isolation?: IsolationChoice;
@@ -92,6 +97,7 @@ export function createCli(): Command {
           nonInteractive: options.nonInteractive,
           isolation: options.isolation,
           acceptRisks: options.acceptRisks,
+          refinePrompt: options.refinePrompt,
         });
       });
     });
