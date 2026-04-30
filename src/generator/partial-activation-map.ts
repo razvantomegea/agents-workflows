@@ -60,6 +60,20 @@ function describe(slug: string): string {
   return `${slug.replace(/-/g, ' ')} guidance.`;
 }
 
+/**
+ * Returns the IDE activation metadata for a named partial template slug.
+ *
+ * Lookup order:
+ * 1. `ALWAYS_ON_SLUGS` → `{ mode: 'always', description }` (always active).
+ * 2. `GLOB_ACTIVATION` map → `{ mode: 'glob', description, globs }` (active
+ *    for matching file paths).
+ * 3. `MODEL_DECISION_SLUGS` → `{ mode: 'modelDecision', description }` (AI
+ *    decides relevance at inference time).
+ * 4. Fallback → `{ mode: 'manual', description }` (manually activated).
+ *
+ * @param slug - The partial template slug (e.g. `'deny-destructive-ops'`).
+ * @returns A `PartialActivation` discriminated union for the given slug.
+ */
 export function getPartialActivation(slug: string): PartialActivation {
   if (ALWAYS_ON_SLUG_SET.has(slug)) {
     return { mode: 'always', description: describe(slug) };
@@ -74,6 +88,18 @@ export function getPartialActivation(slug: string): PartialActivation {
   return { mode: 'manual', description: describe(slug) };
 }
 
+/**
+ * Returns `true` when `slug` has an explicit activation entry in one of the
+ * three known sets (`ALWAYS_ON_SLUGS`, `MODEL_DECISION_SLUGS`, or
+ * `GLOB_ACTIVATION`).
+ *
+ * Slugs that return `false` still receive a valid (manual) activation from
+ * `getPartialActivation`; this predicate is used by tests and tooling to
+ * detect unregistered partials.
+ *
+ * @param slug - The partial template slug to check.
+ * @returns `true` if the slug is registered in a known activation set.
+ */
 export function isKnownActivationSlug(slug: string): boolean {
   return (
     ALWAYS_ON_SLUG_SET.has(slug)

@@ -117,6 +117,22 @@ const ALL_RULES: RuleDefinition[] = [
   },
 ];
 
+/**
+ * Builds the code-review checklist for the project based on the active stack.
+ *
+ * Filters `ALL_RULES` to those whose `appliesWhen` tag set intersects the
+ * applicable tags derived from `config` (language, framework, conventions,
+ * i18n, database, state management).  Always-applicable rules use the `'all'`
+ * tag.  Language and framework tags (`'typescript'`, `'react'`, `'frontend'`,
+ * `'react-readonly'`, `'i18n'`, and library-specific tags like `'prisma'`,
+ * `'zustand'`, etc.) are added conditionally.
+ *
+ * @param config - `StackConfig` slice consumed: `stack` (language, framework,
+ *   database, stateManagement, i18nLibrary), `conventions.propsStyle`, and
+ *   `project.localeRules`.
+ * @returns An ordered array of `ReviewChecklistItem` values (`name`,
+ *   `howToVerify`, `severity`) for all rules applicable to the detected stack.
+ */
 export function buildReviewChecklist(config: StackConfig): ReviewChecklistItem[] {
   const tags = buildApplicableTags(config);
 

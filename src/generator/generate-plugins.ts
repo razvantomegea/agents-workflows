@@ -12,6 +12,25 @@ function hasErrorCode(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
 }
 
+/**
+ * Generates Claude Code skill files for every enabled plugin.
+ *
+ * Reads each skill's `SKILL.md` from the on-disk plugin directory and emits it
+ * under `.claude/skills/<skillId>/SKILL.md`.  Only runs when
+ * `config.targets.claudeCode` is `true`; returns an empty array otherwise.
+ *
+ * If a skill file is missing (`ENOENT`), a warning is printed and the skill is
+ * silently skipped so a partial plugin install does not abort the full
+ * generation.  All other filesystem errors are re-thrown.
+ *
+ * @param config - `StackConfig` slice consumed: `targets.claudeCode` (gates
+ *   emission) and `plugins` (maps plugin IDs to boolean enable flags).
+ * @param _context - Generator context (accepted to satisfy the
+ *   `TargetGenerator` contract; not used by this generator).
+ * @returns An array of `GeneratedFile` entries for every successfully read skill
+ *   file across all enabled plugins.
+ * @throws Any filesystem error other than `ENOENT` from reading a skill file.
+ */
 export async function generatePlugins(
   config: StackConfig,
   _context: GeneratorContext,

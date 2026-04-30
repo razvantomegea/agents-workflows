@@ -19,6 +19,29 @@ const PYPROJECT_BACKEND_PREFIXES: Partial<Record<(typeof BACKEND_FRAMEWORKS)[num
   flask: 'flask',
 };
 
+/**
+ * Detects the primary application framework used by the project.
+ *
+ * Inspection order (first match wins):
+ * 1. `package.json` dependencies (mobile-first, then meta-frameworks, then
+ *    backend, then bare React/Vue):
+ *    `expo` → `"expo"`, `react-native` → `"react-native"`, `next` → `"nextjs"`,
+ *    `nuxt` → `"nuxt"`, `@remix-run/react` → `"remix"`, `@sveltejs/kit` →
+ *    `"sveltekit"`, `@angular/core` → `"angular"`, backend frameworks in the
+ *    order defined by `PACKAGE_JSON_BACKEND_DETECTION_ORDER` (NestJS first),
+ *    bare `react` (→ `"react"`), bare `vue` (→ `"vue"`).
+ * 2. `pyproject.toml` `[project].dependencies` — FastAPI, Django, Flask, by
+ *    prefix match.
+ * 3. JVM project files — delegates to `detectJvmFramework` (pom.xml / build.gradle).
+ * 4. .NET project files — delegates to `detectDotnetFramework` (*.csproj).
+ *
+ * @param projectRoot - Absolute path to the project root directory.
+ * @returns A `Detection` with `value` set to the detected framework name and
+ *   `confidence` in `[0, 1]`, or `{ value: null, confidence: 0 }` when nothing
+ *   is detected.
+ * @remarks Reads `package.json`, `pyproject.toml`, and potentially several
+ *   build-system files. All read errors are swallowed; the function never rejects.
+ */
 export async function detectFramework(projectRoot: string): Promise<Detection> {
   const pkg = await readPackageJson(projectRoot);
   if (pkg) {

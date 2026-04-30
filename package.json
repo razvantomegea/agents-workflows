@@ -13,6 +13,7 @@
     "fetch-plugins": "tsx scripts/fetch-plugin-skills.ts",
     "dev": "tsx src/index.ts",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",
+    "check-docs": "tsx scripts/check-docstrings.ts",
     "check-types": "tsc --noEmit",
     "lint": "oxlint . --fix",
     "format": "prettier --write .",

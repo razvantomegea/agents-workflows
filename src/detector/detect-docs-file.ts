@@ -14,6 +14,20 @@ const DOC_CANDIDATES: DocCandidate[] = [
   { filename: 'PRD.md', confidence: 0.7 },
 ];
 
+/**
+ * Detects the primary documentation file for the project.
+ *
+ * Candidates are checked in priority order:
+ * `README.md` (0.9) → `ARCHITECTURE.md` (0.85) → `DOCS.md` (0.8) → `PRD.md` (0.7).
+ * The first file found is returned.
+ *
+ * @param projectRoot - Absolute path to the project root directory.
+ * @returns A `Detection` whose `value` is the matched filename (e.g. `"README.md"`)
+ *   and `confidence` reflects the candidate's priority, or `{ value: null,
+ *   confidence: 0 }` when none of the candidates exist.
+ * @remarks Performs up to four sequential filesystem stat calls. No errors are
+ *   surfaced; a missing or unreadable directory yields `{ value: null, confidence: 0 }`.
+ */
 export async function detectDocsFile(projectRoot: string): Promise<Detection> {
   for (const candidate of DOC_CANDIDATES) {
     if (await fileExists(join(projectRoot, candidate.filename))) {

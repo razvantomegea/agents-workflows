@@ -50,6 +50,28 @@ export function getGeneratedAgentPaths(config: StackConfig): string[] {
   );
 }
 
+/**
+ * Generates agent definition files for every enabled agent and configured target.
+ *
+ * Iterates `AGENT_DEFINITIONS` and, for each agent whose flag is `true` in
+ * `config.agents`, renders the corresponding EJS template and emits one output
+ * file per enabled target:
+ * - `config.targets.claudeCode` → `.claude/agents/<name>.md`
+ * - `config.targets.codexCli`   → `.codex/skills/<name>/SKILL.md` (converted
+ *   via `convertToSkill`)
+ *
+ * For the `implementer` agent, the template path is resolved from
+ * `config.agents.implementerVariant`; an error is thrown if the variant
+ * template file does not exist.
+ *
+ * @param config - `StackConfig` slice consumed: `agents` (agent enable flags +
+ *   `implementerVariant`) and `targets` (`claudeCode`, `codexCli`).
+ * @param context - Generator context passed to each EJS template.
+ * @returns An array of `GeneratedFile` entries for all enabled agents across
+ *   all enabled targets.
+ * @throws `Error` when the resolved `implementerVariant` template file is
+ *   missing on disk.
+ */
 export async function generateAgents(
   config: StackConfig,
   context: GeneratorContext,

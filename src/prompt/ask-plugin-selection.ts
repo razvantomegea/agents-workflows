@@ -9,6 +9,17 @@ const PLUGIN_CHOICES = PLUGIN_REGISTRY.map((plugin: PluginDef) => ({
   checked: false,
 }));
 
+/**
+ * Presents a multi-select checkbox for the available plugins and returns the user's selections.
+ *
+ * @returns A `StackConfig['plugins']` object where each key is `true` when the user selected
+ *   the corresponding plugin and `false` otherwise.
+ *
+ * @remarks
+ * Skipped under `--yes` — the non-interactive branch of `runPromptFlow` uses `createDefaultConfig`,
+ * which sets all plugins to `false`.
+ * Plugin choices are sourced from `PLUGIN_REGISTRY` at module load time.
+ */
 export async function askPluginSelection(): Promise<StackConfig['plugins']> {
   const selected = await checkbox({
     message: 'Select plugins to install into .claude/skills/:',

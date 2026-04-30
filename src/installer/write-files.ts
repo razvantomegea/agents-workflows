@@ -14,6 +14,30 @@ export interface WriteGeneratedFilesResult {
   mergedPaths: string[];
 }
 
+/**
+ * Writes a set of generated files into `projectRoot`, delegating per-file conflict resolution
+ * to `writeFileSafe` (merge, overwrite, or skip based on session strategy).
+ *
+ * @param projectRoot - Absolute path to the project root directory used to resolve and
+ *   path-guard each output file.
+ * @param files - Generated files to write.  Each entry's `path` must be relative to
+ *   `projectRoot`; absolute paths or traversals are rejected.
+ * @param options - Optional behaviour overrides.
+ *   - `options.confirmOverwrite` — async callback invoked when `writeFileSafe` needs a
+ *     user decision for a conflicting file.  When omitted the default prompt function
+ *     configured on the `write-file` module is used instead.
+ * @returns Categorised outcome paths:
+ *   - `writtenPaths` — files freshly written or overwritten.
+ *   - `mergedPaths` — files whose content was merged with the existing on-disk version.
+ *   - `skippedPaths` — files where the user (or session strategy) chose not to overwrite.
+ *
+ * @throws {Error} If any `file.path` resolves outside `projectRoot` (path-traversal guard).
+ *
+ * @remarks
+ * When `options.confirmOverwrite` is provided this function temporarily mutates the
+ * module-level prompt function in `write-file.ts` via `_setPromptFn`, restoring the
+ * default in a `finally` block to prevent state leakage between calls.
+ */
 export async function writeGeneratedFiles(
   projectRoot: string,
   files: GeneratedFile[],
