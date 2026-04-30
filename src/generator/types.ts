@@ -1,4 +1,4 @@
-import type { StackConfig, SecurityConfig } from '../schema/stack-config.js';
+import type { StackConfig, SecurityConfig, ImplementerVariant } from '../schema/stack-config.js';
 import type { MergeFunction } from './write-file.js';
 import type { PartialEntry } from './list-partials.js';
 
@@ -60,7 +60,7 @@ export interface GeneratorContext extends Record<string, unknown> {
   hasUiDesigner: boolean;
   hasE2eTester: boolean;
   hasSecurityReviewer: boolean;
-  hasReactTsSenior: boolean;
+  implementerVariant: ImplementerVariant;
   hasI18n: boolean;
   // Reserved for future template use; presently only hasI18n is consumed.
   i18nLibrary: StackConfig['stack']['i18nLibrary'];

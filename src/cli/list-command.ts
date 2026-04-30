@@ -21,7 +21,7 @@ const TEMPLATES_DIR = join(MODULE_DIR, '..', 'templates');
 
 const TEMPLATE_DEFINITIONS: TemplateDefinition[] = [
   { category: 'agent', templatePath: 'agents/architect.md.ejs' },
-  { category: 'agent', templatePath: 'agents/implementer.md.ejs' },
+  { category: 'agent', templatePath: 'agents/implementer-variants/generic.md.ejs' },
   { category: 'agent', templatePath: 'agents/code-reviewer.md.ejs' },
   { category: 'agent', templatePath: 'agents/code-optimizer.md.ejs' },
   { category: 'agent', templatePath: 'agents/test-writer.md.ejs' },

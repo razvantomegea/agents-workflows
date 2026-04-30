@@ -50,8 +50,28 @@ export const BACKEND_FRAMEWORKS = [
   'fastapi',
   'django',
   'flask',
+  'spring-boot',
+  'aspnetcore',
 ] as const;
+
+export const BACKEND_FRAMEWORK_CONFIDENCE: Record<(typeof BACKEND_FRAMEWORKS)[number], number> = {
+  express: 0.8,
+  fastify: 0.85,
+  hono: 0.85,
+  nestjs: 0.95,
+  fastapi: 0.9,
+  django: 0.9,
+  flask: 0.9,
+  'spring-boot': 0.9,
+  aspnetcore: 0.9,
+};
 
 export function isBackendFramework(framework: string | null): boolean {
   return isFrameworkIn(framework, BACKEND_FRAMEWORKS);
+}
+
+export const FULLSTACK_JS_FRAMEWORKS = ['nextjs', 'nuxt', 'remix', 'sveltekit'] as const;
+
+export function isFullstackJsFramework(framework: string | null): boolean {
+  return isFrameworkIn(framework, FULLSTACK_JS_FRAMEWORKS);
 }

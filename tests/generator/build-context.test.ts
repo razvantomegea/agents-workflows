@@ -37,31 +37,22 @@ describe('buildContext', () => {
     expect(ctx.isFrontend).toBe(false);
     expect(ctx.isMobile).toBe(false);
     expect(ctx.stackItems).not.toContain('Null');
-    expect(ctx.stackItems).toContain('Typescript (node)');
+    expect(ctx.stackItems).toContain('TypeScript (node)');
   });
 
-  it('gates hasReactTsSenior by React and TypeScript stack support', () => {
+  it('passes implementerVariant through onto the context', () => {
     const baseConfig = makeConfig();
     const ctx = buildContext({
       ...baseConfig,
-      stack: {
-        language: 'python',
-        runtime: 'python',
-        framework: 'fastapi',
-        uiLibrary: null,
-        stateManagement: null,
-        database: null,
-        auth: null,
-      },
-      agents: { ...baseConfig.agents, reactTsSenior: true },
+      agents: { ...baseConfig.agents, implementerVariant: 'python' },
     });
 
-    expect(ctx.hasReactTsSenior).toBe(false);
+    expect(ctx.implementerVariant).toBe('python');
   });
 
   it('builds stack items list', () => {
     const ctx = buildContext(makeConfig());
-    expect(ctx.stackItems).toContain('Typescript (node)');
+    expect(ctx.stackItems).toContain('TypeScript (node)');
     expect(ctx.stackItems).toContain('Nextjs');
     expect(ctx.stackItems).toContain('Tailwind');
     expect(ctx.stackItems).toContain('Zustand');

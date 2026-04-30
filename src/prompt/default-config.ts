@@ -2,7 +2,8 @@ import type { DetectedStack } from '../detector/types.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import { SECURITY_DEFAULTS } from '../schema/stack-config.js';
 import type { PackageJson } from '../utils/index.js';
-import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
+import { isFrontendFramework } from '../constants/frameworks.js';
+import { getApplicableImplementerVariant } from '../generator/implementer-routing.js';
 import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 import { resolveCommands, resolvePackageManagerPrefix, type PackageScripts } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
@@ -25,7 +26,6 @@ export function createDefaultConfig(
   const runtime = detected.runtime.value ?? 'node';
   const framework = detected.framework.value;
   const isFrontend = isFrontendFramework(framework);
-  const isReactTs = supportsReactTsStack(framework, language);
   const packageManager = detected.packageManager.value ?? 'npm';
   const testFramework = detected.testFramework.value ?? 'jest';
   const linter = detected.linter.value;
@@ -82,7 +82,7 @@ export function createDefaultConfig(
     agents: {
       architect: true,
       implementer: true,
-      reactTsSenior: isReactTs,
+      implementerVariant: getApplicableImplementerVariant(detected),
       codeReviewer: true,
       securityReviewer: true,
       codeOptimizer: true,
@@ -104,5 +104,14 @@ export function createDefaultConfig(
     languages: [...detected.languages],
     monorepo: null,
     security: { ...SECURITY_DEFAULTS },
+    plugins: {
+      superpowers: false,
+      caveman: false,
+      claudeMdManagement: false,
+      featureDev: false,
+      codeReviewPlugin: false,
+      codeSimplifier: false,
+    },
+    cavemanStyle: false,
   };
 }

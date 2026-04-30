@@ -9,8 +9,9 @@ import {
   EXPECTED_ALLOWED_DOMAINS_COUNT,
   PRE_TOOL_USE_PATTERN_EXTRAS,
   LOCAL_GIT_ALLOWS,
-  SANDBOX_WRAPPER_ALLOWS,
   SANDBOX_WRAPPER_DENIES,
+  SANDBOX_WRAPPER_PREFIXES,
+  SHELL_UTILITY_ALLOWS,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
@@ -23,8 +24,9 @@ export {
   escapeRegexLiteral,
   EXPECTED_ALLOWED_DOMAINS_COUNT,
   LOCAL_GIT_ALLOWS,
-  SANDBOX_WRAPPER_ALLOWS,
   SANDBOX_WRAPPER_DENIES,
+  SANDBOX_WRAPPER_PREFIXES,
+  SHELL_UTILITY_ALLOWS,
   TOOLCHAIN_ALLOWS,
 } from './permission-constants.js';
 
@@ -34,6 +36,10 @@ export interface PermissionsInput {
 }
 
 const CURRENT_PROJECT_PERMISSIONS: readonly string[] = [
+  'Read(./**)',
+  'Read',
+  'Glob',
+  'Grep',
   'Edit(./**)',
   'MultiEdit(./**)',
   'Write(./**)',
@@ -80,11 +86,16 @@ export function buildPermissions(input: PermissionsInput): string[] {
     }
   }
 
-  // Sandbox-wrapper forms of the above so a host agent can drive a project
-  // running inside WSL, a docker/podman container, or a devcontainer. The
-  // wrapper denies in DENY_PATTERNS run first, so e.g. `wsl pwsh` and
-  // `docker exec myc bash -c "..."` are blocked before reaching these.
-  for (const entry of SANDBOX_WRAPPER_ALLOWS) {
+  for (const entry of SHELL_UTILITY_ALLOWS) {
+    if (!perms.includes(entry)) {
+      perms.push(entry);
+    }
+  }
+
+  // WSL forms of the explicit host Bash allows. Container/devcontainer exec
+  // wrappers require a target argument before the inner command; allowing that
+  // safely needs configured target names, not a broad wildcard.
+  for (const entry of buildSandboxWrapperAllows(perms)) {
     if (!perms.includes(entry)) {
       perms.push(entry);
     }
@@ -165,4 +176,25 @@ export function buildPostToolUseHooks(input: { lintCommand: string | null }): Po
 function isCoveredByGlob(command: string, prefix: string | null | undefined): boolean {
   if (!prefix) return false;
   return command === prefix || command.startsWith(`${prefix} `);
+}
+
+function buildSandboxWrapperAllows(hostPermissions: readonly string[]): string[] {
+  const wrapperAllows: string[] = [];
+
+  for (const permission of hostPermissions) {
+    const innerCommand = extractBashPermissionInnerCommand(permission);
+    if (innerCommand === null) continue;
+
+    for (const wrapper of SANDBOX_WRAPPER_PREFIXES) {
+      if (wrapper !== 'wsl') continue;
+      wrapperAllows.push(`Bash(${wrapper} ${innerCommand})`);
+    }
+  }
+
+  return wrapperAllows;
+}
+
+function extractBashPermissionInnerCommand(permission: string): string | null {
+  const match = /^Bash\((.+)\)$/.exec(permission);
+  return match?.[1] ?? null;
 }

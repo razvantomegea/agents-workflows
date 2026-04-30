@@ -1,9 +1,11 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratedFile, GeneratorContext } from './types.js';
+import { cavemanCompress } from '../utils/caveman-compress.js';
 import { buildContext } from './build-context.js';
 import { listPartials } from './list-partials.js';
 import { generateAgents } from './generate-agents.js';
 import { generateCommands } from './generate-commands.js';
+import { generatePlugins } from './generate-plugins.js';
 import { generateRootConfig } from './generate-root-config.js';
 import { generateScripts } from './generate-scripts.js';
 import { generateCursorConfig } from './cursor/index.js';
@@ -18,12 +20,22 @@ export type TargetGenerator = (
 export const TARGET_GENERATORS: readonly TargetGenerator[] = [
   generateAgents,
   generateCommands,
+  generatePlugins,
   generateRootConfig,
   generateScripts,
   generateCursorConfig,
   generateCopilotConfig,
   generateWindsurfConfig,
 ];
+
+function applyPostProcessors(files: GeneratedFile[], config: StackConfig): GeneratedFile[] {
+  if (!config.cavemanStyle) return files;
+  return files.map((generatedFile: GeneratedFile) =>
+    generatedFile.path.endsWith('.md')
+      ? { ...generatedFile, content: cavemanCompress(generatedFile.content) }
+      : generatedFile,
+  );
+}
 
 export async function generateAll(config: StackConfig): Promise<GeneratedFile[]> {
   const baseContext = buildContext(config);
@@ -32,7 +44,7 @@ export async function generateAll(config: StackConfig): Promise<GeneratedFile[]>
   const groups = await Promise.all(
     TARGET_GENERATORS.map((generator: TargetGenerator) => generator(config, context)),
   );
-  return groups.flat();
+  return applyPostProcessors(groups.flat(), config);
 }
 
 export { buildContext } from './build-context.js';

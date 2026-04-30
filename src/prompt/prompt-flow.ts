@@ -1,24 +1,28 @@
 import type { DetectedStack } from '../detector/types.js';
 import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
 import { readPackageJson } from '../utils/index.js';
-import { isFrontendFramework, supportsReactTsStack } from '../constants/frameworks.js';
+import { isFrontendFramework } from '../constants/frameworks.js';
 import { createDefaultConfig } from './default-config.js';
 import {
   askProjectIdentity,
   askStack,
   askTooling,
   askPaths,
-  askConventions,
-  askAgentSelection,
-  askCommandSelection,
-  askTargets,
-  askGovernance,
-  askNonInteractiveMode,
 } from './questions.js';
+import { askCommandSelection } from './ask-command-selection.js';
+import { askConventions } from './ask-conventions.js';
+import { askAgentSelection } from './ask-agent-selection.js';
+import { askTargets } from './ask-targets.js';
+import { askGovernance } from './ask-governance.js';
+import { askNonInteractiveMode } from './ask-non-interactive.js';
+import { askImplementerVariant } from './ask-implementer-variant.js';
 import { askIsolation } from './ask-isolation.js';
+import { askCavemanStyle } from './ask-caveman-style.js';
+import { askPluginSelection } from './ask-plugin-selection.js';
 import { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
 import { toDetectedAiAgentFlags } from './detected-ai-flags.js';
 import { resolveTargetDefaults } from './ask-targets.js';
+import { getApplicableImplementerVariantForStack } from '../generator/implementer-routing.js';
 export { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 export { createDefaultConfig } from './default-config.js';
 export { resolveCommands, resolvePackageManagerPrefix } from './commands.js';
@@ -61,7 +65,7 @@ export async function runPromptFlow(
       isolation,
       acceptRisks: options.acceptRisks,
     });
-    return { ...baseConfig, targets, security };
+    return { ...baseConfig, targets, security, plugins: baseConfig.plugins, cavemanStyle: false };
   }
 
   const identity = await askProjectIdentity(detected, pkg);
@@ -71,11 +75,16 @@ export async function runPromptFlow(
   const conventions = await askConventions();
 
   const isFrontend = isFrontendFramework(stack.framework);
-  const isReactTs = supportsReactTsStack(stack.framework, stack.language);
-  const selectedAgents = await askAgentSelection({ isFrontend, isReactTs });
+  const selectedAgents = await askAgentSelection({ isFrontend });
+  const implementerEnabled = selectedAgents.includes('implementer');
+  const implementerVariant = implementerEnabled
+    ? await askImplementerVariant({ language: stack.language, framework: stack.framework })
+    : getApplicableImplementerVariantForStack({ language: stack.language, framework: stack.framework });
   const selectedCommands = await askCommandSelection();
   const targets = await askTargets({ detected: detected.aiAgents, projectRoot });
   const governance = await askGovernance();
+  const plugins = await askPluginSelection();
+  const cavemanStyle = await askCavemanStyle();
   const isolation = await askIsolation({ isolation: options.isolation });
   const security = await askNonInteractiveMode({
     nonInteractive: options.nonInteractive,
@@ -142,7 +151,7 @@ export async function runPromptFlow(
     agents: {
       architect: selectedAgents.includes('architect'),
       implementer: selectedAgents.includes('implementer'),
-      reactTsSenior: selectedAgents.includes('reactTsSenior'),
+      implementerVariant,
       codeReviewer: selectedAgents.includes('codeReviewer'),
       securityReviewer: selectedAgents.includes('securityReviewer'),
       codeOptimizer: selectedAgents.includes('codeOptimizer'),
@@ -164,5 +173,7 @@ export async function runPromptFlow(
     languages: [...detected.languages],
     monorepo: null,
     security,
+    plugins,
+    cavemanStyle,
   };
 }

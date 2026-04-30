@@ -10,11 +10,10 @@ const AGENTS_WITH_UNTRUSTED = [
   'code-reviewer',
   'security-reviewer',
   'ui-designer',
-  'react-ts-senior',
 ];
 const AGENTS_WITHOUT_UNTRUSTED = ['code-optimizer', 'test-writer', 'e2e-tester', 'reviewer'];
 const ALL_AGENTS = [...AGENTS_WITH_UNTRUSTED, ...AGENTS_WITHOUT_UNTRUSTED];
-const AGENTS_WITH_TOOL_USE = ['architect', 'implementer', 'react-ts-senior'];
+const AGENTS_WITH_TOOL_USE = ['architect', 'implementer'];
 const AGENTS_WITHOUT_TOOL_USE = [
   'code-reviewer',
   'security-reviewer',
@@ -70,7 +69,7 @@ describe('Epic 1 safety partials', () => {
     expect(implementerFile?.content).toContain('Task-related edits are allowed');
   });
 
-  it('wires tool-use-discipline into architect, implementer, react-ts-senior only', async () => {
+  it('wires tool-use-discipline into architect and implementer only', async () => {
     const files = await generateAll(makeStackConfig());
 
     for (const agentName of AGENTS_WITH_TOOL_USE) {
@@ -114,9 +113,8 @@ describe('Epic 1 safety partials', () => {
     expect(parsed.permissions.deny).toContain('MultiEdit(.env*)');
     expect(parsed.permissions.deny).toContain('Edit(migrations/**)');
     expect(parsed.permissions.allow).toEqual(
-      expect.arrayContaining(['Edit(./**)', 'MultiEdit(./**)', 'Write(./**)']),
+      expect.arrayContaining(['Read(./**)', 'Edit(./**)', 'MultiEdit(./**)', 'Write(./**)']),
     );
-    expect(parsed.permissions.allow).not.toContain('Read(./**)');
     expect(parsed.permissions.allow.filter((rule: string) => rule.includes('|'))).toEqual([]);
     expect(parsed.permissions.deny).toHaveLength(DENY_PATTERNS.length);
     expect(parsed.permissions.deny).toContain('Bash(git push --force-with-lease:*)');

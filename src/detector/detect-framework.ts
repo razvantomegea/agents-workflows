@@ -1,16 +1,10 @@
 import { readPackageJson, getAllDeps, readPyprojectToml } from '../utils/index.js';
-import { BACKEND_FRAMEWORKS } from '../constants/frameworks.js';
+import { BACKEND_FRAMEWORKS, BACKEND_FRAMEWORK_CONFIDENCE } from '../constants/frameworks.js';
 import type { Detection } from './types.js';
+import { detectJvmFramework } from './detect-jvm-framework.js';
+import { detectDotnetFramework } from './detect-dotnet-framework.js';
 
-const PACKAGE_JSON_BACKEND_CONFIDENCE: Record<(typeof BACKEND_FRAMEWORKS)[number], number> = {
-  express: 0.8,
-  fastify: 0.85,
-  hono: 0.85,
-  nestjs: 0.95,
-  fastapi: 0.9,
-  django: 0.9,
-  flask: 0.9,
-};
+export { BACKEND_FRAMEWORK_CONFIDENCE } from '../constants/frameworks.js';
 
 const PACKAGE_JSON_BACKEND_DETECTION_ORDER: ReadonlyArray<(typeof BACKEND_FRAMEWORKS)[number]> = [
   'nestjs',
@@ -46,7 +40,7 @@ export async function detectFramework(projectRoot: string): Promise<Detection> {
     for (const framework of PACKAGE_JSON_BACKEND_DETECTION_ORDER) {
       const dependencyName = packageFrameworkDependencyMap[framework];
       if (dependencyName !== undefined && deps[dependencyName]) {
-        return { value: framework, confidence: PACKAGE_JSON_BACKEND_CONFIDENCE[framework] };
+        return { value: framework, confidence: BACKEND_FRAMEWORK_CONFIDENCE[framework] };
       }
     }
     if (deps['react'] && !deps['next'] && !deps['expo']) {
@@ -61,10 +55,16 @@ export async function detectFramework(projectRoot: string): Promise<Detection> {
     for (const framework of BACKEND_FRAMEWORKS) {
       const dependencyPrefix = PYPROJECT_BACKEND_PREFIXES[framework];
       if (dependencyPrefix !== undefined && pyDeps.some((dependency: string) => dependency.startsWith(dependencyPrefix))) {
-        return { value: framework, confidence: PACKAGE_JSON_BACKEND_CONFIDENCE[framework] };
+        return { value: framework, confidence: BACKEND_FRAMEWORK_CONFIDENCE[framework] };
       }
     }
   }
+
+  const jvmDetection = await detectJvmFramework(projectRoot);
+  if (jvmDetection.value !== null) return jvmDetection;
+
+  const dotnetDetection = await detectDotnetFramework(projectRoot);
+  if (dotnetDetection.value !== null) return dotnetDetection;
 
   return { value: null, confidence: 0 };
 }

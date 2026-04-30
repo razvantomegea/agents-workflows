@@ -50,7 +50,7 @@ describe('security-reviewer agent template', () => {
     const agentsMd = findFile(files, 'AGENTS.md');
 
     expect(reviewer?.content).toMatch(/`code-reviewer` and `security-reviewer` in parallel/);
-    expect(claudeMd?.content).toMatch(/\| Security review \(parallel to code review\) \| `security-reviewer` \|/);
+    expect(claudeMd?.content).toMatch(/\| Security review \(parallel to code review\) \| `security-reviewer` \(sonnet\) \|/);
     expect(agentsMd?.content).toMatch(/\| Security review \(parallel to code review\) \| `security-reviewer` \|/);
   });
 

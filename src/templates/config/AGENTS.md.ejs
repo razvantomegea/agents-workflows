@@ -27,10 +27,7 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | Task | Agent |
 |---|---|
 | Architecture, planning | `architect` |
-| Implementation | `implementer` |
-<% if (hasReactTsSenior) { -%>
-| Implementation (React + TypeScript) | `react-ts-senior` |
-<% } -%>
+| Implementation | `implementer`<% if (implementerVariant !== 'generic') { %> (<%= implementerVariant %> variant)<% } %> |
 | Code review (after every file edit) | `code-reviewer` |
 <% if (hasSecurityReviewer) { -%>
 | Security review (parallel to code review) | `security-reviewer` |
@@ -54,11 +51,11 @@ This file provides guidance to all agents, LLMs, and AI tools when working with 
 | architect      | Claude (Opus / latest Sonnet, thinking on)                  | GPT-5.x (high-reasoning mode)             | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
 | implementer    | TS/React/Three.js: GPT-5.x (Codex) · Python/infra: Claude   | Opposite family of the writer             | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
 | code-reviewer  | Same FAMILY as implementer                                  | —                                         | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
-| reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x)        | —                                         | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
+| reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x); Claude tier: **Haiku** (pure orchestrator) | —                       | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
 | external-review| CodeRabbit CLI mandatory default; different-family reviewer for exception/fallbacks | Cursor BugBot / Copilot PR review only when CodeRabbit is unavailable | high | CodeRabbit CLI first · `/codex:review` only for Claude-authored diffs · Cursor BugBot / Copilot PR review fallback |
 | code-optimizer | Same family as implementer                                  | Opposite family for risky refactors       | medium           | same as implementer |
-| test-writer    | Claude (test strategy)                                      | GPT-5.x (boilerplate test code)           | medium           | same as implementer |
-| e2e-tester     | Claude                                                      | GPT-5.x                                   | medium           | same as implementer |
+| test-writer    | Claude **Haiku** (templated unit tests)                     | GPT-5.x (boilerplate test code); Sonnet for novel test design | medium | same as implementer |
+| e2e-tester     | Claude **Haiku** (structured spec output)                   | GPT-5.x                                   | medium           | same as implementer |
 | ui-designer    | **Claude Opus** (UX thinking / a11y / design-system; adaptive thinking on) | - | high           | MUST run before `implementer` on any UI/UX task |
 
 Rule: never let the writer be its own final reviewer. The `reviewer`
@@ -164,9 +161,19 @@ This loop is mandatory.
 <% if (tooling.packageManagerPrefix) { -%>
 - Always use `<%= tooling.packageManagerPrefix %>` for running scripts.
 <% } -%>
-- Always do what is asked. If something is unclear, ask clarifying questions.
+- Always do what is asked. If anything is unclear, ask clarifying questions until ≥95% confident. Never advance to the next step with less than 95% confidence.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
+
+## Communication Style
+
+Write telegraphically. No filler. No pleasantries. Fragments OK.
+
+- Drop: articles (a/an/the), hedges (just/really/basically), openers (sure/certainly/of course)
+- Short synonyms: fix not "implement a solution for", big not "extensive", use not "utilize"
+- Pattern: `[thing] [action] [reason]. [next step].`
+- State results directly. No trailing summary of what was just done.
+- Code, paths, commands: exact and unchanged.
 
 ## Dangerous operations — require explicit confirmation
 

@@ -195,7 +195,7 @@ This loop is mandatory.
 ## Rules
 
 - Always use `pnpm` for running scripts.
-- Always do what is asked. If something is unclear, ask clarifying questions.
+- Always do what is asked. If anything is unclear, ask clarifying questions until ≥95% confident. Never advance to the next step with less than 95% confidence.
 - Never read `.env` files.
 - Search the web when library behavior or APIs are uncertain.
 

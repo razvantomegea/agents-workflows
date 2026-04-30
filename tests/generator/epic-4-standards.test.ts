@@ -13,6 +13,7 @@ const partialLines = async (name: string): Promise<number> => {
 const makeFrameworkConfig = (framework: string | null): ReturnType<typeof makeStackConfig> =>
   makeStackConfig({
     stack: { language: 'typescript', runtime: 'node', framework, uiLibrary: null, stateManagement: null, database: null, auth: null },
+    agents: { implementerVariant: 'generic' },
   });
 
 describe('Epic 4 T1 — security-defaults', () => {
@@ -113,7 +114,7 @@ describe('Implementation agent description omits "none" framework placeholder', 
 });
 
 describe('Epic 4 T5 — api-design conditional', () => {
-  const BACKEND = ['express', 'fastify', 'hono', 'nestjs', 'fastapi', 'django', 'flask'] as const;
+  const BACKEND = ['express', 'fastify', 'hono', 'nestjs', 'fastapi', 'django', 'flask', 'spring-boot', 'aspnetcore'] as const;
   const NON_BACKEND = ['nextjs', 'react', 'vue', null] as const;
 
   it.each(BACKEND.map((fw) => [fw]))(

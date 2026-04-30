@@ -8,8 +8,12 @@ import {
   isFrontendFramework,
   isMobileFramework,
   isReactFramework,
-  supportsReactTsStack,
 } from '../constants/frameworks.js';
+
+const CANONICAL_LABELS: Readonly<Record<string, string>> = {
+  eslint: 'ESLint',
+  typescript: 'TypeScript',
+};
 
 /**
  * Constructs a GeneratorContext object from the provided StackConfig.
@@ -17,7 +21,7 @@ import {
  * The returned context includes direct passthrough values from the config (project, stack,
  * tooling, paths, commands, conventions, detectedAiAgents, monorepo, etc.), computed template
  * flags (for example: isReact, isFrontend, isMobile, isBackend, isTypescript, hasI18n,
- * hasReactTsSenior), a human-readable `stackItems` list, paths for components/utils/tests,
+ * implementerVariant), a human-readable `stackItems` list, paths for components/utils/tests,
  * review/permission/deny lists and pre/post tool hooks, agent feature flags, and test tooling info.
  *
  * @param config - The stack/project/tooling configuration used to derive the generator context
@@ -36,8 +40,6 @@ export function buildContext(config: StackConfig): GeneratorContext {
       .filter((language: string) => language.length > 0),
   );
   const isPolyglot = uniqueLanguages.size >= 2;
-  const hasReactTsSenior = config.agents.reactTsSenior
-    && supportsReactTsStack(config.stack.framework, config.stack.language);
 
   return {
     project: config.project,
@@ -75,7 +77,7 @@ export function buildContext(config: StackConfig): GeneratorContext {
     hasUiDesigner: config.agents.uiDesigner,
     hasE2eTester: config.agents.e2eTester,
     hasSecurityReviewer: config.agents.securityReviewer,
-    hasReactTsSenior,
+    implementerVariant: config.agents.implementerVariant,
     hasI18n: Boolean(config.stack.i18nLibrary),
     i18nLibrary: config.stack.i18nLibrary,
     testFramework: config.tooling.testFramework,
@@ -112,5 +114,5 @@ function buildStackItems(config: StackConfig): string[] {
 }
 
 function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+  return CANONICAL_LABELS[str.toLowerCase()] ?? str.charAt(0).toUpperCase() + str.slice(1);
 }
