@@ -1912,7 +1912,7 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 13 — Stack-Aware Implementer Variants [MUST]
+## Epic 13 — Stack-Aware Implementer Variants [MUST] [DONE 2026-04-30]
 
 **Goal.** Replace the generic implementer with a stack-specific variant when the detected stack matches a supported tier. The emitted filename stays canonical — `implementer.md` (Claude) and `.codex/skills/implementer/SKILL.md` (Codex) — so every downstream reference to `implementer` in [src/templates/config/AGENTS.md.ejs](src/templates/config/AGENTS.md.ejs), [src/templates/commands/workflow-plan.md.ejs](src/templates/commands/workflow-plan.md.ejs), [src/templates/commands/workflow-fix.md.ejs](src/templates/commands/workflow-fix.md.ejs), and [src/templates/commands/external-review.md.ejs](src/templates/commands/external-review.md.ejs) stays valid without change. Only the template body changes. Drop the parallel `reactTsSenior` additive output model (which today produces both `implementer.md` and `react-ts-senior.md`). Hide `ui-designer` from pure-backend stacks. At most one implementer file per workspace.
 
