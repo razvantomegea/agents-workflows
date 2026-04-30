@@ -1,22 +1,10 @@
-<%
-const claudeAgents = [];
-if (agents.architect) claudeAgents.push('.claude/agents/architect.md');
-if (agents.implementer) claudeAgents.push('.claude/agents/implementer.md');
-if (agents.codeReviewer) claudeAgents.push('.claude/agents/code-reviewer.md');
-if (agents.securityReviewer) claudeAgents.push('.claude/agents/security-reviewer.md');
-if (agents.codeOptimizer) claudeAgents.push('.claude/agents/code-optimizer.md');
-if (agents.testWriter) claudeAgents.push('.claude/agents/test-writer.md');
-if (agents.reviewer) claudeAgents.push('.claude/agents/reviewer.md');
-if (agents.uiDesigner) claudeAgents.push('.claude/agents/ui-designer.md');
-if (agents.e2eTester) claudeAgents.push('.claude/agents/e2e-tester.md');
--%>
 # AGENTS_REFINE.md
 
 > Post-init workspace refinement prompt for `<%= project.name %>`. Hand this file to your agent (Claude Code, Codex CLI, Cursor, etc.) so it tailors the just-generated agent files to the real shape of this workspace. **Planning-only**: the agent audits and proposes changes; it does not edit any file until you reply `apply` (per PRD §1.3 fail-safe + §1.13 planning protocol).
 
 ## 1. Your mission
 
-Audit every generated agent file under `.claude/agents/` and `.codex/skills/` against the real codebase. Propose file-level changes — diff blocks with rationale — so each agent reflects this workspace's domain vocabulary, architectural patterns, preferred libraries, deployment targets, data layer, and team conventions that the detector cannot infer. Do not edit anything until the user confirms.
+Audit every generated agent file listed below against the real codebase. Propose file-level changes — diff blocks with rationale — so each agent reflects this workspace's domain vocabulary, architectural patterns, preferred libraries, deployment targets, data layer, and team conventions that the detector cannot infer. Do not edit anything until the user confirms.
 
 ## 2. Inputs to read first
 
@@ -31,8 +19,8 @@ Before proposing any change, read:
 <% if (roadmapFile) { -%>
 - `<%= roadmapFile %>` — mutable epic checklist (consumed by `/workflow-plan` Phase 4 and `/workflow-fix` Phase 8).
 <% } -%>
-- Every file under `.claude/agents/` and `.codex/skills/`.
-- Representative source files from `<%= paths.sourceRoot %>`<% if (paths.componentsDir) { %>, `<%= paths.componentsDir %>`<% } %>, and `<%= paths.utilsDir %>`.
+- Every generated agent file listed in section 3.
+- Representative source files from `<%= paths.sourceRoot %>`<% if (paths.componentsDir) { %>, `<%= paths.componentsDir %>`<% } %><% if (paths.utilsDir) { %>, `<%= paths.utilsDir %>`<% } %>.
 
 ## 3. Audit targets
 
@@ -47,7 +35,7 @@ Detected stack (from `.agents-workflows.json`):
 
 Generated agent files to audit:
 
-<% for (const path of claudeAgents) { -%>
+<% for (const path of generatedAgentPaths) { -%>
 - `<%= path %>`
 <% } -%>
 

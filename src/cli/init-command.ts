@@ -210,7 +210,7 @@ async function installSinglePackage({
   logger.info('  add rules → CLAUDE.md');
   logger.info('  config change → npx agents-workflows update');
   if (options.refinePrompt !== false) {
-    logger.info('  4. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.');
+    logger.info('  Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.');
   }
 
   const enabledPlugins = Object.entries(config.plugins)

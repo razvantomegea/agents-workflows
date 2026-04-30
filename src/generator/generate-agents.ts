@@ -27,6 +27,29 @@ const AGENT_DEFINITIONS: AgentDefinition[] = [
   { key: 'uiDesigner', templateFile: 'agents/ui-designer.md.ejs', outputName: 'ui-designer.md' },
 ];
 
+function getAgentOutputPaths(config: StackConfig, agent: AgentDefinition): string[] {
+  const paths: string[] = [];
+  if (config.targets.claudeCode) {
+    paths.push(`.claude/agents/${agent.outputName}`);
+  }
+  if (config.targets.codexCli) {
+    paths.push(`.codex/skills/${agent.outputName.replace('.md', '')}/SKILL.md`);
+  }
+  return paths;
+}
+
+/**
+ * List the concrete agent file paths generated for the enabled agents and targets.
+ *
+ * @param config - Resolved stack config containing agent flags and target flags.
+ * @returns Agent paths in the same definition order used by `generateAgents`.
+ */
+export function getGeneratedAgentPaths(config: StackConfig): string[] {
+  return AGENT_DEFINITIONS.flatMap((agent: AgentDefinition) =>
+    config.agents[agent.key] ? getAgentOutputPaths(config, agent) : [],
+  );
+}
+
 export async function generateAgents(
   config: StackConfig,
   context: GeneratorContext,
@@ -49,14 +72,11 @@ export async function generateAgents(
     }
 
     const content = await renderTemplate(templateFile, context);
+    const outputPaths = getAgentOutputPaths(config, agent);
 
-    if (config.targets.claudeCode) {
-      files.push({ path: `.claude/agents/${agent.outputName}`, content });
-    }
-
-    if (config.targets.codexCli) {
-      const skillContent = convertToSkill(content);
-      files.push({ path: `.codex/skills/${agent.outputName.replace('.md', '')}/SKILL.md`, content: skillContent });
+    for (const outputPath of outputPaths) {
+      const outputContent = outputPath.startsWith('.codex/skills/') ? convertToSkill(content) : content;
+      files.push({ path: outputPath, content: outputContent });
     }
   }
 

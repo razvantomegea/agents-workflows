@@ -1,5 +1,6 @@
 import type { StackConfig } from '../schema/stack-config.js';
 import { renderTemplate } from '../utils/template-renderer.js';
+import { getGeneratedAgentPaths } from './generate-agents.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
 
 export const REFINE_PROMPT_PATH = 'AGENTS_REFINE.md';
@@ -11,7 +12,7 @@ export const REFINE_PROMPT_PATH = 'AGENTS_REFINE.md';
  * generated agent files get tailored to this workspace's domain, idioms, and
  * conventions that the stack detector cannot infer. Planning-only per PRD §1.3.
  *
- * @param config - Resolved stack config (provides the `agents` enable map).
+ * @param config - Resolved stack config (provides enabled agents and targets).
  * @param context - Generator context built from the resolved StackConfig.
  * @returns Single `GeneratedFile` entry for `AGENTS_REFINE.md`.
  */
@@ -22,6 +23,7 @@ export async function generateRefinePrompt(
   const content = await renderTemplate('refine/AGENTS_REFINE.md.ejs', {
     ...context,
     agents: config.agents,
+    generatedAgentPaths: getGeneratedAgentPaths(config),
   });
   return { path: REFINE_PROMPT_PATH, content };
 }
