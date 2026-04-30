@@ -61,9 +61,9 @@ AGENTS.md already exists. Overwrite? [y]es / [n]o / [a]ll / [s]kip-all / [m]erge
 
 | File type | Merge behaviour |
 |---|---|
-| Markdown (`AGENTS.md`, `CLAUDE.md`, agent prompts, command files) | Structured merge by top-level heading. User-edited sections are preserved. Sections marked `<!-- agents-workflows:managed -->` are updated by the generator. |
-| JSON (`.claude/settings.json`, Codex config) | Deep-merge with array union (de-duplicated). User wins on scalar conflicts for non-managed keys. |
-| Any other format | Falls back to yes / no / all / skip; no structured merge option is offered. |
+| Managed Markdown (`AGENTS.md`, `CLAUDE.md`, nested `AGENTS.md`) | Replaces the generated managed block and preserves user-authored content after `<!-- agents-workflows:managed-end -->`. |
+| JSON (`.claude/settings.json`) | Deep-merge with array union (de-duplicated). User wins on scalar conflicts except generator-controlled safety keys. |
+| Any other format | Falls back to yes / no / all / skip; no structured merge option is offered. In `--merge-strategy=merge` mode, files without merge support are skipped and listed in the update summary; use `--merge-strategy=overwrite` or `--yes` to refresh them. |
 
 ### CI usage
 
