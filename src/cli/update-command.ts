@@ -139,7 +139,9 @@ export async function updateCommand(
 
     logger.success(`Updated ${writeResult.writtenPaths.length} file(s).`);
     if (writeResult.skippedPaths.length > 0) {
-      logger.warn(`${writeResult.skippedPaths.length} existing Markdown file(s) were left unchanged.`);
+      logger.warn(
+        `${writeResult.skippedPaths.length} existing file(s) were left unchanged: ${writeResult.skippedPaths.join(', ')}`,
+      );
     }
   });
 }

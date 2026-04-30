@@ -32,7 +32,7 @@ function sortKeys(value: JsonValue): JsonValue {
     }
     return value;
   }
-  const sorted: JsonObject = {};
+  const sorted = Object.create(null) as JsonObject;
   for (const key of Object.keys(value).sort()) {
     sorted[key] = sortKeys(value[key]);
   }
@@ -103,7 +103,7 @@ function deepMerge(existing: JsonValue, incoming: JsonValue, key: string): JsonV
 }
 
 function mergeObjects(existing: JsonObject, incoming: JsonObject): JsonObject {
-  const result: JsonObject = {};
+  const result = Object.create(null) as JsonObject;
   const allKeys = new Set([...Object.keys(existing), ...Object.keys(incoming)]);
   for (const key of allKeys) {
     const inExisting = Object.prototype.hasOwnProperty.call(existing, key);

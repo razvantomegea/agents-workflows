@@ -49,6 +49,18 @@ describe('mergeJson', () => {
     expect(result.outer.shared).toBe('user');
   });
 
+  it('preserves __proto__ as data without changing the merged object prototype', () => {
+    const existing = '{"__proto__":{"polluted":true},"safe":"user"}';
+    const incoming = json({ generated: true });
+
+    const result = parse(mergeJson({ existing, incoming })) as Record<string, unknown>;
+
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(Object.prototype).not.toHaveProperty('polluted');
+    expect(result.__proto__).toEqual({ polluted: true });
+    expect(result.generated).toBe(true);
+  });
+
   it('scalar conflict — user value wins', () => {
     const existing = json({ x: 1 });
     const incoming = json({ x: 2 });
