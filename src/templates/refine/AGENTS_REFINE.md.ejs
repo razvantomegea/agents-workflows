@@ -1,0 +1,98 @@
+<%
+const claudeAgents = [];
+if (agents.architect) claudeAgents.push('.claude/agents/architect.md');
+if (agents.implementer) claudeAgents.push('.claude/agents/implementer.md');
+if (agents.codeReviewer) claudeAgents.push('.claude/agents/code-reviewer.md');
+if (agents.securityReviewer) claudeAgents.push('.claude/agents/security-reviewer.md');
+if (agents.codeOptimizer) claudeAgents.push('.claude/agents/code-optimizer.md');
+if (agents.testWriter) claudeAgents.push('.claude/agents/test-writer.md');
+if (agents.reviewer) claudeAgents.push('.claude/agents/reviewer.md');
+if (agents.uiDesigner) claudeAgents.push('.claude/agents/ui-designer.md');
+if (agents.e2eTester) claudeAgents.push('.claude/agents/e2e-tester.md');
+-%>
+# AGENTS_REFINE.md
+
+> Post-init workspace refinement prompt for `<%= project.name %>`. Hand this file to your agent (Claude Code, Codex CLI, Cursor, etc.) so it tailors the just-generated agent files to the real shape of this workspace. **Planning-only**: the agent audits and proposes changes; it does not edit any file until you reply `apply` (per PRD §1.3 fail-safe + §1.13 planning protocol).
+
+## 1. Your mission
+
+Audit every generated agent file under `.claude/agents/` and `.codex/skills/` against the real codebase. Propose file-level changes — diff blocks with rationale — so each agent reflects this workspace's domain vocabulary, architectural patterns, preferred libraries, deployment targets, data layer, and team conventions that the detector cannot infer. Do not edit anything until the user confirms.
+
+## 2. Inputs to read first
+
+Before proposing any change, read:
+
+- `PRD.md` — product intent and rules.
+- `AGENTS.md` — routing + canonical project guidance for agents.
+- `CLAUDE.md` (if present) — Claude-specific guidance.
+<% if (docsFile) { -%>
+- `<%= docsFile %>` — primary docs / intent reference.
+<% } -%>
+<% if (roadmapFile) { -%>
+- `<%= roadmapFile %>` — mutable epic checklist (consumed by `/workflow-plan` Phase 4 and `/workflow-fix` Phase 8).
+<% } -%>
+- Every file under `.claude/agents/` and `.codex/skills/`.
+- Representative source files from `<%= paths.sourceRoot %>`<% if (paths.componentsDir) { %>, `<%= paths.componentsDir %>`<% } %>, and `<%= paths.utilsDir %>`.
+
+## 3. Audit targets
+
+Detected stack (from `.agents-workflows.json`):
+
+- Language: `<%= stack.language %>`
+- Runtime: `<%= stack.runtime ?? 'n/a' %>`
+- Framework: `<%= stack.framework ?? 'n/a' %>`
+- Implementer variant: `<%= implementerVariant %>`
+- Test framework: `<%= testFramework %>`
+- Package manager: `<%= tooling.packageManager %>`
+
+Generated agent files to audit:
+
+<% for (const path of claudeAgents) { -%>
+- `<%= path %>`
+<% } -%>
+
+For each generated agent file, check:
+
+1. Does the stack-context partial match the real primary modules under `<%= paths.sourceRoot %>`?
+2. Do the DoD commands (`<%= commands.typeCheck %>`, `<%= commands.test %>`, `<%= commands.lint %>`) match what actually runs in CI?
+3. Are the cited paths present?
+4. Do the language/framework idioms match the codebase's conventions?
+5. Are domain-specific nouns and services named?
+
+For `implementer.md` specifically, verify the rendered variant (`<%= implementerVariant %>`) matches the actual primary stack. If the repo is majority a different language/framework, flag the mismatch.
+
+## 4. Propose changes (do not edit yet)
+
+Output a numbered list. Each item:
+
+```
+N. <agent file path> → <section heading>
+   Proposed diff:
+   <unified-diff or before/after block>
+   Rationale: <cite PRD § or code path>
+```
+
+Group items by agent file. Cap at ~15 items per chunk; if more accumulate, ask the user which agent to refine first.
+
+## 5. Stop conditions
+
+- Do **not** edit any file until the user replies `apply` (PRD §1.3 fail-safe).
+- If more than ~15 change items accumulate, chunk by agent file and present in batches.
+- If uncertain about a domain term, ask the user (PRD §1.3) — do not guess.
+- Never modify `PLAN.md` or `QA.md` from this flow.
+
+## 6. Verification hand-off
+
+After the user has applied the proposed changes, run the §1.6 DoD commands and the §2.1 review checklist:
+
+```
+<%= commands.typeCheck %>
+<%= commands.test %>
+<%= commands.lint %>
+```
+
+Then loop through the `reviewer` agent (per PRD §2.1) until both type-check and tests pass clean. Any new issues surfaced by the reviewer feed back into step 4 — propose, do not edit.
+
+---
+
+**References:** PRD §1.3 (fail-safe), §1.6 (5-step reviewer DoD), §1.13 (planning protocol), §2.1 (reviewer checklist).

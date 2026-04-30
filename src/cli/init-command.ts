@@ -28,6 +28,7 @@ export interface InitCommandOptions {
   nonInteractive?: boolean;
   isolation?: IsolationChoice;
   acceptRisks?: boolean;
+  refinePrompt?: boolean;
 }
 
 export async function initCommand(
@@ -58,6 +59,7 @@ export async function initCommand(
     nonInteractive: nonInteractiveFlags.enabled,
     isolation: nonInteractiveFlags.isolation ?? undefined,
     acceptRisks: nonInteractiveFlags.acceptedHostOsRisk,
+    refinePrompt: options.refinePrompt,
   };
 
   const selectedPaths = await resolveWorkspaceSelection({
@@ -164,7 +166,7 @@ async function installSinglePackage({
   logger.blank();
   logger.info('generate');
 
-  const files = await generateAll(config);
+  const files = await generateAll(config, { refinePrompt: options.refinePrompt });
   const backup = await backupExistingFiles(projectRoot, files);
 
   const manifest: AgentsWorkflowsManifest = {
@@ -207,6 +209,9 @@ async function installSinglePackage({
   logger.info('  review generated files');
   logger.info('  add rules → CLAUDE.md');
   logger.info('  config change → npx agents-workflows update');
+  if (options.refinePrompt !== false) {
+    logger.info('  4. Hand AGENTS_REFINE.md to your agent to tailor the generated agent files to this workspace.');
+  }
 
   const enabledPlugins = Object.entries(config.plugins)
     .filter(([, enabled]) => enabled)

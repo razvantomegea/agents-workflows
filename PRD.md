@@ -2003,7 +2003,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 14 — Post-Init Workspace Refinement Prompt [SHOULD]
+## Epic 14 — Post-Init Workspace Refinement Prompt [SHOULD] [DONE 2026-04-30]
+
+**Landed on** `feature/epic-14-refine-prompt`.
 
 **Goal.** Emit a dedicated `AGENTS_REFINE.md` prompt at the project root after every `init` and `update`, and print a console "next step" line pointing to it. The prompt is the executable handoff users give their agent to tailor the generated agent files to workspace reality (domain vocabulary, architecture, preferred libraries, deployment targets, data layer, team conventions). The prompt is **planning-only** (§1.13): the agent audits and proposes changes; it does not edit files until the user confirms (§1.3 fail-safe).
 

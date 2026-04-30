@@ -28,6 +28,12 @@ const SAFE_PROJECT_DESCRIPTION_MESSAGE = 'project.description must contain only 
 const safeBranch = z.string().trim().min(1).regex(SAFE_BRANCH_RE, SAFE_BRANCH_MESSAGE);
 const safeProjectPathNullable = safeProjectPath.nullable().default(null);
 
+const SAFE_STACK_VALUE_RE = /^[a-zA-Z0-9 ._/+#-]+$/;
+const SAFE_STACK_VALUE_MESSAGE =
+  'stack/tooling values must contain only letters, digits, space, dot, underscore, slash, plus, hash, hyphen';
+const safeStackValue = z.string().trim().min(1).max(100).regex(SAFE_STACK_VALUE_RE, SAFE_STACK_VALUE_MESSAGE);
+const safeStackValueNullable = safeStackValue.nullable().default(null);
+
 function isSafeProjectDescription(value: string): boolean {
   for (const char of value) {
     const code = char.charCodeAt(0);
@@ -72,24 +78,24 @@ export const stackConfigSchema = z.object({
   }),
 
   stack: z.object({
-    language: z.string(),
-    runtime: z.string(),
-    framework: z.string().nullable().default(null),
-    uiLibrary: z.string().nullable().default(null),
-    stateManagement: z.string().nullable().default(null),
-    database: z.string().nullable().default(null),
-    auth: z.string().nullable().default(null),
-    i18nLibrary: z.string().nullable().default(null),
+    language: safeStackValue,
+    runtime: safeStackValue,
+    framework: safeStackValueNullable,
+    uiLibrary: safeStackValueNullable,
+    stateManagement: safeStackValueNullable,
+    database: safeStackValueNullable,
+    auth: safeStackValueNullable,
+    i18nLibrary: safeStackValueNullable,
   }),
 
   tooling: z.object({
-    packageManager: z.string(),
+    packageManager: safeStackValue,
     packageManagerPrefix: z.union([z.literal(''), safeCommand]),
-    testFramework: z.string(),
-    testLibrary: z.string().nullable().default(null),
-    e2eFramework: z.string().nullable().default(null),
-    linter: z.string().nullable().default(null),
-    formatter: z.string().nullable().default(null),
+    testFramework: safeStackValue,
+    testLibrary: safeStackValueNullable,
+    e2eFramework: safeStackValueNullable,
+    linter: safeStackValueNullable,
+    formatter: safeStackValueNullable,
   }),
 
   paths: z.object({
