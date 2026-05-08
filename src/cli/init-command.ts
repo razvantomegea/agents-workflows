@@ -188,6 +188,7 @@ async function installSinglePackage({
     await withSafetySession(safetyFlags, async () => {
       logger.info('write:');
       const writeResult = await writeGeneratedFiles(projectRoot, files);
+      // The manifest is generator-owned state; keep it consistent even when generated files merge.
       await writeFileSafe({
         path: manifestPath,
         content: JSON.stringify(manifest, null, 2),

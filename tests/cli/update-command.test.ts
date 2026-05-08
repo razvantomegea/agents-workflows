@@ -1,6 +1,6 @@
 import { readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { updateCommand } from '../../src/cli/update-command.js';
 import type { AgentsWorkflowsManifest } from '../../src/schema/manifest.js';
 import { createTempDir } from '../generator/write-file-helpers.js';
@@ -31,7 +31,17 @@ describe('updateCommand', () => {
     };
     await writeFile(manifestPath, JSON.stringify(existingManifest, null, 2), 'utf-8');
 
-    await updateCommand(tmpDir, { nonInteractive: true, isolation: 'docker' });
+    const exitSpy = jest.spyOn(process, 'exit').mockImplementation(
+      (code?: string | number | null | undefined): never => {
+        throw new Error(`process.exit(${String(code)})`);
+      },
+    );
+
+    try {
+      await updateCommand(tmpDir, { nonInteractive: true, isolation: 'docker' });
+    } finally {
+      exitSpy.mockRestore();
+    }
 
     const updatedManifest = JSON.parse(
       await readFile(manifestPath, 'utf-8'),

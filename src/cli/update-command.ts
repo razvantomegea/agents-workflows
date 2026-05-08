@@ -132,6 +132,7 @@ export async function updateCommand(
       config,
       files: files.map((file) => file.path),
     };
+    // The manifest is generator-owned state; keep it consistent even when generated files merge.
     await writeFileSafe({
       path: manifestPath,
       content: JSON.stringify(nextManifest, null, 2),
