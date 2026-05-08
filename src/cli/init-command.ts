@@ -3,7 +3,7 @@ import { logger, sanitizeForLog } from '../utils/index.js';
 import { detectStack } from '../detector/index.js';
 import { runPromptFlow } from '../prompt/index.js';
 import { askInstallScope, type InstallScope } from '../prompt/install-scope.js';
-import { generateAll, writeFileSafe } from '../generator/index.js';
+import { generateAll, REPLACE_WITH_INCOMING, writeFileSafe } from '../generator/index.js';
 import { withSafetySession } from './safety-session.js';
 import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, restoreBackupFiles } from '../installer/index.js';
@@ -192,6 +192,7 @@ async function installSinglePackage({
         path: manifestPath,
         content: JSON.stringify(manifest, null, 2),
         displayPath: '.agents-workflows.json',
+        merge: REPLACE_WITH_INCOMING,
       });
       if (writeResult.skippedPaths.length > 0) {
         logger.warn(`skip: ${writeResult.skippedPaths.length} md files unchanged`);

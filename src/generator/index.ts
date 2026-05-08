@@ -82,3 +82,4 @@ export type {
 export { mergeJson, MANAGED_JSON_KEYS } from './merge-json.js';
 export type { JsonValue, JsonObject, JsonArray } from './merge-json.js';
 export { mergeMarkdown } from './merge-markdown.js';
+export { REPLACE_WITH_INCOMING } from './replace-with-incoming.js';

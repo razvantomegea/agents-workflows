@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { confirm } from '@inquirer/prompts';
 import { logger, fileExists } from '../utils/index.js';
 import { manifestSchema } from '../schema/manifest.js';
-import { generateAll, writeFileSafe } from '../generator/index.js';
+import { generateAll, REPLACE_WITH_INCOMING, writeFileSafe } from '../generator/index.js';
 import { withSafetySession } from './safety-session.js';
 import { parseSafetyFlags } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles, safeDeleteStaleFiles, STALE_IMPLEMENTER_VARIANT_FILES } from '../installer/index.js';
@@ -136,6 +136,7 @@ export async function updateCommand(
       path: manifestPath,
       content: JSON.stringify(nextManifest, null, 2),
       displayPath: '.agents-workflows.json',
+      merge: REPLACE_WITH_INCOMING,
     });
     await safeDeleteStaleFiles({
       projectRoot,
