@@ -2,7 +2,8 @@ import { lstat, realpath, mkdir, rename } from 'node:fs/promises';
 import { resolve, sep, isAbsolute, relative, normalize } from 'node:path';
 import { createHash } from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
-import { hasNodeErrorCode, logger } from '../utils/index.js';
+import { logger } from '../utils/logger.js';
+import { hasNodeErrorCode } from '../utils/fs-error.js';
 
 const BACKUP_DIR = '.agents-workflows-backup';
 export const STALE_IMPLEMENTER_VARIANT_FILES = [

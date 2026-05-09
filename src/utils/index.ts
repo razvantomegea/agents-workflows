@@ -10,4 +10,3 @@ export { renderUnifiedDiff, computeUnifiedPatch, DIFF_LINE_CAP } from './diff.js
 export type { RenderDiffInput } from './diff.js';
 export { cavemanCompress } from './caveman-compress.js';
 export { assertPathInsideProject } from './path-safety.js';
-export { hasNodeErrorCode } from './fs-error.js';

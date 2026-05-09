@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { PLUGIN_REGISTRY } from './plugin-registry.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratedFile, GeneratorContext } from './types.js';
-import { hasNodeErrorCode } from '../utils/index.js';
+import { hasNodeErrorCode } from '../utils/fs-error.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGINS_DIR = join(MODULE_DIR, '..', 'plugins');
