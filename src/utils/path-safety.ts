@@ -14,6 +14,9 @@ async function findExistingPath(startPath: string): Promise<string> {
       await lstat(currentPath);
       return currentPath;
     } catch (error) {
+      if (hasNodeErrorCode(error, 'ENOTDIR')) {
+        throw new Error(`Path component is not a directory: ${currentPath}`, { cause: error });
+      }
       if (!hasNodeErrorCode(error, 'ENOENT')) {
         throw error;
       }
@@ -35,12 +38,12 @@ async function findExistingPath(startPath: string): Promise<string> {
  * write access to the project can still swap a checked directory for a symlink
  * between this call and the following filesystem operation.
  */
-export async function assertPathInsideProject(params: {
+export async function assertPathInsideProject(params: Readonly<{
   projectRoot: string;
   targetPath: string;
   displayPath: string;
   operation: string;
-}): Promise<void> {
+}>): Promise<void> {
   const { projectRoot, targetPath, displayPath, operation } = params;
   const resolvedRoot = resolve(projectRoot);
   const resolvedTarget = resolve(targetPath);
