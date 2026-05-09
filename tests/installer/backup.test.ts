@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { describe, expect, it } from '@jest/globals';
 import { backupExistingFiles, restoreBackupFiles } from '../../src/installer/backup.js';
 import type { GeneratedFile } from '../../src/generator/types.js';
 

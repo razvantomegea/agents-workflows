@@ -4,8 +4,7 @@ import { fileExists } from '../utils/file-exists.js';
 import { assertPathInsideProject } from '../utils/path-safety.js';
 import type { GeneratedFile } from '../generator/types.js';
 import { logger } from '../utils/logger.js';
-
-const BACKUP_DIR = '.agents-workflows-backup';
+import { BACKUP_DIR } from './constants.js';
 
 export interface BackupState {
   backedUpPaths: string[];
@@ -21,6 +20,7 @@ export async function backupExistingFiles(
 
   for (const file of files) {
     const srcPath = join(projectRoot, file.path);
+    // Must run before fileExists: fs.access follows symlinks.
     await assertPathInsideProject({
       projectRoot,
       targetPath: srcPath,

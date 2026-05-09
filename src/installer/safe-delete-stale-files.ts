@@ -4,8 +4,7 @@ import { createHash } from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
 import { logger } from '../utils/logger.js';
 import { hasNodeErrorCode } from '../utils/fs-error.js';
-
-const BACKUP_DIR = '.agents-workflows-backup';
+import { BACKUP_DIR } from './constants.js';
 export const STALE_IMPLEMENTER_VARIANT_FILES = [
   '.claude/agents/react-ts-senior.md',
   '.codex/skills/react-ts-senior/SKILL.md',
