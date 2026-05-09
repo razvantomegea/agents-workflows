@@ -5,6 +5,7 @@ import { confirm } from '@inquirer/prompts';
 import { logger } from '../utils/logger.js';
 import { hasNodeErrorCode } from '../utils/fs-error.js';
 import { BACKUP_DIR } from './constants.js';
+
 export const STALE_IMPLEMENTER_VARIANT_FILES = [
   '.claude/agents/react-ts-senior.md',
   '.codex/skills/react-ts-senior/SKILL.md',
@@ -66,6 +67,7 @@ export async function safeDeleteStaleFiles(
   const normalizedRealRoot = `${realProjectRoot}${sep}`;
 
   for (const candidate of candidates) {
+    // reason: stale cleanup is best-effort; skip unsafe candidates instead of aborting the whole update.
     if (isAbsolute(candidate)) {
       logger.warn(`Skipping absolute candidate path: ${candidate}`);
       continue;

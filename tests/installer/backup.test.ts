@@ -93,4 +93,27 @@ describe('backupExistingFiles and restoreBackupFiles', () => {
       await rm(outsideRoot, { recursive: true, force: true });
     }
   });
+
+  it('refuses to restore from a symlink-escaped backup directory', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'agents-backup-'));
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-backup-outside-'));
+    const outsideFile = join(outsideRoot, '.claude', 'settings.json');
+
+    try {
+      await mkdir(dirname(outsideFile), { recursive: true });
+      await writeFile(outsideFile, 'outside-backup', 'utf-8');
+      await symlink(outsideRoot, join(projectRoot, '.agents-workflows-backup'), 'dir');
+
+      await expect(
+        restoreBackupFiles(projectRoot, {
+          backedUpPaths: ['.claude/settings.json'],
+          newPaths: [],
+        }),
+      ).rejects.toThrow(/outside project root/);
+      await expect(readFile(outsideFile, 'utf-8')).resolves.toBe('outside-backup');
+    } finally {
+      await rm(projectRoot, { recursive: true, force: true });
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
 });
