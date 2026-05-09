@@ -1,6 +1,7 @@
 import { copyFile, mkdir, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { fileExists } from '../utils/file-exists.js';
+import { assertPathInsideProject } from '../utils/path-safety.js';
 import type { GeneratedFile } from '../generator/types.js';
 import { logger } from '../utils/logger.js';
 
@@ -20,8 +21,20 @@ export async function backupExistingFiles(
 
   for (const file of files) {
     const srcPath = join(projectRoot, file.path);
+    await assertPathInsideProject({
+      projectRoot,
+      targetPath: srcPath,
+      displayPath: file.path,
+      operation: 'back up',
+    });
     if (await fileExists(srcPath)) {
       const backupPath = join(projectRoot, BACKUP_DIR, file.path);
+      await assertPathInsideProject({
+        projectRoot,
+        targetPath: backupPath,
+        displayPath: `${BACKUP_DIR}/${file.path}`,
+        operation: 'write backup',
+      });
       await mkdir(dirname(backupPath), { recursive: true });
       await copyFile(srcPath, backupPath);
       backedUpPaths.push(file.path);
@@ -44,12 +57,31 @@ export async function restoreBackupFiles(
   for (const path of backup.backedUpPaths) {
     const backupPath = join(projectRoot, BACKUP_DIR, path);
     const targetPath = join(projectRoot, path);
+    await assertPathInsideProject({
+      projectRoot,
+      targetPath: backupPath,
+      displayPath: `${BACKUP_DIR}/${path}`,
+      operation: 'read backup',
+    });
+    await assertPathInsideProject({
+      projectRoot,
+      targetPath,
+      displayPath: path,
+      operation: 'restore',
+    });
     await mkdir(dirname(targetPath), { recursive: true });
     await copyFile(backupPath, targetPath);
   }
 
   for (const path of backup.newPaths) {
-    await rm(join(projectRoot, path), { force: true });
+    const targetPath = join(projectRoot, path);
+    await assertPathInsideProject({
+      projectRoot,
+      targetPath,
+      displayPath: path,
+      operation: 'remove generated file',
+    });
+    await rm(targetPath, { force: true });
   }
 
   if (backup.backedUpPaths.length > 0 || backup.newPaths.length > 0) {

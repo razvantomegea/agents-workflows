@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
@@ -83,5 +83,19 @@ describe('writeGeneratedFiles', () => {
       .resolves.toBe('{"ok":true}');
     expect(result.writtenPaths).toEqual(['.agents-workflows.json']);
     expect(prompt).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses to write through a symlinked generated directory', async () => {
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-write-outside-'));
+    const files: GeneratedFile[] = [{ path: '.claude/settings.json', content: '{"ok":true}' }];
+
+    try {
+      await symlink(outsideRoot, join(projectRoot, '.claude'), 'dir');
+
+      await expect(writeGeneratedFiles(projectRoot, files)).rejects.toThrow(/outside project root/);
+      await expect(readFile(join(outsideRoot, 'settings.json'), 'utf-8')).rejects.toThrow();
+    } finally {
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
   });
 });

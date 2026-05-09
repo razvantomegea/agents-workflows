@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { fileExists, renderUnifiedDiff, logger } from '../utils/index.js';
+import { assertPathInsideProject, fileExists, renderUnifiedDiff, logger } from '../utils/index.js';
 
 export type WriteFileStatus = 'written' | 'skipped' | 'merged' | 'unchanged';
 export type MergeStrategy = 'keep' | 'overwrite' | 'merge';
@@ -16,6 +16,7 @@ export interface WriteFileInput {
   content: string;
   merge?: MergeFunction;
   displayPath?: string;
+  projectRoot?: string;
 }
 
 export interface WriteFileResult {
@@ -87,8 +88,17 @@ async function performWrite(path: string, content: string): Promise<void> {
 }
 
 export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileResult> {
-  const { path, content, merge, displayPath } = input;
+  const { path, content, merge, displayPath, projectRoot } = input;
   const label = displayPath ?? path;
+
+  if (projectRoot != null) {
+    await assertPathInsideProject({
+      projectRoot,
+      targetPath: path,
+      displayPath: label,
+      operation: 'write',
+    });
+  }
 
   if (!(await fileExists(path))) {
     await performWrite(path, content);

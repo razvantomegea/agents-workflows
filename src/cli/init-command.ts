@@ -192,6 +192,7 @@ async function installSinglePackage({
         path: manifestPath,
         content: JSON.stringify(manifest, null, 2),
         displayPath: '.agents-workflows.json',
+        projectRoot,
       });
       if (writeResult.skippedPaths.length > 0) {
         logger.warn(`skip: ${writeResult.skippedPaths.length} md files unchanged`);

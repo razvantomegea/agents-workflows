@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { backupExistingFiles, restoreBackupFiles } from '../../src/installer/backup.js';
@@ -28,6 +28,43 @@ describe('backupExistingFiles and restoreBackupFiles', () => {
       await expect(readFile(join(projectRoot, 'nested/new.txt'), 'utf-8')).rejects.toThrow();
     } finally {
       await rm(projectRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to back up paths that resolve outside the project', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'agents-backup-'));
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-backup-outside-'));
+    const files: GeneratedFile[] = [{ path: '.claude/settings.json', content: '{}' }];
+
+    try {
+      await symlink(outsideRoot, join(projectRoot, '.claude'), 'dir');
+
+      await expect(backupExistingFiles(projectRoot, files)).rejects.toThrow(/outside project root/);
+    } finally {
+      await rm(projectRoot, { recursive: true, force: true });
+      await rm(outsideRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to restore by removing a symlink-escaped new path', async () => {
+    const projectRoot = await mkdtemp(join(tmpdir(), 'agents-backup-'));
+    const outsideRoot = await mkdtemp(join(tmpdir(), 'agents-backup-outside-'));
+    const outsideFile = join(outsideRoot, 'settings.json');
+
+    try {
+      await writeFile(outsideFile, 'external', 'utf-8');
+      await symlink(outsideRoot, join(projectRoot, '.claude'), 'dir');
+
+      await expect(
+        restoreBackupFiles(projectRoot, {
+          backedUpPaths: [],
+          newPaths: ['.claude/settings.json'],
+        }),
+      ).rejects.toThrow(/outside project root/);
+      await expect(readFile(outsideFile, 'utf-8')).resolves.toBe('external');
+    } finally {
+      await rm(projectRoot, { recursive: true, force: true });
+      await rm(outsideRoot, { recursive: true, force: true });
     }
   });
 });

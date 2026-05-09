@@ -136,6 +136,7 @@ export async function updateCommand(
       path: manifestPath,
       content: JSON.stringify(nextManifest, null, 2),
       displayPath: '.agents-workflows.json',
+      projectRoot,
     });
     await safeDeleteStaleFiles({
       projectRoot,
