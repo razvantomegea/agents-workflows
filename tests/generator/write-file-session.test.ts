@@ -32,7 +32,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'old', 'utf-8');
 
-    const result = await writeFileSafe({ path, content: 'new' });
+    const result = await writeFileSafe({ path, content: 'new', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'skipped', path });
     expect(prompt).not.toHaveBeenCalled();
@@ -45,7 +45,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'old', 'utf-8');
 
-    const result = await writeFileSafe({ path, content: 'new' });
+    const result = await writeFileSafe({ path, content: 'new', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'written', path });
     expect(prompt).not.toHaveBeenCalled();
@@ -59,7 +59,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await writeFile(path, 'base', 'utf-8');
 
     const mergeFn: MergeFunction = ({ existing, incoming }) => `${existing}|${incoming}`;
-    const result = await writeFileSafe({ path, content: 'patch', merge: mergeFn });
+    const result = await writeFileSafe({ path, content: 'patch', merge: mergeFn, projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'merged', path });
     expect(prompt).not.toHaveBeenCalled();
@@ -72,7 +72,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'old', 'utf-8');
 
-    const result = await writeFileSafe({ path, content: 'new' });
+    const result = await writeFileSafe({ path, content: 'new', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'skipped', path });
     expect(prompt).not.toHaveBeenCalled();
@@ -86,7 +86,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'old', 'utf-8');
 
-    await writeFileSafe({ path, content: 'new' });
+    await writeFileSafe({ path, content: 'new', projectRoot: tmpDir });
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringMatching(/merge.*skipping/i),
@@ -99,7 +99,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await writeFile(path, 'same', 'utf-8');
 
     const mergeFn: MergeFunction = ({ existing, incoming }) => `${existing}+extra+${incoming}`;
-    const result = await writeFileSafe({ path, content: 'same', merge: mergeFn });
+    const result = await writeFileSafe({ path, content: 'same', merge: mergeFn, projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'merged', path });
     await expect(readFile(path, 'utf-8')).resolves.toBe('same+extra+same');
@@ -114,7 +114,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     const mergeFn = jest.fn<MergeFunction>(
       ({ existing, incoming }) => `${existing}|${incoming}`,
     );
-    const result = await writeFileSafe({ path, content: 'patch', merge: mergeFn });
+    const result = await writeFileSafe({ path, content: 'patch', merge: mergeFn, projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'written', path });
     expect(mergeFn).not.toHaveBeenCalled();
@@ -128,11 +128,11 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await writeFile(pathA, 'old', 'utf-8');
     await writeFile(pathB, 'old', 'utf-8');
 
-    await writeFileSafe({ path: pathA, content: 'new' });
+    await writeFileSafe({ path: pathA, content: 'new', projectRoot: tmpDir });
     resetWriteSession();
 
     const promptY = makePrompt('y');
-    const result = await writeFileSafe({ path: pathB, content: 'new' });
+    const result = await writeFileSafe({ path: pathB, content: 'new', projectRoot: tmpDir });
 
     expect(result.status).toBe('written');
     expect(promptY).toHaveBeenCalledTimes(1);

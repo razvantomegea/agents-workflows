@@ -16,7 +16,7 @@ export interface WriteFileInput {
   content: string;
   merge?: MergeFunction;
   displayPath?: string;
-  projectRoot?: string;
+  projectRoot: string;
 }
 
 export interface WriteFileResult {
@@ -91,14 +91,12 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   const { path, content, merge, displayPath, projectRoot } = input;
   const label = displayPath ?? path;
 
-  if (projectRoot != null) {
-    await assertPathInsideProject({
-      projectRoot,
-      targetPath: path,
-      displayPath: label,
-      operation: 'write',
-    });
-  }
+  await assertPathInsideProject({
+    projectRoot,
+    targetPath: path,
+    displayPath: label,
+    operation: 'write',
+  });
 
   if (!(await fileExists(path))) {
     await performWrite(path, content);

@@ -1,9 +1,6 @@
 import { lstat, realpath } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
-
-function hasErrorCode(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
-}
+import { hasNodeErrorCode } from './fs-error.js';
 
 function isInsidePath(rootPath: string, targetPath: string): boolean {
   return targetPath === rootPath || targetPath.startsWith(`${rootPath}${sep}`);
@@ -17,7 +14,7 @@ async function findExistingPath(startPath: string): Promise<string> {
       await lstat(currentPath);
       return currentPath;
     } catch (error) {
-      if (!hasErrorCode(error, 'ENOENT')) {
+      if (!hasNodeErrorCode(error, 'ENOENT')) {
         throw error;
       }
     }
@@ -30,6 +27,14 @@ async function findExistingPath(startPath: string): Promise<string> {
   }
 }
 
+/**
+ * Verifies that targetPath and its nearest existing ancestor resolve inside
+ * projectRoot before path-based filesystem calls that follow symlinks.
+ *
+ * This check is not atomic with the subsequent I/O. A concurrent process with
+ * write access to the project can still swap a checked directory for a symlink
+ * between this call and the following filesystem operation.
+ */
 export async function assertPathInsideProject(params: {
   projectRoot: string;
   targetPath: string;

@@ -4,13 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { PLUGIN_REGISTRY } from './plugin-registry.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratedFile, GeneratorContext } from './types.js';
+import { hasNodeErrorCode } from '../utils/index.js';
 
 const MODULE_DIR = dirname(fileURLToPath(import.meta.url));
 const PLUGINS_DIR = join(MODULE_DIR, '..', 'plugins');
-
-function hasErrorCode(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
-}
 
 export async function generatePlugins(
   config: StackConfig,
@@ -29,7 +26,7 @@ export async function generatePlugins(
       try {
         content = await readFile(skillFile, 'utf-8');
       } catch (error) {
-        if (hasErrorCode(error, 'ENOENT')) {
+        if (hasNodeErrorCode(error, 'ENOENT')) {
           console.warn(`Plugin skill missing: ${plugin.id}/${skill.id}/SKILL.md — run pnpm fetch-plugins`);
           continue;
         }

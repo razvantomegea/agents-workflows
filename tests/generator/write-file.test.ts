@@ -24,7 +24,7 @@ describe('writeFileSafe — basic write behaviors', () => {
     const prompt = makePrompt('n');
     const path = join(tmpDir, 'new.md');
 
-    const result = await writeFileSafe({ path, content: 'hello' });
+    const result = await writeFileSafe({ path, content: 'hello', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'written', path });
     await expect(readFile(path, 'utf-8')).resolves.toBe('hello');
@@ -36,7 +36,7 @@ describe('writeFileSafe — basic write behaviors', () => {
     const path = join(tmpDir, 'same.md');
     await writeFile(path, 'same', 'utf-8');
 
-    const result = await writeFileSafe({ path, content: 'same' });
+    const result = await writeFileSafe({ path, content: 'same', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'unchanged', path });
     expect(prompt).not.toHaveBeenCalled();
@@ -47,7 +47,7 @@ describe('writeFileSafe — basic write behaviors', () => {
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'old', 'utf-8');
 
-    const result = await writeFileSafe({ path, content: 'new' });
+    const result = await writeFileSafe({ path, content: 'new', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'written', path });
     await expect(readFile(path, 'utf-8')).resolves.toBe('new');
@@ -58,7 +58,7 @@ describe('writeFileSafe — basic write behaviors', () => {
     const path = join(tmpDir, 'file.md');
     await writeFile(path, 'original', 'utf-8');
 
-    const result = await writeFileSafe({ path, content: 'changed' });
+    const result = await writeFileSafe({ path, content: 'changed', projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'skipped', path });
     await expect(readFile(path, 'utf-8')).resolves.toBe('original');
@@ -71,10 +71,10 @@ describe('writeFileSafe — basic write behaviors', () => {
     await writeFile(pathA, 'old-a', 'utf-8');
     await writeFile(pathB, 'old-b', 'utf-8');
 
-    const resultA = await writeFileSafe({ path: pathA, content: 'new-a' });
+    const resultA = await writeFileSafe({ path: pathA, content: 'new-a', projectRoot: tmpDir });
     expect(resultA.status).toBe('written');
 
-    const resultB = await writeFileSafe({ path: pathB, content: 'new-b' });
+    const resultB = await writeFileSafe({ path: pathB, content: 'new-b', projectRoot: tmpDir });
     expect(resultB.status).toBe('written');
     expect(prompt).toHaveBeenCalledTimes(1);
     await expect(readFile(pathB, 'utf-8')).resolves.toBe('new-b');
@@ -87,10 +87,10 @@ describe('writeFileSafe — basic write behaviors', () => {
     await writeFile(pathA, 'old-a', 'utf-8');
     await writeFile(pathB, 'old-b', 'utf-8');
 
-    const resultA = await writeFileSafe({ path: pathA, content: 'new-a' });
+    const resultA = await writeFileSafe({ path: pathA, content: 'new-a', projectRoot: tmpDir });
     expect(resultA.status).toBe('skipped');
 
-    const resultB = await writeFileSafe({ path: pathB, content: 'new-b' });
+    const resultB = await writeFileSafe({ path: pathB, content: 'new-b', projectRoot: tmpDir });
     expect(resultB.status).toBe('skipped');
     expect(prompt).toHaveBeenCalledTimes(1);
     await expect(readFile(pathB, 'utf-8')).resolves.toBe('old-b');
@@ -102,7 +102,7 @@ describe('writeFileSafe — basic write behaviors', () => {
     await writeFile(path, 'existing', 'utf-8');
 
     const mergeFn: MergeFunction = ({ existing, incoming }) => `${existing}+${incoming}`;
-    const result = await writeFileSafe({ path, content: 'incoming', merge: mergeFn });
+    const result = await writeFileSafe({ path, content: 'incoming', merge: mergeFn, projectRoot: tmpDir });
 
     expect(result).toEqual({ status: 'merged', path });
     await expect(readFile(path, 'utf-8')).resolves.toBe('existing+incoming');

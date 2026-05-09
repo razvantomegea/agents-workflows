@@ -2,17 +2,13 @@ import { lstat, realpath, mkdir, rename } from 'node:fs/promises';
 import { resolve, sep, isAbsolute, relative, normalize } from 'node:path';
 import { createHash } from 'node:crypto';
 import { confirm } from '@inquirer/prompts';
-import { logger } from '../utils/index.js';
+import { hasNodeErrorCode, logger } from '../utils/index.js';
 
 const BACKUP_DIR = '.agents-workflows-backup';
 export const STALE_IMPLEMENTER_VARIANT_FILES = [
   '.claude/agents/react-ts-senior.md',
   '.codex/skills/react-ts-senior/SKILL.md',
 ] as const;
-
-function hasErrorCode(error: unknown, code: string): boolean {
-  return typeof error === 'object' && error !== null && 'code' in error && error.code === code;
-}
 
 function buildBackupFileName(relativePath: string): string {
   const safeName = relativePath.replace(/[^A-Za-z0-9_.-]/g, '_');
@@ -29,7 +25,7 @@ async function ensureBackupDirectory(params: Readonly<{
   const backupRoot = resolve(projectRoot, BACKUP_DIR);
 
   const backupStat = await lstat(backupRoot).catch((error: unknown) => {
-    if (hasErrorCode(error, 'ENOENT')) {
+    if (hasNodeErrorCode(error, 'ENOENT')) {
       return null;
     }
     throw error;
@@ -85,7 +81,7 @@ export async function safeDeleteStaleFiles(
 
     try {
       const stat = await lstat(absolutePath).catch((error: unknown) => {
-        if (hasErrorCode(error, 'ENOENT')) {
+        if (hasNodeErrorCode(error, 'ENOENT')) {
           return null;
         }
         throw error;
