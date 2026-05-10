@@ -107,4 +107,16 @@ describe('writeFileSafe — basic write behaviors', () => {
     expect(result).toEqual({ status: 'merged', path });
     await expect(readFile(path, 'utf-8')).resolves.toBe('existing+incoming');
   });
+
+  it('skips when prompt answer is m and merge preserves existing content', async () => {
+    makePrompt('m');
+    const path = join(tmpDir, 'file.md');
+    await writeFile(path, 'existing', 'utf-8');
+
+    const mergeFn: MergeFunction = ({ existing }) => existing;
+    const result = await writeFileSafe({ path, content: 'incoming', merge: mergeFn });
+
+    expect(result).toEqual({ status: 'skipped', path });
+    await expect(readFile(path, 'utf-8')).resolves.toBe('existing');
+  });
 });
