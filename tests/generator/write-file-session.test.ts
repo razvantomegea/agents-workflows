@@ -66,6 +66,20 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await expect(readFile(path, 'utf-8')).resolves.toBe('base|patch');
   });
 
+  it('skips without prompt when session override is merge and merge preserves existing content', async () => {
+    const prompt = makePrompt('n');
+    configureWriteSession({ override: 'merge' });
+    const path = join(tmpDir, 'file.md');
+    await writeFile(path, 'existing', 'utf-8');
+
+    const mergeFn: MergeFunction = ({ existing }) => existing;
+    const result = await writeFileSafe({ path, content: 'incoming', merge: mergeFn });
+
+    expect(result).toEqual({ status: 'skipped', path });
+    expect(prompt).not.toHaveBeenCalled();
+    await expect(readFile(path, 'utf-8')).resolves.toBe('existing');
+  });
+
   it('skips with a warn when override is merge but no merge fn provided', async () => {
     const prompt = makePrompt('n');
     configureWriteSession({ override: 'merge' });
