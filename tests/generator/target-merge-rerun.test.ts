@@ -68,19 +68,43 @@ describe('target re-run merge preservation', () => {
     },
   );
 
-  it('preserves an existing unmanaged AGENTS.md during merge-mode re-run', async () => {
-    const files = await renderAllTargets();
-    const agentsFile = files.find((file: { path: string }) => file.path === 'AGENTS.md');
-    expect(agentsFile).toBeDefined();
-    expect(agentsFile?.merge).toBeDefined();
+  interface UnmanagedMergeCase {
+    path: string;
+    manualContent: string;
+  }
 
-    const manualRules = '# AGENTS.md\n\nManual team rules without managed sentinel.\n';
-    const fullPath = join(projectRoot, agentsFile!.path);
-    await writeFileEnsuringDir(fullPath, manualRules);
+  const unmanagedCases: readonly UnmanagedMergeCase[] = [
+    {
+      path: 'AGENTS.md',
+      manualContent: '# AGENTS.md\n\nManual team rules without managed sentinel.\n',
+    },
+    {
+      path: '.cursor/rules/00-fail-safe.mdc',
+      manualContent: '---\nalwaysApply: true\n---\nManual Cursor rules without managed sentinel.\n',
+    },
+    {
+      path: '.windsurf/rules/00-fail-safe.md',
+      manualContent: '---\nactivation: always_on\n---\nManual Windsurf rules without managed sentinel.\n',
+    },
+  ];
 
-    await writeGeneratedFiles(projectRoot, [agentsFile!]);
+  it.each(unmanagedCases)(
+    'preserves existing unmanaged $path during merge-mode re-run',
+    async ({ path, manualContent }: UnmanagedMergeCase) => {
+      const files = await renderAllTargets();
+      const generatedFile = files.find((file: { path: string }) => file.path === path);
+      expect(generatedFile).toBeDefined();
+      expect(generatedFile?.merge).toBeDefined();
 
-    const finalContent = await readFile(fullPath, 'utf-8');
-    expect(finalContent).toBe(manualRules);
-  });
+      const fullPath = join(projectRoot, generatedFile!.path);
+      await writeFileEnsuringDir(fullPath, manualContent);
+
+      const result = await writeGeneratedFiles(projectRoot, [generatedFile!]);
+
+      const finalContent = await readFile(fullPath, 'utf-8');
+      expect(finalContent).toBe(manualContent);
+      expect(result.mergedPaths).toEqual([]);
+      expect(result.skippedPaths).toEqual([path]);
+    },
+  );
 });
