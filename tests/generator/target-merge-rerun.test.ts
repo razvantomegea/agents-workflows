@@ -67,4 +67,20 @@ describe('target re-run merge preservation', () => {
       expect(finalContent).toContain(expectedSnippet);
     },
   );
+
+  it('preserves an existing unmanaged AGENTS.md during merge-mode re-run', async () => {
+    const files = await renderAllTargets();
+    const agentsFile = files.find((file: { path: string }) => file.path === 'AGENTS.md');
+    expect(agentsFile).toBeDefined();
+    expect(agentsFile?.merge).toBeDefined();
+
+    const manualRules = '# AGENTS.md\n\nManual team rules without managed sentinel.\n';
+    const fullPath = join(projectRoot, agentsFile!.path);
+    await writeFileEnsuringDir(fullPath, manualRules);
+
+    await writeGeneratedFiles(projectRoot, [agentsFile!]);
+
+    const finalContent = await readFile(fullPath, 'utf-8');
+    expect(finalContent).toBe(manualRules);
+  });
 });
