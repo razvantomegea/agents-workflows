@@ -103,6 +103,8 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
 
   if (existing === content && merge != null) {
     const merged = await merge({ existing, incoming: content, path });
+    // Identical incoming has no pending update to skip; differing incoming that
+    // a merge function declines is reported as skipped in the merge branches.
     if (merged === existing) return { status: 'unchanged', path };
     await performWrite(path, merged);
     return { status: 'merged', path };
