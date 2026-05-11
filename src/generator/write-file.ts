@@ -1,6 +1,7 @@
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { readFile, writeFile, mkdir, rename, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { fileExists, renderUnifiedDiff, logger } from '../utils/index.js';
+import { fileExists, renderUnifiedDiff, logger, sanitizeForLog } from '../utils/index.js';
 
 export type WriteFileStatus = 'written' | 'skipped' | 'merged' | 'unchanged';
 export type MergeStrategy = 'keep' | 'overwrite' | 'merge';
@@ -82,8 +83,16 @@ async function defaultPromptFn({ path, canMerge }: { path: string; canMerge: boo
 }
 
 async function performWrite(path: string, content: string): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, content, 'utf-8');
+  const targetDir = dirname(path);
+  await mkdir(targetDir, { recursive: true });
+  const tempPath = `${path}.${process.pid}.${randomBytes(6).toString('hex')}.tmp`;
+  try {
+    await writeFile(tempPath, content, 'utf-8');
+    await rename(tempPath, path);
+  } catch (error) {
+    await rm(tempPath, { force: true }).catch(() => undefined);
+    throw error;
+  }
 }
 
 async function performMerge(input: {
@@ -113,7 +122,7 @@ async function performMerge(input: {
 
 export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileResult> {
   const { path, content, merge, displayPath } = input;
-  const label = displayPath ?? path;
+  const label = sanitizeForLog(displayPath ?? path);
 
   if (!(await fileExists(path))) {
     await performWrite(path, content);

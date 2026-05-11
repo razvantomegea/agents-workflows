@@ -146,6 +146,9 @@ describe('writeFileSafe — session overrides and special cases', () => {
 
     expect(result).toEqual({ status: 'unchanged', path });
     expect(prompt).toHaveBeenCalledTimes(1);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('merge kept existing file'),
+    );
     await expect(readFile(path, 'utf-8')).resolves.toBe(existingContent);
   });
 
