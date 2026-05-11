@@ -11,6 +11,16 @@ import type { MergeFunction } from '../../src/generator/write-file.js';
 import { logger } from '../../src/utils/index.js';
 import { makePrompt, restorePrompt, createTempDir } from './write-file-helpers.js';
 
+function buildManagedMarkdown(title: string): string {
+  return [
+    `# ${title}`,
+    '<!-- agents-workflows:managed-start -->',
+    'generated',
+    '<!-- agents-workflows:managed-end -->',
+    '',
+  ].join('\n');
+}
+
 describe('writeFileSafe — session overrides and special cases', () => {
   let tmpDir: string;
   let warnSpy: ReturnType<typeof jest.spyOn>;
@@ -72,18 +82,11 @@ describe('writeFileSafe — session overrides and special cases', () => {
     configureWriteSession({ override: 'merge' });
     const path = join(tmpDir, 'AGENTS.md');
     const customContent = '# Custom agent rules\n\nDo not overwrite this file.\n';
-    const generatedContent = [
-      '# AGENTS.md',
-      '<!-- agents-workflows:managed-start -->',
-      'generated',
-      '<!-- agents-workflows:managed-end -->',
-      '',
-    ].join('\n');
     await writeFile(path, customContent, 'utf-8');
 
     const result = await writeFileSafe({
       path,
-      content: generatedContent,
+      content: buildManagedMarkdown('AGENTS.md'),
       merge: mergeManagedTail,
     });
 
@@ -96,24 +99,51 @@ describe('writeFileSafe — session overrides and special cases', () => {
     const prompt = makePrompt('m');
     const path = join(tmpDir, 'CLAUDE.md');
     const customContent = '# Custom Claude rules\n\nKeep this file.\n';
-    const generatedContent = [
-      '# CLAUDE.md',
-      '<!-- agents-workflows:managed-start -->',
-      'generated',
-      '<!-- agents-workflows:managed-end -->',
-      '',
-    ].join('\n');
     await writeFile(path, customContent, 'utf-8');
 
     const result = await writeFileSafe({
       path,
-      content: generatedContent,
+      content: buildManagedMarkdown('CLAUDE.md'),
       merge: mergeManagedTail,
     });
 
     expect(result).toEqual({ status: 'unchanged', path });
     expect(prompt).toHaveBeenCalledTimes(1);
     await expect(readFile(path, 'utf-8')).resolves.toBe(customContent);
+  });
+
+  it('preserves sentinel-less files when overwrite-all is sticky', async () => {
+    makePrompt('n');
+    configureWriteSession({ stickyAll: true });
+    const path = join(tmpDir, 'AGENTS.md');
+    const customContent = '# Custom agent rules\n\nNo sentinel.\n';
+    await writeFile(path, customContent, 'utf-8');
+
+    const result = await writeFileSafe({
+      path,
+      content: buildManagedMarkdown('AGENTS.md'),
+      merge: mergeManagedTail,
+    });
+
+    expect(result).toEqual({ status: 'unchanged', path });
+    await expect(readFile(path, 'utf-8')).resolves.toBe(customContent);
+  });
+
+  it('preserves existing managed files when incoming lacks a sentinel', async () => {
+    makePrompt('n');
+    configureWriteSession({ override: 'merge' });
+    const path = join(tmpDir, 'AGENTS.md');
+    const existingContent = `${buildManagedMarkdown('AGENTS.md')}\n## Team override\n`;
+    await writeFile(path, existingContent, 'utf-8');
+
+    const result = await writeFileSafe({
+      path,
+      content: '# Broken generated file\n',
+      merge: mergeManagedTail,
+    });
+
+    expect(result).toEqual({ status: 'unchanged', path });
+    await expect(readFile(path, 'utf-8')).resolves.toBe(existingContent);
   });
 
   it('skips with a warn when override is merge but no merge fn provided', async () => {
@@ -155,7 +185,7 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await expect(readFile(path, 'utf-8')).resolves.toBe('same+extra+same');
   });
 
-  it('S6: stickyAll overwrites even when a merge callback is provided', async () => {
+  it('S6: stickyAll uses merge when a merge callback is provided', async () => {
     makePrompt('n');
     configureWriteSession({ stickyAll: true });
     const path = join(tmpDir, 'file.md');
@@ -166,9 +196,9 @@ describe('writeFileSafe — session overrides and special cases', () => {
     );
     const result = await writeFileSafe({ path, content: 'patch', merge: mergeFn });
 
-    expect(result).toEqual({ status: 'written', path });
-    expect(mergeFn).not.toHaveBeenCalled();
-    await expect(readFile(path, 'utf-8')).resolves.toBe('patch');
+    expect(result).toEqual({ status: 'merged', path });
+    expect(mergeFn).toHaveBeenCalledTimes(1);
+    await expect(readFile(path, 'utf-8')).resolves.toBe('base|patch');
   });
 
   it('resetWriteSession clears sticky state so next call prompts again', async () => {

@@ -28,6 +28,9 @@ export function mergeManagedTail({ existing, incoming }: { existing: string; inc
   if (!existing.includes(MANAGED_END_SENTINEL)) {
     return existing;
   }
+  if (!incoming.includes(MANAGED_END_SENTINEL)) {
+    return existing;
+  }
   const existingTail = splitOnManagedSentinel(existing).userTail;
   if (existingTail.trim() === '') return incoming;
   const incomingManaged = splitOnManagedSentinel(incoming).managed;
