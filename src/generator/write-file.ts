@@ -90,6 +90,7 @@ async function performWrite(path: string, content: string): Promise<void> {
     await writeFile(tempPath, content, 'utf-8');
     await rename(tempPath, path);
   } catch (error) {
+    // reason: cleanup is best-effort; the original write/rename error is re-thrown.
     await rm(tempPath, { force: true }).catch(() => undefined);
     throw error;
   }
