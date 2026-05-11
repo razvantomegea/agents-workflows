@@ -92,6 +92,30 @@ describe('writeFileSafe — session overrides and special cases', () => {
     await expect(readFile(path, 'utf-8')).resolves.toBe(customContent);
   });
 
+  it('preserves sentinel-less files when user chooses merge', async () => {
+    const prompt = makePrompt('m');
+    const path = join(tmpDir, 'CLAUDE.md');
+    const customContent = '# Custom Claude rules\n\nKeep this file.\n';
+    const generatedContent = [
+      '# CLAUDE.md',
+      '<!-- agents-workflows:managed-start -->',
+      'generated',
+      '<!-- agents-workflows:managed-end -->',
+      '',
+    ].join('\n');
+    await writeFile(path, customContent, 'utf-8');
+
+    const result = await writeFileSafe({
+      path,
+      content: generatedContent,
+      merge: mergeManagedTail,
+    });
+
+    expect(result).toEqual({ status: 'unchanged', path });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    await expect(readFile(path, 'utf-8')).resolves.toBe(customContent);
+  });
+
   it('skips with a warn when override is merge but no merge fn provided', async () => {
     const prompt = makePrompt('n');
     configureWriteSession({ override: 'merge' });
