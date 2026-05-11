@@ -126,7 +126,27 @@ describe('writeFileSafe — session overrides and special cases', () => {
     });
 
     expect(result).toEqual({ status: 'unchanged', path });
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('merge kept existing file'),
+    );
     await expect(readFile(path, 'utf-8')).resolves.toBe(customContent);
+  });
+
+  it('preserves managed tails when user chooses overwrite all', async () => {
+    const prompt = makePrompt('a');
+    const path = join(tmpDir, 'AGENTS.md');
+    const existingContent = `${buildManagedMarkdown('AGENTS.md')}\n## Team rules\n`;
+    await writeFile(path, existingContent, 'utf-8');
+
+    const result = await writeFileSafe({
+      path,
+      content: buildManagedMarkdown('AGENTS.md'),
+      merge: mergeManagedTail,
+    });
+
+    expect(result).toEqual({ status: 'unchanged', path });
+    expect(prompt).toHaveBeenCalledTimes(1);
+    await expect(readFile(path, 'utf-8')).resolves.toBe(existingContent);
   });
 
   it('preserves existing managed files when incoming lacks a sentinel', async () => {

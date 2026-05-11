@@ -92,11 +92,19 @@ async function performMerge(input: {
   content: string;
   merge: MergeFunction;
   label: string;
+  warnWhenPreserved?: boolean;
 }): Promise<WriteFileResult> {
-  const { path, existing, content, merge, label } = input;
+  const { path, existing, content, merge, label, warnWhenPreserved } = input;
   const merged = await merge({ existing, incoming: content, path });
   if (merged === existing) {
-    if (existing !== content) logger.info(`preserved ${label}: merge kept existing file`);
+    if (existing !== content) {
+      const message = `preserved ${label}: merge kept existing file`;
+      if (warnWhenPreserved === true) {
+        logger.warn(message);
+      } else {
+        logger.info(message);
+      }
+    }
     return { status: 'unchanged', path };
   }
   await performWrite(path, merged);
@@ -124,7 +132,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
 
   if (session.stickyAll) {
     if (merge != null) {
-      return performMerge({ path, existing, content, merge, label });
+      return performMerge({ path, existing, content, merge, label, warnWhenPreserved: true });
     }
     await performWrite(path, content);
     return { status: 'written', path };
@@ -157,8 +165,11 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   const answer = await promptFn({ path: label, canMerge: merge != null });
 
   if (answer === 'a') {
-    await performWrite(path, content);
     session = { ...session, stickyAll: true };
+    if (merge != null) {
+      return performMerge({ path, existing, content, merge, label, warnWhenPreserved: true });
+    }
+    await performWrite(path, content);
     return { status: 'written', path };
   }
 
