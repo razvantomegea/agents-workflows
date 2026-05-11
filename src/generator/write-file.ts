@@ -129,6 +129,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
   if (session.override === 'merge') {
     if (merge != null) {
       const merged = await merge({ existing, incoming: content, path });
+      if (merged === existing) return { status: 'unchanged', path };
       await performWrite(path, merged);
       return { status: 'merged', path };
     }
@@ -159,6 +160,7 @@ export async function writeFileSafe(input: WriteFileInput): Promise<WriteFileRes
 
   if (answer === 'm' && merge != null) {
     const merged = await merge({ existing, incoming: content, path });
+    if (merged === existing) return { status: 'unchanged', path };
     await performWrite(path, merged);
     return { status: 'merged', path };
   }

@@ -25,6 +25,9 @@ export function splitOnManagedSentinel(content: string): SentinelSplit {
  * Preserves any user-authored content appended after the managed sentinel block.
  */
 export function mergeManagedTail({ existing, incoming }: { existing: string; incoming: string }): string {
+  if (!existing.includes(MANAGED_END_SENTINEL)) {
+    return existing;
+  }
   const existingTail = splitOnManagedSentinel(existing).userTail;
   if (existingTail.trim() === '') return incoming;
   const incomingManaged = splitOnManagedSentinel(incoming).managed;

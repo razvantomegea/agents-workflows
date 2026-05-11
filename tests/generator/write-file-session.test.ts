@@ -6,6 +6,7 @@ import {
   configureWriteSession,
   resetWriteSession,
 } from '../../src/generator/write-file.js';
+import { mergeManagedTail } from '../../src/generator/managed-sentinel.js';
 import type { MergeFunction } from '../../src/generator/write-file.js';
 import { logger } from '../../src/utils/index.js';
 import { makePrompt, restorePrompt, createTempDir } from './write-file-helpers.js';
@@ -64,6 +65,31 @@ describe('writeFileSafe — session overrides and special cases', () => {
     expect(result).toEqual({ status: 'merged', path });
     expect(prompt).not.toHaveBeenCalled();
     await expect(readFile(path, 'utf-8')).resolves.toBe('base|patch');
+  });
+
+  it('preserves sentinel-less files when managed Markdown merge is requested', async () => {
+    const prompt = makePrompt('n');
+    configureWriteSession({ override: 'merge' });
+    const path = join(tmpDir, 'AGENTS.md');
+    const customContent = '# Custom agent rules\n\nDo not overwrite this file.\n';
+    const generatedContent = [
+      '# AGENTS.md',
+      '<!-- agents-workflows:managed-start -->',
+      'generated',
+      '<!-- agents-workflows:managed-end -->',
+      '',
+    ].join('\n');
+    await writeFile(path, customContent, 'utf-8');
+
+    const result = await writeFileSafe({
+      path,
+      content: generatedContent,
+      merge: mergeManagedTail,
+    });
+
+    expect(result).toEqual({ status: 'unchanged', path });
+    expect(prompt).not.toHaveBeenCalled();
+    await expect(readFile(path, 'utf-8')).resolves.toBe(customContent);
   });
 
   it('skips with a warn when override is merge but no merge fn provided', async () => {
