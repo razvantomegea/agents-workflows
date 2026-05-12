@@ -78,6 +78,14 @@ describe('generatePlugins', () => {
     await expect(generatePlugins(config, makeContext())).rejects.toThrow('Plugin skill missing: caveman/caveman/SKILL.md');
   });
 
+  it('throws when config enables a plugin without installable bundled skills', async () => {
+    const config = makeStackConfig({
+      plugins: { superpowers: false, caveman: false, claudeMdManagement: false, featureDev: true, codeReviewPlugin: false, codeSimplifier: false },
+    });
+
+    await expect(generatePlugins(config, makeContext())).rejects.toThrow('Unsupported plugin selection(s): featureDev');
+  });
+
   it('rethrows unexpected read failures', async () => {
     const permissionError = Object.assign(new Error('permission denied'), { code: 'EACCES' });
     mockReadFile.mockRejectedValue(permissionError);
