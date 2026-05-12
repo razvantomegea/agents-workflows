@@ -9,6 +9,14 @@
       "caveman-help": "skills/caveman-help/SKILL.md",
       "caveman-review": "skills/caveman-review/SKILL.md",
       "compress": "skills/compress/SKILL.md"
+    },
+    "contentSha256": {
+      "caveman": "f9c83a2b20fc3b3503af9d1ae1cf2098c9f8c3d326c203c236b160ebe81ac8f0",
+      "caveman-commit": "9ea361c8617aaabb0dada200c0bbe3f3eb9e4a28d44366b1d3a6e4ef600e96e2",
+      "caveman-compress": "1c7997b306c23a34ec9998da515aff3d9a6fd7973225f0c4faeeb00b851b87f4",
+      "caveman-help": "46f86b3ff5184f4d43f0794c4f54b1b53fee284014613428f0f477e17edad06f",
+      "caveman-review": "9ef09065f26b9781275b5a4775e14870e331fab833efb2a2aa33f3205a2b83c3",
+      "compress": "63d93d9a9e9f8da9e7864f11772ee4a714dd7253b51f55efc81b0292beb88ffc"
     }
   },
   "superpowers": {
@@ -29,6 +37,22 @@
       "using-git-worktrees": "skills/using-git-worktrees/SKILL.md",
       "finishing-a-development-branch": "skills/finishing-a-development-branch/SKILL.md",
       "writing-skills": "skills/writing-skills/SKILL.md"
+    },
+    "contentSha256": {
+      "brainstorming": "bba47904a7f6bbee3bf8a107ebbe84e65d392be683bbb898ded736b29e415f90",
+      "writing-plans": "4fd4627d2c02367879c0307d7249270bed633317ff9be82e926a6d57bf5d331b",
+      "executing-plans": "e2102f11631433939f162d383d769f8257d859d6639e0e14969cda3ef0a95eca",
+      "test-driven-development": "7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994",
+      "systematic-debugging": "4999cb851360485eca5074e727bbdd62ef20549c5d5b01216fcbf5831badb473",
+      "requesting-code-review": "5a3a44a3667800e2dc836829c6b92fada51e6dc58ac144ec05fe59f47d6bcd84",
+      "receiving-code-review": "c9382e92b8f32363566068ecfed19d3b2651eaf40d3942b24840f839dedfc406",
+      "verification-before-completion": "ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+      "dispatching-parallel-agents": "76806091c7f923ba2596546b19cccd98a08e57a68745df77c3a7b998fe838e2b",
+      "subagent-driven-development": "905a2b9be59b734dbe166525ad31dcaaf712a75926135adee1f554557aba5744",
+      "using-superpowers": "316e29381219adf0cac62190c67aeabf427d6e6e5f2735541d502b3d339be7aa",
+      "using-git-worktrees": "085a45ee3de432bdb2768011591d9a882cb6c759e2317f379226451c5618fe8e",
+      "finishing-a-development-branch": "5c8d4b59aedb14c94e2f5d787a3265e858e8f53d4ceffe7ff1c15878a52b0e91",
+      "writing-skills": "38ba648975ae6ba512d6695676f146163db61a496b867f716f4bdfb0ee3aca3e"
     }
   },
   "claude-md-management": {
@@ -37,6 +61,9 @@
     "basePath": "plugins/claude-md-management",
     "skills": {
       "claude-md-improver": "skills/claude-md-improver/SKILL.md"
+    },
+    "contentSha256": {
+      "claude-md-improver": "b06c7420be08ca1c7f6d75f7f4709fdb787624a2d363e2f8052216d8c780f85b"
     }
   }
 }

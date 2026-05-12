@@ -7,6 +7,7 @@ const ROOT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PLUGINS_DIR = join(ROOT_DIR, 'src', 'plugins');
 const SOURCES_FILE = join(ROOT_DIR, 'plugin-sources.json');
 const GIT_SHA_PATTERN = /^[a-f0-9]{40}$/i;
+const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 const PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 const GITHUB_SOURCE_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 const RELATIVE_PATH_SEGMENT_PATTERN = /^[A-Za-z0-9_.-]+$/;
@@ -16,6 +17,7 @@ interface PluginSource {
   refOrSha: string;
   basePath?: string;
   skills: Record<string, string>;
+  contentSha256: Record<string, string>;
 }
 
 interface PluginSources {
@@ -78,6 +80,13 @@ function assertPinnedSha(pluginId: string, refOrSha: string): void {
   if (!GIT_SHA_PATTERN.test(refOrSha)) {
     throw new Error(`refOrSha for ${pluginId} must be a 40-character git commit SHA`);
   }
+}
+
+function assertContentSha256(pluginId: string, skillId: string, expectedHash: string | undefined): string {
+  if (expectedHash === undefined || !SHA256_PATTERN.test(expectedHash)) {
+    throw new Error(`contentSha256 for ${pluginId}/${skillId} must be a 64-character SHA-256 hex digest`);
+  }
+  return expectedHash.toLowerCase();
 }
 
 function hasErrorCode(error: unknown, code: string): boolean {
@@ -176,7 +185,23 @@ async function fetchSkill(url: string): Promise<string> {
   return response.text();
 }
 
-async function writeSkillFile({ pluginId, skillId, content }: WriteSkillFileParams): Promise<string> {
+function computeContentHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex');
+}
+
+function verifyContentHash(params: Readonly<{
+  pluginId: string;
+  skillId: string;
+  expectedHash: string;
+  actualHash: string;
+}>): void {
+  const { pluginId, skillId, expectedHash, actualHash } = params;
+  if (actualHash !== expectedHash) {
+    throw new Error(`SHA-256 mismatch for ${pluginId}/${skillId}: expected ${expectedHash}, got ${actualHash}`);
+  }
+}
+
+async function writeSkillFile({ pluginId, skillId, content }: WriteSkillFileParams): Promise<void> {
   assertSafeId('pluginId', pluginId);
   assertSafeId('skillId', skillId);
   const skillDir = await ensurePluginDirectory(pluginId, skillId);
@@ -199,7 +224,6 @@ async function writeSkillFile({ pluginId, skillId, content }: WriteSkillFilePara
     await rm(tempPath, { force: true });
     throw error;
   }
-  return createHash('sha256').update(content).digest('hex');
 }
 
 async function main(): Promise<void> {
@@ -227,7 +251,10 @@ async function main(): Promise<void> {
       });
       try {
         const content = await fetchSkill(url);
-        const hash = await writeSkillFile({ pluginId, skillId, content });
+        const expectedHash = assertContentSha256(pluginId, skillId, pluginSource.contentSha256?.[skillId]);
+        const hash = computeContentHash(content);
+        verifyContentHash({ pluginId, skillId, expectedHash, actualHash: hash });
+        await writeSkillFile({ pluginId, skillId, content });
         console.log(`  ✓ ${skillId} (sha256: ${hash.slice(0, 16)}...)`);
         totalFetched++;
       } catch (error) {
