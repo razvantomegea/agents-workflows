@@ -37,6 +37,22 @@ export interface RenderWindsurfWorkflowsArgs {
   context: GeneratorContext;
 }
 
+/**
+ * Renders Windsurf workflow files for every enabled command in `selectedCommands`.
+ *
+ * Filters `WINDSURF_WORKFLOWS` (which omits `workflowLonghorizon` and
+ * `workflowTcr` — Claude/Codex-only by PRD E11.T4) to those whose key flag is
+ * `true` in `args.selectedCommands`, renders each body template, then wraps it
+ * in `windsurf/workflow.md.ejs` with a description field.
+ *
+ * All renders run concurrently via `Promise.all`.
+ *
+ * @param args - Object containing:
+ *   - `selectedCommands` — subset of `StackConfig['selectedCommands']` used to
+ *     filter which Windsurf workflows to emit.
+ *   - `context` — generator context passed to each EJS template.
+ * @returns An array of `GeneratedFile` entries under `.windsurf/workflows/`.
+ */
 export async function renderWindsurfWorkflowFiles(args: RenderWindsurfWorkflowsArgs): Promise<GeneratedFile[]> {
   const { selectedCommands, context } = args;
   const enabled = WINDSURF_WORKFLOWS.filter(

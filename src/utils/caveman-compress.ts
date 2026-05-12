@@ -44,6 +44,17 @@ function stripFiller(text: string): string {
   return FILLER_PATTERNS.reduce((acc, [pattern, replacement]) => acc.replace(pattern, replacement), text);
 }
 
+/**
+ * Strips common filler phrases from markdown-like content while preserving code blocks.
+ *
+ * @param content - The input string to compress. Fenced (``` ... ```) and inline
+ *   (`` ` ... ` ``) code spans are extracted before processing and restored
+ *   afterward, ensuring code is never altered.
+ * @returns The compressed string with filler phrases removed. Returns the
+ *   original value unchanged when `content` is falsy (empty string, `null`,
+ *   or `undefined`).
+ * @remarks Pure string transformation; performs no I/O and has no side effects.
+ */
 export function cavemanCompress(content: string): string {
   if (!content) return content;
   const { text, blocks } = extractCodeBlocks(content);

@@ -11,6 +11,23 @@ export interface PyprojectToml {
   tool?: Record<string, unknown>;
 }
 
+/**
+ * Reads and parses the `pyproject.toml` at the root of a Python project.
+ *
+ * @param projectRoot - Absolute path to the project directory. The file
+ *   `pyproject.toml` is resolved as `<projectRoot>/pyproject.toml`.
+ * @returns A promise that resolves to a {@link PyprojectToml} object
+ *   containing the extracted `[project]` and `[tool.*]` sections, or `null`
+ *   when:
+ *   - No `pyproject.toml` exists at `projectRoot`.
+ *   - The file cannot be read (e.g. permission error).
+ *   - An unexpected error occurs during minimal TOML parsing.
+ * @remarks Never throws. File-not-found and parse errors are caught
+ *   internally and both cause a `null` return. Uses a hand-rolled minimal
+ *   TOML parser — only `[project]`, `[project.dependencies]`, and
+ *   `[tool.*]` sections are extracted. Full TOML spec compliance is not
+ *   guaranteed. Uses {@link fileExists} to short-circuit before reading.
+ */
 export async function readPyprojectToml(
   projectRoot: string,
 ): Promise<PyprojectToml | null> {

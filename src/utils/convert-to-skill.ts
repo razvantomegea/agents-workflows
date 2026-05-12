@@ -29,6 +29,23 @@ function applyTokenPairs(
   return output;
 }
 
+/**
+ * Transforms an agent configuration string into a Codex skill configuration
+ * by renaming "agent/agents" terminology to "skill/skills" at every case
+ * variant (lower, Title, UPPER, sub-word).
+ *
+ * @param agentContent - Raw text content of a `.claude/agents/*.md` file or
+ *   equivalent agent definition. Must be a plain string; binary content is
+ *   not supported.
+ * @returns A new string with:
+ *   - `model:` and `color:` front-matter lines stripped.
+ *   - All agent-vocabulary tokens renamed to their skill equivalents.
+ *   - "an skill" article corrected to "a skill" (case-preserved).
+ *   - Consecutive blank lines collapsed to at most two.
+ *   - Protected tokens (`agents-workflows`, `agent-authored`, `AGENTS.md`)
+ *     left verbatim throughout.
+ * @remarks Pure string transformation; performs no I/O and has no side effects.
+ */
 export function convertToSkill(agentContent: string): string {
   const withPreserved = applyTokenPairs(agentContent, PRESERVED_TOKENS);
 

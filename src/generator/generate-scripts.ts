@@ -2,6 +2,21 @@ import { renderTemplate } from '../utils/template-renderer.js';
 import type { StackConfig } from '../schema/stack-config.js';
 import type { GeneratorContext, GeneratedFile } from './types.js';
 
+/**
+ * Generates helper shell scripts for the enabled AI tool targets.
+ *
+ * Emits the following files based on the `config.targets` flags:
+ * - `config.targets.claudeCode` → `.claude/scripts/cursor-task.sh`,
+ *   `.claude/scripts/run-parallel.sh`
+ * - `config.targets.codexCli`   → `.codex/scripts/sync-codex.sh`,
+ *   `.codex/scripts/sync-codex.ps1`
+ *
+ * @param config - `StackConfig` slice consumed: `targets` (`claudeCode`,
+ *   `codexCli`).
+ * @param _context - Generator context (accepted to satisfy the
+ *   `TargetGenerator` contract; not used by this generator).
+ * @returns An array of `GeneratedFile` entries for each emitted script.
+ */
 export async function generateScripts(
   config: StackConfig,
   _context: GeneratorContext,

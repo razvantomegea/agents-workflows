@@ -22,6 +22,22 @@ function isMergeStrategy(value: string): value is MergeStrategy {
   return (VALID_MERGE_STRATEGIES as readonly string[]).includes(value);
 }
 
+/**
+ * Validates and normalises the write-safety CLI flags into a typed `SafetyFlags` value.
+ *
+ * @param raw - Raw flag values from the CLI option parser.
+ * @param raw.yes - Corresponds to `--yes`; when `true` overwrites every existing file.
+ * @param raw.noPrompt - Corresponds to `--no-prompt`; when `true` skips existing files and only creates new ones.
+ * @param raw.mergeStrategy - Corresponds to `--merge-strategy <keep|overwrite|merge>`; absent maps to `null`.
+ *
+ * @returns A validated `SafetyFlags` object with defaults applied.
+ *
+ * @throws `SafetyFlagsError` when:
+ *   - `mergeStrategy` is a non-empty string that is not one of `keep | overwrite | merge`.
+ *   - `--yes` and `--no-prompt` are both `true` (mutually exclusive).
+ *   - `--yes` is combined with `--merge-strategy=keep` (contradictory intent).
+ *   - `--no-prompt` is combined with `--merge-strategy=overwrite` or `--merge-strategy=merge` (contradictory intent).
+ */
 export function parseSafetyFlags(raw: {
   yes?: boolean;
   noPrompt?: boolean;
@@ -64,6 +80,19 @@ export function parseSafetyFlags(raw: {
   return { yes, noPrompt, mergeStrategy };
 }
 
+/**
+ * Applies validated write-safety flags to the active write session.
+ *
+ * @param flags - Validated `SafetyFlags` produced by `parseSafetyFlags`.
+ *
+ * @remarks
+ * Side effects: mutates the module-level write-session state in `../generator/index.js`:
+ * - `flags.yes === true` → `configureWriteSession({ stickyAll: true })` (overwrite all).
+ * - `flags.noPrompt === true` → `configureWriteSession({ stickySkip: true })` (skip all).
+ * - `flags.mergeStrategy !== null` → `configureWriteSession({ override: strategy })`.
+ * - All flags falsy → no-op.
+ * Always call `resetWriteSession` after the write operation to restore defaults.
+ */
 export function applySafetyFlags(flags: SafetyFlags): void {
   if (flags.yes) {
     configureWriteSession({ stickyAll: true });
@@ -80,6 +109,20 @@ export function applySafetyFlags(flags: SafetyFlags): void {
   }
 }
 
+/**
+ * Executes `action`, catching `SafetyFlagsError` and `NonInteractiveFlagsError` to log and exit.
+ *
+ * @param action - Async callback that performs the CLI command body (e.g., `initCommand`, `updateCommand`).
+ *
+ * @returns Resolves when `action` completes successfully or after a handled flag error exits the process.
+ *
+ * @throws Re-throws any error that is not a `SafetyFlagsError` or `NonInteractiveFlagsError`.
+ *
+ * @remarks
+ * Exit-code contract: on `SafetyFlagsError` or `NonInteractiveFlagsError` this function calls
+ * `process.exit(1)` and then returns (the return guard after `process.exit` prevents fall-through
+ * in test environments where `process.exit` is mocked).
+ */
 export async function handleSafetyErrors(action: () => Promise<void>): Promise<void> {
   try {
     await action();

@@ -1,6 +1,23 @@
 import { readPackageJson, getAllDeps, readPyprojectToml } from '../utils/index.js';
 import type { Detection } from './types.js';
 
+/**
+ * Detects the database / ORM library used by the project.
+ *
+ * Inspection order (first match wins):
+ * 1. `package.json` (all dependency fields) — checks for Supabase, Prisma,
+ *    Drizzle, Firebase, Mongoose, TypeORM, Knex, and Sequelize.
+ * 2. `pyproject.toml` `[project].dependencies` — checks for SQLAlchemy,
+ *    Django ORM, and Tortoise ORM by dependency-name prefix.
+ *
+ * @param projectRoot - Absolute path to the project root directory.
+ * @returns A `Detection` with `value` set to the detected database/ORM name
+ *   (e.g. `"prisma"`, `"sqlalchemy"`) and a `confidence` in `[0, 1]`, or
+ *   `{ value: null, confidence: 0 }` when nothing is detected.
+ * @remarks Reads at most two files (`package.json`, `pyproject.toml`).
+ *   Read errors are swallowed by the underlying utilities; the function never
+ *   rejects.
+ */
 export async function detectDatabase(projectRoot: string): Promise<Detection> {
   const pkg = await readPackageJson(projectRoot);
   if (pkg) {
