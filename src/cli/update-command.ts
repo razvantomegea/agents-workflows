@@ -11,10 +11,12 @@ import { resolveSecurityUpdate } from './resolve-security-update.js';
 import { resolveUpdateProjectConfig } from './resolve-update-project-config.js';
 import { hashConfig } from './hash-config.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
-import type { MergeStrategy } from '../generator/index.js';
+import type { MergeFunction, MergeStrategy } from '../generator/index.js';
 import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
 
 export { resolveUpdateProjectConfig };
+
+const OVERWRITE_MANIFEST_MERGE: MergeFunction = ({ incoming }) => incoming;
 
 export interface UpdateCommandOptions {
   yes?: boolean;
@@ -160,6 +162,7 @@ export async function updateCommand(
       path: manifestPath,
       content: JSON.stringify(nextManifest, null, 2),
       displayPath: '.agents-workflows.json',
+      merge: OVERWRITE_MANIFEST_MERGE,
     });
     await safeDeleteStaleFiles({
       projectRoot,
