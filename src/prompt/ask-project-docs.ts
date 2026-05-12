@@ -24,6 +24,20 @@ async function askOptionalProjectPath(
   return trimmed === '' ? null : trimmed;
 }
 
+/**
+ * Prompts for the primary documentation file and roadmap/PRD file paths.
+ *
+ * @param defaults - Pre-populated defaults derived from stack detection or the existing manifest.
+ * @param defaults.docsFile - Default value for the docs file path prompt; may be `null`.
+ * @param defaults.roadmapFile - Default value for the roadmap file path prompt; may be `null`.
+ *
+ * @returns An object with `docsFile` and `roadmapFile` — each is `null` when left blank.
+ *
+ * @remarks
+ * Both paths are validated with `safeProjectPath`; blank input is allowed and normalised to `null`.
+ * Shown in both the `init` prompt flow and the `update` prompt flow.
+ * Skipped under `--yes` / `--no-prompt` / `--non-interactive` in `resolveUpdateProjectConfig`.
+ */
 export async function askProjectDocumentationFiles(
   defaults: Readonly<ProjectDocumentationFiles>,
 ): Promise<ProjectDocumentationFiles> {
@@ -39,6 +53,17 @@ export async function askProjectDocumentationFiles(
   return { docsFile, roadmapFile };
 }
 
+/**
+ * Prompts for the primary git branch name used for new work (e.g., `main`, `master`, `develop`).
+ *
+ * @param defaultBranch - Pre-populated default; returned unchanged when the user submits blank input.
+ *
+ * @returns The trimmed branch name entered by the user, or `defaultBranch` when input is blank.
+ *
+ * @remarks
+ * Validates that the branch name matches `[a-zA-Z0-9._/-]+`; rejects empty strings once trimmed.
+ * Skipped under `--yes` / `--no-prompt` / `--non-interactive` in `resolveUpdateProjectConfig`.
+ */
 export async function askMainBranch(defaultBranch: string): Promise<string> {
   const trimmed = (await input({
     message: 'Primary branch for new work (main/master/trunk/develop/etc.):',

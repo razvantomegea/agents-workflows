@@ -11,6 +11,26 @@ export interface RenderWindsurfRuleArgs {
   context: GeneratorContext;
 }
 
+/**
+ * Renders a single Windsurf rule file for a partial template.
+ *
+ * Steps:
+ * 1. Resolves the activation metadata via `getPartialActivation`.
+ * 2. Generates the Windsurf YAML rule header via `renderWindsurfRuleHeader`.
+ * 3. Renders the partial body template.
+ * 4. Wraps header and body in the `windsurf/rule.md.ejs` wrapper.
+ * 5. Derives an ordered filename (e.g. `00-deny-destructive-ops.md`).
+ *
+ * The returned `GeneratedFile` includes a `merge` function
+ * (`mergeWindsurfRule`) so that on subsequent runs only user-customised
+ * sections are preserved.
+ *
+ * @param args - Object containing:
+ *   - `partial` — a `PartialEntry` from `listPartials()`.
+ *   - `context` — generator context passed to both template renders.
+ * @returns A `GeneratedFile` targeting `.windsurf/rules/<ordered-filename>.md`
+ *   with `mergeWindsurfRule` as the merge strategy.
+ */
 export async function renderWindsurfRuleFile(args: RenderWindsurfRuleArgs): Promise<GeneratedFile> {
   const { partial, context } = args;
   const activation = getPartialActivation(partial.slug);

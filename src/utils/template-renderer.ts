@@ -16,7 +16,19 @@ function tomlString(value: unknown): string {
   return `"${escaped}"`;
 }
 
-// Exported for use in tests and downstream sanitization utilities.
+/**
+ * Serializes a value as a safe inline Markdown code span.
+ *
+ * @param value - The value to serialize. Converted to string via `String(value ?? '')`.
+ *   Control characters (U+0000–U+0008, U+000B–U+000C, U+000E–U+001F, U+007F) and
+ *   newline/carriage-return sequences are stripped or collapsed to a space to
+ *   prevent log injection and multi-line code span breakage.
+ * @returns A single-line Markdown code span: `` `value` `` when the value contains
+ *   no backtick characters, or ` `` value `` ` (double-backtick form with backticks
+ *   replaced by apostrophes) when backticks are present.
+ * @remarks Pure function; exported for use in tests and downstream sanitization
+ *   utilities. Injected into every EJS template context by {@link renderTemplate}.
+ */
 export function markdownCode(value: unknown): string {
   const normalized = String(value ?? '')
     // eslint-disable-next-line no-control-regex -- reason: strip control chars for security
@@ -26,7 +38,20 @@ export function markdownCode(value: unknown): string {
   return `\`\` ${normalized.replace(/`/g, "'")} \`\``;
 }
 
-// Exported for use in tests and downstream sanitization utilities.
+/**
+ * Serializes a value as safe inline Markdown text with HTML entity escaping.
+ *
+ * @param value - The value to serialize. Converted to string via `String(value ?? '')`.
+ *   Control characters are stripped. Backslashes, backticks, `&`, `<`, `>`,
+ *   and newline sequences are escaped or replaced so the output is safe for
+ *   use inside a Markdown paragraph or table cell.
+ * @returns A single-line string with:
+ *   - Control chars removed.
+ *   - `\` → `\\`, `` ` `` → `` \` ``, `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;`.
+ *   - Newlines and carriage returns collapsed to a single space.
+ * @remarks Pure function; exported for use in tests and downstream sanitization
+ *   utilities. Injected into every EJS template context by {@link renderTemplate}.
+ */
 export function markdownText(value: unknown): string {
   return String(value ?? '')
     // eslint-disable-next-line no-control-regex -- reason: strip control chars for security
@@ -39,6 +64,35 @@ export function markdownText(value: unknown): string {
     .replace(/[\r\n]+/g, ' ');
 }
 
+/**
+ * Reads and renders an EJS template from the bundled `src/templates/` directory.
+ *
+ * @param templatePath - Path relative to the `src/templates/` root (e.g.
+ *   `"agents/reviewer.md.ejs"`). Resolved against the compiled module's
+ *   `TEMPLATES_DIR` constant — do not supply an absolute path.
+ * @param data - Template variables passed to EJS as the render context.
+ *   The following helper functions are automatically injected and available
+ *   in every template without being listed in `data`:
+ *   - `jsonString(v)` — serializes `v` as a JSON string literal.
+ *   - `tomlString(v)` — serializes `v` as a TOML double-quoted string.
+ *   - `markdownCode(v)` — wraps `v` in a safe Markdown inline code span.
+ *   - `markdownText(v)` — HTML-entity-escapes `v` for Markdown body text.
+ * @returns A promise that resolves to the rendered string with leading/trailing
+ *   whitespace trimmed, consecutive blank lines collapsed to a single blank
+ *   line, and a single trailing newline appended.
+ * @throws {Error} If the template file does not exist or cannot be read
+ *   (`readFile` rejects).
+ * @throws {Error} If EJS encounters a render error (e.g. undefined variable,
+ *   syntax error in the template).
+ * @throws {Error} If the template contains `await` or async EJS expressions —
+ *   EJS is invoked with `async: false`; asynchronous template constructs are
+ *   not supported and will cause a runtime error.
+ * @remarks Performs one FS read per call (not cached). The EJS `root` and
+ *   `views` option is set to `TEMPLATES_DIR`, so `<%- include('...') %>`
+ *   paths are resolved relative to that directory. Output encoding: all
+ *   template output passes through an identity escape function to prevent
+ *   double-escaping.
+ */
 export async function renderTemplate(
   templatePath: string,
   data: Record<string, unknown>,

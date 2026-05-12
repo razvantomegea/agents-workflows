@@ -11,6 +11,25 @@ export interface RenderRuleFileArgs {
   context: GeneratorContext;
 }
 
+/**
+ * Renders a single Cursor `.mdc` rule file for a partial template.
+ *
+ * Steps:
+ * 1. Resolves the activation metadata via `getPartialActivation`.
+ * 2. Generates the MDC frontmatter block via `renderMdcFrontmatter`.
+ * 3. Renders the partial body template.
+ * 4. Wraps frontmatter and body in the `cursor/rule.mdc.ejs` wrapper.
+ * 5. Derives an ordered filename (e.g. `00-deny-destructive-ops.mdc`).
+ *
+ * The returned `GeneratedFile` includes a `merge` function (`mergeMdc`) so
+ * that on subsequent runs only user-customised sections are preserved.
+ *
+ * @param args - Object containing:
+ *   - `partial` — a `PartialEntry` from `listPartials()`.
+ *   - `context` — generator context passed to both template renders.
+ * @returns A `GeneratedFile` targeting `.cursor/rules/<ordered-filename>.mdc`
+ *   with `mergeMdc` as the merge strategy.
+ */
 export async function renderCursorRuleFile(args: RenderRuleFileArgs): Promise<GeneratedFile> {
   const { partial, context } = args;
   const activation = getPartialActivation(partial.slug);

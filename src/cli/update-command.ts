@@ -26,6 +26,30 @@ export interface UpdateCommandOptions {
   refinePrompt?: boolean;
 }
 
+/**
+ * Re-generates agent files from the existing `.agents-workflows.json` manifest and applies changes.
+ *
+ * @param projectRoot - Absolute path to the project root that contains `.agents-workflows.json`.
+ * @param options - Optional run modifiers.
+ * @param options.yes - When `true`, overwrites every changed file without a confirmation prompt (`--yes`).
+ * @param options.noPrompt - When `true`, keeps existing files and only writes new ones (`--no-prompt`).
+ * @param options.mergeStrategy - Default per-file conflict strategy (`keep | overwrite | merge`).
+ * @param options.nonInteractive - Enables headless/CI mode; requires `isolation`.
+ * @param options.isolation - Isolation environment for non-interactive mode.
+ * @param options.acceptRisks - Required when `isolation === 'host-os'` in non-interactive mode.
+ * @param options.refinePrompt - When `true` (default), prints the post-update `AGENTS_REFINE.md` guidance.
+ *
+ * @returns Resolves when all changed files have been written, or immediately when nothing has changed.
+ *
+ * @throws Re-throws unexpected errors after the write session completes.
+ *
+ * @remarks
+ * Exit-code: process.exit(1) when manifest absent, invalid JSON, or fails schema.
+ * Side effects: writes changed files, .agents-workflows.json manifest, optionally
+ *   AGENTS_REFINE.md, and deletes stale STALE_IMPLEMENTER_VARIANT_FILES.
+ * --yes/--no-prompt/--non-interactive: prompts suppressed, diffs applied immediately.
+ * Otherwise: shows diff summary and asks "Apply changes?" before writing.
+ */
 export async function updateCommand(
   projectRoot: string,
   options: UpdateCommandOptions = {},

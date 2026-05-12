@@ -1,6 +1,16 @@
 import { logger } from '../utils/index.js';
 import type { DetectedStack } from '../detector/types.js';
 
+/**
+ * Logs the detected stack summary (language, framework, tooling, monorepo info) to stdout.
+ *
+ * @param detected - Full `DetectedStack` produced by `detectStack`; fields with `null` value are omitted.
+ *
+ * @remarks
+ * Only fields where `detection.value` is truthy are printed.
+ * Each entry is formatted as `label: value (confidence%)`.
+ * Monorepo info is appended as a separate line when `detected.monorepo.isMonorepo` is `true`.
+ */
 export function printDetected(detected: DetectedStack): void {
   const entries = [
     ['Language', detected.language],

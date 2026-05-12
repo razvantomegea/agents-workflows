@@ -14,6 +14,20 @@ export interface PartialEntry {
 
 let cache: readonly PartialEntry[] | null = null;
 
+/**
+ * Discovers all partial templates in the `src/templates/partials/` directory.
+ *
+ * Reads `src/templates/partials/`, filters for files matching
+ * `<slug>.md.ejs` (where slug is `[a-z][a-z0-9-]*`), and returns one
+ * `PartialEntry` per file sorted alphabetically by slug.  Results are
+ * module-level cached after the first call; subsequent calls return shallow
+ * clones from the frozen cache.
+ *
+ * @returns An array of `PartialEntry` objects each containing `slug`,
+ *   `templatePath` (relative path for `renderTemplate`), and `absolutePath`.
+ * @throws Any filesystem error from `readdir` (e.g. `ENOENT` if the partials
+ *   directory is missing).
+ */
 export async function listPartials(): Promise<PartialEntry[]> {
   if (cache) return cache.map(clonePartialEntry);
   const entries = await readdir(PARTIALS_DIR, { withFileTypes: true });
@@ -35,6 +49,13 @@ export async function listPartials(): Promise<PartialEntry[]> {
   return cache.map(clonePartialEntry);
 }
 
+/**
+ * Clears the module-level partials cache.
+ *
+ * Forces the next `listPartials` call to re-read the partials directory from
+ * disk.  Intended for use in tests that add or remove partial files during a
+ * test run.
+ */
 export function _resetPartialsCache(): void {
   cache = null;
 }

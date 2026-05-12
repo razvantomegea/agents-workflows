@@ -31,6 +31,18 @@ export interface MonorepoInfo {
   workspaces: string[];
 }
 
+/**
+ * Detects whether the project is a monorepo and identifies its workspaces.
+ *
+ * Sources probed in priority order (first match wins): pnpm-workspace.yaml,
+ * package.json workspaces, lerna.json packages, Cargo.toml workspace.members,
+ * go.work use-directives, pyproject.toml (uv then Poetry), *.sln, CMakeLists.txt.
+ *
+ * @param projectRoot - Absolute path to the project root directory.
+ * @returns MonorepoInfo: isMonorepo, tool, and workspaces (deduplicated relative paths).
+ * @remarks Reads manifest files and calls expandWorkspacePatterns (stat/readdir).
+ *   I/O errors in helpers are silently swallowed; the function never rejects.
+ */
 export async function detectMonorepo(projectRoot: string): Promise<MonorepoInfo> {
   const patterns = await readWorkspacePatterns(projectRoot);
   if (!patterns) return { isMonorepo: false, tool: null, workspaces: [] };
@@ -89,6 +101,13 @@ async function readPnpmWorkspace(projectRoot: string): Promise<string[] | null> 
   return parsePnpmWorkspacePackages(content);
 }
 
+/**
+ * Parses the packages array from a pnpm-workspace.yaml file.
+ *
+ * @param yaml - Raw UTF-8 content of a pnpm-workspace.yaml file.
+ * @returns Workspace glob patterns (e.g. [packages/*, apps/*]), or empty when absent.
+ * @remarks Strips inline # comments. Stops at first non-indented, non-list line.
+ */
 export function parsePnpmWorkspacePackages(yaml: string): string[] {
   const lines = yaml.split(/\r?\n/);
   const patterns: string[] = [];
@@ -136,6 +155,15 @@ function isUnsafePattern(pattern: string): boolean {
   return pattern.split('/').some((seg) => seg === '..');
 }
 
+/**
+ * Resolves workspace glob patterns to concrete subdirectory paths.
+ * Pattern forms: packages/* expands subdirs; apps/my-app included when it exists.
+ * Leading ./ and trailing / stripped. Unsafe patterns (absolute, .., backslash) skipped.
+ * @param root - Absolute path to the monorepo root directory.
+ * @param patterns - Raw workspace glob patterns from the manifest.
+ * @returns Deduplicated relative paths for directories that exist on disk.
+ * @remarks Performs stat and readdir calls. I/O errors are silently swallowed.
+ */
 export async function expandWorkspacePatterns(root: string, patterns: string[]): Promise<string[]> {
   const results: string[] = [];
   for (const pattern of patterns) {

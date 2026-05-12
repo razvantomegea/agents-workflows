@@ -21,6 +21,22 @@ export interface RenderCommandFilesArgs {
   context: GeneratorContext;
 }
 
+/**
+ * Renders Cursor command files for every enabled command in `selectedCommands`.
+ *
+ * Filters `CURSOR_COMMANDS` (which omits `workflowLonghorizon` and
+ * `workflowTcr` — Claude/Codex-only by PRD E11.T2) to those whose key flag is
+ * `true` in `args.selectedCommands`, renders each template, and returns a
+ * `GeneratedFile` targeting `.cursor/commands/<outputName>`.
+ *
+ * All renders run concurrently via `Promise.all`.
+ *
+ * @param args - Object containing:
+ *   - `selectedCommands` — subset of `StackConfig['selectedCommands']` used to
+ *     filter which Cursor commands to emit.
+ *   - `context` — generator context passed to each EJS template.
+ * @returns An array of `GeneratedFile` entries under `.cursor/commands/`.
+ */
 export async function renderCursorCommandFiles(args: RenderCommandFilesArgs): Promise<GeneratedFile[]> {
   const { selectedCommands, context } = args;
   const enabled = CURSOR_COMMANDS.filter((command: CursorCommand) => selectedCommands[command.key]);

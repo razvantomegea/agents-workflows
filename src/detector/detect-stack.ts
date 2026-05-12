@@ -74,8 +74,18 @@ export async function detectStack(projectRoot: string): Promise<DetectedStack> {
   };
 }
 
-// Returns [] when all workspaces share a single language (monolingual monorepo).
-// Only polyglot monorepos (2+ distinct languages) return a non-empty list.
+/**
+ * Collects the distinct languages present across the monorepo root and all
+ * workspace stacks, returning them only when the monorepo is polyglot.
+ *
+ * @param rootLanguage - The language detected at the monorepo root, or `null`.
+ * @param workspaceStacks - Per-workspace detection results; each entry must
+ *   expose a `language` field (`string | null`).
+ * @returns A deduplicated, lowercased list of language names when two or more
+ *   distinct languages are present; an empty array when all workspaces (and the
+ *   root) share a single language or no language was detected.
+ * @remarks Pure computation — no I/O performed.
+ */
 export function aggregateLanguages(
   rootLanguage: string | null,
   workspaceStacks: readonly { language: string | null }[],

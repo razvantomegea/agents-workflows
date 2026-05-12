@@ -43,6 +43,33 @@ function applyPostProcessors(files: GeneratedFile[], config: StackConfig): Gener
   );
 }
 
+/**
+ * Runs all registered target generators and returns the complete set of
+ * generated files for the project.
+ *
+ * Executes every generator in `TARGET_GENERATORS` concurrently, then
+ * conditionally appends the refinement-prompt file:
+ * - `options.refinePrompt !== false` → `AGENTS_REFINE.md` is included (default
+ *   `true`).
+ *
+ * After collecting all files, applies post-processors to the full list:
+ * - `config.cavemanStyle` → all `.md` file contents are run through
+ *   `cavemanCompress` to strip verbose prose.
+ *
+ * `StackConfig` slices consumed (via each sub-generator):
+ * - `agents` — agent enable flags and `implementerVariant`
+ * - `selectedCommands` — command enable flags
+ * - `plugins` — plugin enable flags
+ * - `targets` — `claudeCode`, `codexCli`, `cursor`, `windsurf`, `copilot`
+ * - `governance` — governance artefact flag
+ * - `cavemanStyle` — post-processor flag
+ *
+ * @param config - Fully resolved stack configuration.
+ * @param options - Optional generation options.
+ *   - `refinePrompt` — when `false`, `AGENTS_REFINE.md` is omitted.
+ * @returns A flat array of all `GeneratedFile` entries produced by every
+ *   enabled generator, post-processed as configured.
+ */
 export async function generateAll(
   config: StackConfig,
   options: GenerateAllOptions = {},

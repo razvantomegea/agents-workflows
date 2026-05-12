@@ -55,6 +55,38 @@ async function ensureBackupDirectory(params: Readonly<{
   return realBackupRoot;
 }
 
+/**
+ * Safely removes stale files from `projectRoot` that have been superseded by newer
+ * implementer-variant files, optionally prompting the user before each deletion.
+ *
+ * @param params - Options object (required).
+ *   - `params.projectRoot` — Absolute path to the project root; all candidates are resolved
+ *     relative to this directory and validated to remain inside it.
+ *   - `params.candidates` — Relative paths to the stale files to consider for deletion.
+ *     Absolute paths are rejected with a `WARN` log entry and skipped.
+ *   - `params.suppressed` — When `true`, skips the interactive `@inquirer/prompts confirm`
+ *     dialog and deletes without user confirmation (non-interactive / CI mode).
+ *
+ * @remarks
+ * **Backup strategy**: instead of unlinking the file it is renamed into
+ * `<projectRoot>/.agents-workflows-backup/<digest>-<safeName>` where `<digest>` is the first
+ * 12 hex characters of a SHA-256 hash of the relative path and `<safeName>` replaces every
+ * character outside `[A-Za-z0-9_.-]` with `_`.
+ *
+ * **Safety guards applied per candidate** (skipped with a `WARN` log entry if any guard fails):
+ * - Absolute paths are rejected.
+ * - Paths that resolve outside `projectRoot` after `path.resolve` are rejected.
+ * - Symbolic links are rejected (neither the file nor the backup directory may be a symlink).
+ * - The resolved real path is checked against `realpath(projectRoot)` to guard against
+ *   symlink-based traversal.
+ * - If the backup directory itself cannot be safely resolved inside `projectRoot`, the
+ *   candidate is skipped rather than deleted unprotected.
+ *
+ * **Error isolation**: each candidate is processed inside an individual `try/catch`.
+ * An unexpected error on one candidate logs a `WARN` and continues processing the
+ * remaining candidates — this is an intentional per-item isolation pattern so that a
+ * single bad entry does not abort the whole batch.
+ */
 export async function safeDeleteStaleFiles(
   params: Readonly<{
     projectRoot: string;

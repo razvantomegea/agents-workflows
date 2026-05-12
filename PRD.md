@@ -2062,7 +2062,9 @@ Actionable breakdown of Parts 1–4 into deliverable epics. Each task names the 
 
 ---
 
-## Epic 15 — Core Logic Function Documentation [SHOULD]
+## Epic 15 — Core Logic Function Documentation [SHOULD] [DONE 2026-04-30]
+
+**Landed on** `feature/epic-15-core-logic-docs`.
 
 **Goal.** Add TSDoc/JSDoc docstrings to every **core logic function** exported from `src/` so each function declares its contract — purpose, parameters, return value, thrown errors, and observable side effects — per §2.14 ("Public/exported symbols get docstrings with contract"). Out of scope: type-only re-exports, barrel files, EJS templates, test fixtures, and the local-only sub-helpers that already have self-documenting names and no behavior worth narrating.
 

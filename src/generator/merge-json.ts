@@ -143,6 +143,37 @@ function parseJson({ text, label }: { text: string; label: string }): JsonValue 
   }
 }
 
+/**
+ * Deep-merges two JSON strings using user-wins conflict resolution with managed
+ * key/path overrides.
+ *
+ * **Conflict-resolution rules** (applied recursively):
+ * 1. **Objects** — keys from both sides are unioned; shared keys are
+ *    deep-merged recursively.
+ * 2. **Arrays** — deduplicated union (existing items first, new incoming items
+ *    appended).  Primitive arrays are sorted after deduplication; object arrays
+ *    preserve insertion order.  Mixed arrays use JSON-serialised key equality.
+ * 3. **Scalar conflict** (same key, incompatible types, or both scalars) —
+ *    **existing wins**, UNLESS the key name appears in `MANAGED_JSON_KEYS` or
+ *    the dot-notation path appears in `MANAGED_JSON_PATHS` (e.g.
+ *    `permissions.disableBypassPermissionsMode`), in which case **incoming
+ *    wins**.
+ * 4. **Mismatched top-level types** (e.g. object vs. array) — existing wins.
+ *
+ * The merged object is serialised with keys sorted alphabetically at every
+ * level (via `sortKeys`) and formatted with 2-space indentation.
+ *
+ * Intermediate merge objects use null prototypes to guard against
+ * `__proto__`-injection from attacker-controlled JSON.
+ *
+ * @param existing - Serialised JSON string representing the user's current file.
+ * @param incoming - Serialised JSON string representing the generator's output.
+ * @param path - Optional file path label used in error messages only.
+ * @returns A serialised, sorted, 2-space-indented JSON string of the merged
+ *   result.
+ * @throws `Error` with a descriptive message when either input fails to parse
+ *   as JSON.
+ */
 export function mergeJson({ existing, incoming, path }: { existing: string; incoming: string; path?: string }): string {
   const pathLabel = path != null ? `"${path}"` : 'unnamed file';
 

@@ -19,6 +19,23 @@ function addNonInteractiveOptions(command: Command): Command {
     .option('--accept-risks', 'Accept host-OS risks when --isolation=host-os is used');
 }
 
+/**
+ * Builds and returns the root Commander program with `init`, `update`, and `list` sub-commands.
+ *
+ * @returns A configured `Command` instance ready to be parsed via `.parseAsync(process.argv)`.
+ *
+ * @remarks
+ * CLI flags wired up per sub-command:
+ * - **init**: `-d/--dir`, `-c/--config`, `-y/--yes`, `--no-prompt`, `--no-refine-prompt`,
+ *   `--merge-strategy`, `--non-interactive`, `--isolation`, `--accept-risks`.
+ * - **update**: `-d/--dir`, `-y/--yes`, `--no-prompt`, `--no-refine-prompt`,
+ *   `--merge-strategy`, `--non-interactive`, `--isolation`, `--accept-risks`.
+ * - **list**: `-d/--dir`.
+ *
+ * Flag validation (safety and non-interactive constraints) is delegated to `handleSafetyErrors`,
+ * which sets `process.exitCode = 1` and logs the error message on `SafetyFlagsError` or
+ * `NonInteractiveFlagsError` without re-throwing.
+ */
 export function createCli(): Command {
   const program = new Command();
 
