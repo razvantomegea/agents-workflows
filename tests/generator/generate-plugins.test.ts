@@ -57,15 +57,25 @@ describe('generatePlugins', () => {
     expect(paths.some((p) => p.includes('caveman'))).toBe(true);
   });
 
-  it('skips skill file when missing (does not throw)', async () => {
+  it('reads camelCase plugin selections from their bundled source directories', async () => {
+    const config = makeStackConfig({
+      plugins: { superpowers: false, caveman: false, claudeMdManagement: true, featureDev: false, codeReviewPlugin: false, codeSimplifier: false },
+    });
+
+    await generatePlugins(config, makeContext());
+
+    const readPaths = mockReadFile.mock.calls.map((call) => String(call[0]));
+    expect(readPaths.some((readPath) => readPath.includes('/claude-md-management/claude-md-improver/SKILL.md'))).toBe(true);
+  });
+
+  it('throws when an enabled plugin skill is missing from the bundle', async () => {
     const missingFileError = Object.assign(new Error('missing'), { code: 'ENOENT' });
     mockReadFile.mockRejectedValue(missingFileError);
     const config = makeStackConfig({
       plugins: { superpowers: false, caveman: true, claudeMdManagement: false, featureDev: false, codeReviewPlugin: false, codeSimplifier: false },
     });
-    const files = await generatePlugins(config, makeContext());
-    expect(files).toHaveLength(0);
-    expect(mockReadFile).toHaveBeenCalled();
+
+    await expect(generatePlugins(config, makeContext())).rejects.toThrow('Plugin skill missing: caveman/caveman/SKILL.md');
   });
 
   it('rethrows unexpected read failures', async () => {

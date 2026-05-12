@@ -24,14 +24,13 @@ export async function generatePlugins(
     if (!config.plugins[plugin.id]) continue;
 
     for (const skill of plugin.skills) {
-      const skillFile = join(PLUGINS_DIR, plugin.id, skill.id, 'SKILL.md');
+      const skillFile = join(PLUGINS_DIR, plugin.sourceId, skill.id, 'SKILL.md');
       let content: string;
       try {
         content = await readFile(skillFile, 'utf-8');
       } catch (error) {
         if (hasErrorCode(error, 'ENOENT')) {
-          console.warn(`Plugin skill missing: ${plugin.id}/${skill.id}/SKILL.md — run pnpm fetch-plugins`);
-          continue;
+          throw new Error(`Plugin skill missing: ${plugin.sourceId}/${skill.id}/SKILL.md — run pnpm fetch-plugins before building.`);
         }
         throw error;
       }

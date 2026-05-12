@@ -6,6 +6,7 @@ export interface SkillDef {
 
 export interface PluginDef {
   id: keyof StackConfig['plugins'];
+  sourceId: string;
   name: string;
   description: string;
   skills: SkillDef[];
@@ -14,6 +15,7 @@ export interface PluginDef {
 export const PLUGIN_REGISTRY: PluginDef[] = [
   {
     id: 'superpowers',
+    sourceId: 'superpowers',
     name: 'Superpowers',
     description: 'Structured TDD, debugging, brainstorming, and planning methodology skills',
     skills: [
@@ -35,6 +37,7 @@ export const PLUGIN_REGISTRY: PluginDef[] = [
   },
   {
     id: 'caveman',
+    sourceId: 'caveman',
     name: 'Caveman',
     description: 'Ultra-compressed token-efficient communication mode (~75% output reduction)',
     skills: [
@@ -48,35 +51,11 @@ export const PLUGIN_REGISTRY: PluginDef[] = [
   },
   {
     id: 'claudeMdManagement',
+    sourceId: 'claude-md-management',
     name: 'Claude MD Management',
     description: 'Audit and improve CLAUDE.md files; capture session learnings',
     skills: [
       { id: 'claude-md-improver' },
-      { id: 'revise-claude-md' },
-    ],
-  },
-  {
-    id: 'featureDev',
-    name: 'Feature Dev',
-    description: 'Guided 7-phase feature development workflow with codebase exploration and architecture design',
-    skills: [
-      { id: 'feature-dev' },
-    ],
-  },
-  {
-    id: 'codeReviewPlugin',
-    name: 'Code Review',
-    description: 'Multi-agent PR review with confidence-based scoring to reduce false positives',
-    skills: [
-      { id: 'code-review' },
-    ],
-  },
-  {
-    id: 'codeSimplifier',
-    name: 'Code Simplifier',
-    description: 'Review changed code for reuse, quality, and efficiency, then fix issues found',
-    skills: [
-      { id: 'simplify' },
     ],
   },
 ];
