@@ -5,14 +5,16 @@ import { logger, fileExists } from '../utils/index.js';
 import { manifestSchema } from '../schema/manifest.js';
 import { generateAll, writeFileSafe } from '../generator/index.js';
 import { withSafetySession } from './safety-session.js';
-import { parseSafetyFlags } from './safety-flags.js';
+import { parseSafetyFlags, SafetyFlagsError } from './safety-flags.js';
 import { writeGeneratedFiles, backupExistingFiles, diffFiles, safeDeleteStaleFiles, STALE_IMPLEMENTER_VARIANT_FILES } from '../installer/index.js';
 import { resolveSecurityUpdate } from './resolve-security-update.js';
 import { resolveUpdateProjectConfig } from './resolve-update-project-config.js';
 import { hashConfig } from './hash-config.js';
 import type { AgentsWorkflowsManifest } from '../schema/manifest.js';
 import type { MergeFunction, MergeStrategy } from '../generator/index.js';
+import type { GeneratedFile } from '../generator/types.js';
 import type { IsolationChoice, StackConfig } from '../schema/stack-config.js';
+import type { FileDiff } from '../installer/index.js';
 
 export { resolveUpdateProjectConfig };
 
@@ -43,7 +45,11 @@ export interface UpdateCommandOptions {
  *
  * @returns Resolves when all changed files have been written, or immediately when nothing has changed.
  *
- * @throws Re-throws unexpected errors after the write session completes.
+ * @throws `SafetyFlagsError` when implicit non-interactive default `merge` encounters
+ *   changed existing files that do not provide a structured `merge` handler; aborts
+ *   before writing generated files or the manifest.
+ * @throws Re-throws any other unexpected error from the update flow; if it occurs
+ *   inside `withSafetySession`, the write session is reset before propagation.
  *
  * @remarks
  * Exit-code: process.exit(1) when manifest absent, invalid JSON, or fails schema.
@@ -141,11 +147,19 @@ export async function updateCommand(
   const changedFiles = files.filter((f) =>
     changed.some((d) => d.path === f.path),
   );
+  const resolvedMergeStrategy = resolveMergeStrategyForUpdate(options);
 
   const safetyFlags = parseSafetyFlags({
     yes: options.yes,
     noPrompt: options.noPrompt,
-    mergeStrategy: resolveMergeStrategyForUpdate(options),
+    mergeStrategy: resolvedMergeStrategy,
+  });
+
+  assertImplicitDefaultMergeIsSafe({
+    options,
+    resolvedMergeStrategy,
+    changedDiffs: changed,
+    changedFiles,
   });
 
   await withSafetySession(safetyFlags, async () => {
@@ -195,4 +209,63 @@ export function resolveMergeStrategyForUpdate(options: UpdateCommandOptions): Me
   if (options.mergeStrategy !== undefined) return options.mergeStrategy;
   if (options.nonInteractive && !options.yes && !options.noPrompt) return 'merge';
   return undefined;
+}
+
+function assertImplicitDefaultMergeIsSafe(args: {
+  options: UpdateCommandOptions;
+  resolvedMergeStrategy: MergeStrategy | undefined;
+  changedDiffs: FileDiff[];
+  changedFiles: GeneratedFile[];
+}): void {
+  const { options, resolvedMergeStrategy, changedDiffs, changedFiles } = args;
+
+  if (!usesImplicitNonInteractiveDefaultMerge({ options, resolvedMergeStrategy })) {
+    return;
+  }
+
+  const unsupportedPaths = getUnsupportedDefaultMergePaths({
+    changedDiffs,
+    changedFiles,
+  });
+
+  if (unsupportedPaths.length === 0) {
+    return;
+  }
+
+  throw new SafetyFlagsError(
+    `Non-interactive update defaulted to merge, but these changed files do not support structured merge: ${unsupportedPaths.join(', ')}. Aborting before writing files or manifest to avoid overwriting local edits. Re-run with --merge-strategy=overwrite or --yes if you intend to overwrite them.`,
+  );
+}
+
+function usesImplicitNonInteractiveDefaultMerge(args: {
+  options: UpdateCommandOptions;
+  resolvedMergeStrategy: MergeStrategy | undefined;
+}): boolean {
+  const { options, resolvedMergeStrategy } = args;
+  return (
+    options.nonInteractive === true &&
+    options.yes !== true &&
+    options.noPrompt !== true &&
+    options.mergeStrategy === undefined &&
+    resolvedMergeStrategy === 'merge'
+  );
+}
+
+function getUnsupportedDefaultMergePaths(args: {
+  changedDiffs: FileDiff[];
+  changedFiles: GeneratedFile[];
+}): string[] {
+  const { changedDiffs, changedFiles } = args;
+  const changedExistingPaths = new Set(
+    changedDiffs
+      .filter((diff: FileDiff) => !diff.isNew)
+      .map((diff: FileDiff) => diff.path),
+  );
+
+  return changedFiles
+    .filter((generatedFile: GeneratedFile) =>
+      changedExistingPaths.has(generatedFile.path) && generatedFile.merge === undefined,
+    )
+    .map((generatedFile: GeneratedFile) => generatedFile.path)
+    .sort();
 }
