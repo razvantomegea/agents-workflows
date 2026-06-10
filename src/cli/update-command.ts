@@ -164,10 +164,14 @@ export async function updateCommand(
       displayPath: '.agents-workflows.json',
       merge: OVERWRITE_MANIFEST_MERGE,
     });
-    // When --no-prompt is active the documented contract is "keep every existing
-    // file, create new ones only". Skip stale-file deletion entirely so that
-    // user-edited files are never removed silently during CI / no-prompt runs.
-    if (!options.noPrompt) {
+    // Skip stale-file deletion when the caller has opted into a "keep" safety
+    // strategy — either via --no-prompt (documented contract: create new files
+    // only, never touch existing ones) or via an explicit mergeStrategy=keep
+    // (e.g. nonInteractive + docker + keep).  Auto-deleting in either mode
+    // directly contradicts the stated preservation intent.
+    const shouldSkipStaleDeletion =
+      options.noPrompt === true || safetyFlags.mergeStrategy === 'keep';
+    if (!shouldSkipStaleDeletion) {
       await safeDeleteStaleFiles({
         projectRoot,
         candidates: STALE_IMPLEMENTER_VARIANT_FILES,

@@ -149,4 +149,46 @@ describe('updateCommand', () => {
     // Assert: stale file must have been moved to backup (no longer at original path).
     expect(await fileExists(staleFilePath)).toBe(false);
   });
+
+  it('does not delete stale files when nonInteractive + docker + mergeStrategy=keep', async () => {
+    // Regression: auto-deleting stale files contradicts an explicit keep strategy.
+    // Arrange: write generated files, create a diff, place stale react-ts-senior.md
+    // with custom content, and write the manifest.
+    const config = makeStackConfig();
+    const files = await generateAll(config);
+    await writeGeneratedProjectFiles(projectRoot, files);
+
+    const agentPath = join(projectRoot, '.claude/agents/architect.md');
+    const originalAgentContent = await readFile(agentPath, 'utf-8');
+    await writeFile(agentPath, `${originalAgentContent}\nlocal edit\n`, 'utf-8');
+
+    const staleFilePath = join(projectRoot, '.claude/agents/react-ts-senior.md');
+    const staleContent = 'custom user-edited content preserved by keep strategy';
+    await writeFile(staleFilePath, staleContent, 'utf-8');
+
+    const manifest: AgentsWorkflowsManifest = {
+      version: '0.1.0',
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      stackConfigHash: hashConfig(JSON.stringify(config)),
+      config,
+      files: files.map((generatedFile: GeneratedFile) => generatedFile.path),
+    };
+    await writeFile(
+      join(projectRoot, '.agents-workflows.json'),
+      JSON.stringify(manifest, null, 2),
+      'utf-8',
+    );
+
+    // Act: run with the exact combination that previously violated the keep contract.
+    await updateCommand(projectRoot, {
+      nonInteractive: true,
+      isolation: 'docker',
+      mergeStrategy: 'keep',
+    });
+
+    // Assert: stale file must remain untouched.
+    expect(await fileExists(staleFilePath)).toBe(true);
+    const preserved = await readFile(staleFilePath, 'utf-8');
+    expect(preserved).toBe(staleContent);
+  });
 });
