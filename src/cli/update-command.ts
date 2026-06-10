@@ -164,11 +164,16 @@ export async function updateCommand(
       displayPath: '.agents-workflows.json',
       merge: OVERWRITE_MANIFEST_MERGE,
     });
-    await safeDeleteStaleFiles({
-      projectRoot,
-      candidates: STALE_IMPLEMENTER_VARIANT_FILES,
-      suppressed: promptsSuppressed,
-    });
+    // When --no-prompt is active the documented contract is "keep every existing
+    // file, create new ones only". Skip stale-file deletion entirely so that
+    // user-edited files are never removed silently during CI / no-prompt runs.
+    if (!options.noPrompt) {
+      await safeDeleteStaleFiles({
+        projectRoot,
+        candidates: STALE_IMPLEMENTER_VARIANT_FILES,
+        suppressed: Boolean(options.yes || options.nonInteractive),
+      });
+    }
 
     logger.success(`Updated ${writeResult.writtenPaths.length} file(s).`);
     if (writeResult.skippedPaths.length > 0) {
