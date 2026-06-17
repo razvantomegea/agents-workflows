@@ -40,7 +40,7 @@ export async function askProjectIdentity(
     default: resolveDefaultProjectName(pkg),
     validate: (value: string): true | string => safeProjectName.safeParse(value.trim()).success
       ? true
-      : 'Use only letters, digits, space, dot, underscore, or hyphen (max 100 characters).',
+      : 'Use letters, digits, spaces, dots, underscores, or hyphens (max 100 chars).',
   });
 
   const description = await input({

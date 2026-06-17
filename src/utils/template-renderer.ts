@@ -89,9 +89,12 @@ export function markdownText(value: unknown): string {
  *   not supported and will cause a runtime error.
  * @remarks Performs one FS read per call (not cached). The EJS `root` and
  *   `views` option is set to `TEMPLATES_DIR`, so `<%- include('...') %>`
- *   paths are resolved relative to that directory. Output encoding: all
- *   template output passes through an identity escape function to prevent
- *   double-escaping.
+ *   paths are resolved relative to that directory. Output encoding: EJS
+ *   escaping is intentionally an identity function because these templates
+ *   render Markdown, JSON, TOML, and shell snippets rather than HTML. Every
+ *   interpolated value must therefore come from schema-validated data or be
+ *   rendered through the contextual helpers (`markdownCode`,
+ *   `markdownText`, `jsonString`, `tomlString`).
  */
 export async function renderTemplate(
   templatePath: string,
@@ -106,6 +109,8 @@ export async function renderTemplate(
     filename: fullPath,
     root: TEMPLATES_DIR,
     views: [TEMPLATES_DIR],
+    // Intentionally bypass EJS HTML escaping; context values must already be
+    // schema-validated or rendered through the contextual helpers above.
     escape: identityEscape,
   });
 

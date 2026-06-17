@@ -14,9 +14,10 @@ import { safeProjectDescription, safeProjectName } from '../schema/stack-config.
  * @returns The trimmed `pkg.name` value when it passes validation, or `"my-project"` as a safe fallback.
  */
 export function resolveDefaultProjectName(pkg: PackageJson | null): string {
-  const name = pkg?.name?.trim();
-  if (!name) return 'my-project';
-  return safeProjectName.safeParse(name).success ? name : 'my-project';
+  if (typeof pkg?.name !== 'string') return 'my-project';
+  const projectName = pkg.name.trim();
+  if (!projectName) return 'my-project';
+  return safeProjectName.safeParse(projectName).success ? projectName : 'my-project';
 }
 
 /**
@@ -35,8 +36,11 @@ export function resolveDefaultDescription(
   framework: string | null,
   language: string,
 ): string {
-  const description = pkg?.description?.trim();
-  if (description && safeProjectDescription.safeParse(description).success) return description;
-  if (framework) return `A ${framework} application`;
-  return `A ${language} project`;
+  const fallbackDescription = framework ? `A ${framework} application` : `A ${language} project`;
+  if (typeof pkg?.description !== 'string') return fallbackDescription;
+
+  const description = pkg.description.trim();
+  if (!description) return fallbackDescription;
+
+  return safeProjectDescription.safeParse(description).success ? description : fallbackDescription;
 }
