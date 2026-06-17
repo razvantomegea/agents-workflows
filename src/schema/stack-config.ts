@@ -61,14 +61,17 @@ export const SECURITY_DEFAULTS = {
   disclosureAcknowledgedAt: string | null;
 };
 
+export const SAFE_PROJECT_NAME = z
+  .string()
+  .trim()
+  .min(1, SAFE_PROJECT_NAME_WHITESPACE_MESSAGE)
+  .max(100)
+  .regex(SAFE_PROJECT_NAME_RE, SAFE_PROJECT_NAME_MESSAGE)
+  .refine((value: string) => value.trim().length > 0, SAFE_PROJECT_NAME_WHITESPACE_MESSAGE);
+
 export const STACK_CONFIG_SCHEMA = z.object({
   project: z.object({
-    name: z
-      .string()
-      .min(1)
-      .max(100)
-      .regex(SAFE_PROJECT_NAME_RE, SAFE_PROJECT_NAME_MESSAGE)
-      .refine((value: string) => value.trim().length > 0, SAFE_PROJECT_NAME_WHITESPACE_MESSAGE),
+    name: SAFE_PROJECT_NAME,
     description: SAFE_PROJECT_DESCRIPTION,
     locale: z.string().default('en'),
     localeRules: z.array(z.string()).default([]),
@@ -210,6 +213,7 @@ export const STACK_CONFIG_SCHEMA = z.object({
 });
 
 export const safeProjectDescription = SAFE_PROJECT_DESCRIPTION;
+export const safeProjectName = SAFE_PROJECT_NAME;
 export const stackConfigSchema = STACK_CONFIG_SCHEMA;
 
 export type StackConfig = z.infer<typeof STACK_CONFIG_SCHEMA>;

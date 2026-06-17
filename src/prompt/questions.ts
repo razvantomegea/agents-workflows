@@ -2,7 +2,7 @@ import { input } from '@inquirer/prompts';
 import type { DetectedStack } from '../detector/types.js';
 import type { PackageJson } from '../utils/index.js';
 import { isFrontendFramework } from '../constants/frameworks.js';
-import { safeProjectDescription, safeProjectPath } from '../schema/stack-config.js';
+import { safeProjectDescription, safeProjectName, safeProjectPath } from '../schema/stack-config.js';
 import { resolveDefaultDescription, resolveDefaultProjectName } from './defaults.js';
 import {
   askProjectDocumentationFiles,
@@ -38,6 +38,9 @@ export async function askProjectIdentity(
   const name = await input({
     message: 'Project name:',
     default: resolveDefaultProjectName(pkg),
+    validate: (value: string): true | string => safeProjectName.safeParse(value.trim()).success
+      ? true
+      : 'Use only letters, digits, space, dot, underscore, or hyphen (max 100 characters).',
   });
 
   const description = await input({

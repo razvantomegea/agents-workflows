@@ -1,16 +1,22 @@
 import type { PackageJson } from '../utils/index.js';
-import { safeProjectDescription } from '../schema/stack-config.js';
+import { safeProjectDescription, safeProjectName } from '../schema/stack-config.js';
 
 /**
  * Returns the default project name derived from `package.json`, or `"my-project"` as a fallback.
  *
+ * Only names that pass `safeProjectName` validation are accepted; malicious or
+ * otherwise non-conforming values (backticks, newlines, instructions, etc.) are
+ * silently replaced with the safe default so that untrusted package metadata
+ * cannot inject content into generated files.
+ *
  * @param pkg - Parsed `package.json` content, or `null` when unavailable.
  *
- * @returns The trimmed `pkg.name` value, or `"my-project"` when absent or blank.
+ * @returns The trimmed `pkg.name` value when it passes validation, or `"my-project"` as a safe fallback.
  */
 export function resolveDefaultProjectName(pkg: PackageJson | null): string {
   const name = pkg?.name?.trim();
-  return name || 'my-project';
+  if (!name) return 'my-project';
+  return safeProjectName.safeParse(name).success ? name : 'my-project';
 }
 
 /**
