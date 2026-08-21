@@ -585,7 +585,35 @@ The objective is:
 
 ---
 
-# 20. Use the Engineering Feedback Loop Skill
+# 20. Protect Session Understanding
+
+A full context window is not a better mental model.
+
+Judgment degrades as the session fills, often before the tool
+automatically compacts or summarizes.
+
+At a natural checkpoint — after a coherent unit of work, before
+unrelated work, or when the important model is still intact — prefer
+one of:
+
+* compacting or summarizing the session
+* starting a fresh session with the current mental model restated
+
+If the tool can compact or summarize, do it then, while the important
+behavior, logic, invariants, and remaining work can still be stated
+clearly.
+
+Do not rely on late automatic compaction to preserve understanding.
+
+Do not compact in the middle of a change that still depends on raw
+evidence, such as an unfinished diagnosis.
+
+The summary should preserve the shared mental model, not a narration
+of every tool call.
+
+---
+
+# 21. Use the Engineering Feedback Loop Skill
 
 When the engineering-feedback-loop skill is present, use it for
 meaningful engineering work.

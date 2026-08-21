@@ -641,7 +641,52 @@ The rule is:
 
 ---
 
-# 15. Completion Gate
+# 15. Protect Session Context
+
+Session quality is part of the feedback loop.
+
+As context fills, the agent and the human both lose fidelity. Automatic
+compaction near the limit is a last resort, not the preferred checkpoint.
+
+After a medium or large unit of work, or before starting unrelated work,
+choose:
+
+```text
+Restate the mental model
+    ↓
+Compact or summarize
+    or
+Start a fresh session
+```
+
+Preserve:
+
+* goal
+* current vs desired behavior
+* logic and algorithm
+* invariants
+* important decisions and tradeoffs
+* remaining work
+* remaining uncertainty
+
+Do not preserve a line-by-line history of tool output.
+
+Do not compact in the middle of:
+
+* an unfinished diagnosis
+* an unfinished implementation
+* a comparison of intended vs actual behavior that still needs the
+  evidence in front of you
+
+If the tool exposes a compact or summarize action, use it at the
+checkpoint. Do not wait until the window is nearly full.
+
+If the next work is unrelated, start a new session instead of mixing
+two mental models in one transcript.
+
+---
+
+# 16. Completion Gate
 
 For medium and large changes, consider the task complete only when:
 
