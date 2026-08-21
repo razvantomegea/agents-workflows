@@ -2,11 +2,8 @@
 
 ## Purpose
 
-This repository defines a minimal philosophy and operating model for
-agentic software engineering.
-
-Its purpose is to help engineers use increasingly capable software agents
-without outsourcing their understanding, judgment, or responsibility.
+Use increasingly capable software agents without outsourcing
+understanding, judgment, or responsibility.
 
 Agents may generate, modify, refactor, test, analyze, and explain software.
 
@@ -590,15 +587,9 @@ The objective is:
 
 # 20. Use the Engineering Feedback Loop Skill
 
-The repository contains a reusable skill:
+When the engineering-feedback-loop skill is present, use it for
+meaningful engineering work.
 
-`.agents/skills/engineering-feedback-loop/SKILL.md`
+This file is the philosophy.
 
-Use this skill when performing meaningful engineering work.
-
-The skill provides the operational procedure for maintaining the
-human-agent feedback loop described in this document.
-
-The AGENTS.md file defines the philosophy.
-
-The skill defines the practice.
+The skill is the practice.
