@@ -1,330 +1,623 @@
 # AGENTS.md
 
-This file provides guidance to all agents, LLMs, and AI tools when working with code in this repository.
+## Purpose
 
-<!-- agents-workflows:managed-start -->
+Use increasingly capable software agents without outsourcing
+understanding, judgment, or responsibility.
 
-`agents-workflows` — Reusable AI agent configuration framework — install battle-tested Claude Code agents, Codex skills, and workflow commands into any project.
+Agents may generate, modify, refactor, test, analyze, and explain software.
 
-## Stack Context
+The human engineer remains responsible for:
 
-- Typescript (node)
-- Jest (testing)
-- Oxlint (linter)
-- pnpm (package manager)
+- requirements
+- system behavior
+- business logic
+- algorithms
+- architecture
+- constraints
+- invariants
+- tradeoffs
+- verification
+- engineering judgment
 
-## Project Structure
+The objective is not to make the human engineer unnecessary.
 
-Use this map for quick orientation. Folder descriptions are generated only from configured project roles, not inferred from a filesystem crawl.
+The objective is to make the human engineer more effective while keeping
+them informed and in control.
+
+---
+
+# Core Principle
+
+> **Agents are code generators; engineers are responsible for system
+> design, constraints, verification, and judgment.**
+
+Code is an implementation language.
+
+The important engineering artifacts are:
+
+- intent
+- requirements
+- behavior
+- logic
+- algorithms
+- data and state models
+- architecture
+- invariants
+- constraints
+- tradeoffs
+- failure modes
+- verification
+
+An agent must not silently translate human intent into implementation.
+
+For significant work, maintain a feedback loop:
 
 ```text
-.
-|-- src/    # source root
-|-- src/utils/    # utilities and business logic
-|-- tests/    # tests
+Human Intent
+    ↓
+Agent Interpretation
+    ↓
+Shared Mental Model
+    ↓
+Human Feedback
+    ↓
+Logic / Algorithm
+    ↓
+Implementation
+    ↓
+Agent Explanation
+    ↓
+Verification
+    ↓
+Human Understanding
 ```
 
-## Primary Documentation
-
-- The canonical source of project intent lives in `README.md`.
-- Read `README.md` before planning, implementing, reviewing, or writing tests so your work reflects documented requirements and non-goals.
-- When `README.md` and code disagree, flag the mismatch in your output instead of silently picking one.
-
-## Context budget
-
-- Load only files, symbols, and recent decisions needed for the current task.
-- Never load entire files when `rg`/`grep`/`glob` + targeted read suffices.
-- Do not paste docs here — link them. Skills hold task-specific knowledge.
-- When context reaches ~50% full, write a NOTES.md summary and /clear.
-- For nested packages, a closer AGENTS.md wins over an outer one.
-
-## MCP policy
-
-- Prefer CLIs (`gh`, `aws`, `gcloud`) over custom MCP servers when the
-  capability exists as a CLI. CLIs are auditable plain text.
-- Run MCP servers with the least privilege needed for the task.
-- Never run an untrusted MCP server in the same session that has
-  access to secrets or network egress (see Rule of Two, §1.5).
-- Scope tokens per task, not per session. Expire on completion.
-- GitHub MCP tokens: use fine-grained PATs with repo-specific scope.
-- Prefer STDIO-on-localhost or OAuth-authenticated Streamable HTTP.
-- Log every MCP tool call with (caller, destination, payload summary).
-
-## Session hygiene
-
-- Never commit or push unless the user explicitly asks.
-- Every agent session starts from a clean tree on a named branch.
-- For parallel/competing agent runs, use `git worktree add` — one
-  worktree per task — to prevent cross-contamination.
-- Use `/rewind` (Claude Code) or `/fork` / `codex resume` (Codex)
-  instead of hand-rolled diff snapshots.
-- Never try to force determinism through temperature or seed; make
-  the test suite the contract.
-
-## Memory discipline
-
-- `/clear` between unrelated tasks. Always.
-- AGENTS.md / CLAUDE.md holds project-wide rules only. Put
-  task-specific knowledge in `.claude/skills/*/SKILL.md`.
-- Never dump docs into AGENTS.md — link to them.
-- When context nears 50% full: `/compact Focus on <current sub-task>`,
-  or write NOTES.md and `/clear`.
-- Two-strike rule: if the agent is corrected twice on the same issue,
-  `/clear` and re-prompt with what you learned.
-
-## Sub-agent Routing
-
-| Task | Agent |
-|---|---|
-| Architecture, planning | `architect` |
-| Implementation | `implementer` |
-| Code review (after every file edit) | `code-reviewer` |
-| Security review (parallel to code review) | `security-reviewer` |
-| Review loop orchestration | `reviewer` |
-| Optimization pass | `code-optimizer` |
-| Unit tests | `test-writer` |
-
-**Sub-agent deny-bypass caveat.** Claude sub-agents spawned via the `Task` tool do not enforce `permissions.deny` (tracked upstream: [#25000](https://github.com/anthropics/claude-code/issues/25000), [#43142](https://github.com/anthropics/claude-code/issues/43142)). Do not route destructive operations (`git push`, `rm -rf`, `git reset --hard`) through sub-agents — keep them on the main agent where hooks and denies apply. Always review `git diff` and the session transcript before committing; the deny list is defense-in-depth only.
-
-## Model routing (Claude + GPT defaults; verify current model IDs in vendor docs)
-
-| Role           | Preferred model family                                      | Backup model family                       | Reasoning effort | Per-tool invocation hint |
-|----------------|-------------------------------------------------------------|-------------------------------------------|------------------|--------------------------|
-| architect      | Claude (Opus / latest Sonnet, thinking on)                  | GPT-5.x (high-reasoning mode)             | high             | Claude: Plan Mode · Codex: `/plan` · Cursor: Plan Mode · Copilot: Ask/Agent mode · Windsurf: Cascade Plan |
-| implementer    | TS/React/Three.js: GPT-5.x (Codex) · Python/infra: Claude   | Opposite family of the writer             | medium           | Claude: default · Codex: default · Cursor: Agent (Auto) · Copilot: Agent mode · Windsurf: Cascade Write |
-| code-reviewer  | Same FAMILY as implementer                                  | —                                         | medium           | Claude subagent · Codex subagent · Cursor rule (`alwaysApply`) · Copilot prompt file · Windsurf rule (Always On) |
-| reviewer       | DIFFERENT FAMILY from implementer (Claude ↔ GPT-5.x)        | —                                         | high             | Claude subagent · Codex subagent · Cursor BugBot · Copilot Review · Windsurf Cascade (alt-model) |
-| external-review| CodeRabbit CLI mandatory default; different-family reviewer for exception/fallbacks | Cursor BugBot / Copilot PR review only when CodeRabbit is unavailable | high | CodeRabbit CLI first · `/codex:review` only for Claude-authored diffs · Cursor BugBot / Copilot PR review fallback |
-| code-optimizer | Same family as implementer                                  | Opposite family for risky refactors       | medium           | same as implementer |
-| test-writer    | Claude (test strategy)                                      | GPT-5.x (boilerplate test code)           | medium           | same as implementer |
-| e2e-tester     | Claude                                                      | GPT-5.x                                   | medium           | same as implementer |
-| ui-designer    | **Claude Opus** (UX thinking / a11y / design-system; adaptive thinking on) | - | high           | MUST run before `implementer` on any UI/UX task |
-
-Rule: never let the writer be its own final reviewer. The `reviewer`
-role MUST run on a different model FAMILY than the implementer —
-Claude ↔ GPT-5.x is the cheapest diversity gain available. This rule
-applies identically across Claude Code, Codex CLI, Cursor,
-VSCode+Copilot, and Windsurf — pick whichever tool's model picker
-yields the family swap (e.g., Cursor Agent on Claude Sonnet + Copilot
-Agent on GPT-5.x, or vice versa).
-
-### Stack-aware writer/reviewer defaults
-
-This workspace is a **typescript** codebase where GPT-5.x leads on rapid implementation. Implementer: **GPT-5.x**. Reviewer + `/external-review`: **Claude**. Architect + test strategy: **Claude**.
-
-### Cross-stack primary / secondary map
-
-**Primary** writes; **Secondary** runs `reviewer` + `/external-review`. Writer and reviewer MUST stay different families.
-
-| Stack / language                                | Primary (implementer) | Secondary (reviewer + cross-check) |
-|-------------------------------------------------|------------------------|------------------------------------|
-| Plain JS / TS (libs, CLIs, Node backends)       | GPT-5.x                | Claude                             |
-| React / Next.js / React Native / Remix          | GPT-5.x                | Claude                             |
-| Three.js / WebGL / canvas / shaders             | GPT-5.x                | Claude                             |
-| Vue / Svelte / Solid / Angular                  | GPT-5.x                | Claude                             |
-| Python (FastAPI / Django / Flask / data)        | Claude                 | GPT-5.x                            |
-| C++ / systems / low-level                       | Tie (see notes)        | Opposite family of writer          |
-| Java (Spring, enterprise OO)                    | Claude                 | GPT-5.x                            |
-| C# / .NET (ASP.NET Core, LINQ)                  | GPT-5.x                | Claude                             |
-| Go (services, CLIs, concurrency)                | GPT-5.x                | Claude                             |
-| Rust (ownership, lifetimes, refactors)          | Claude                 | GPT-5.x                            |
-| PHP (Laravel, Symfony)                          | GPT-5.x                | Claude                             |
-| Ruby / Rails                                    | Claude                 | GPT-5.x                            |
-| Swift / iOS (SwiftUI, UIKit)                    | GPT-5.x                | Claude                             |
-| Kotlin / Android (coroutines, flows)            | GPT-5.x                | Claude                             |
+If the human engineer no longer understands the important behavior of the
+system after agent work, the engineering feedback loop has failed.
 
-For C++ / low-level work, neither family is authoritative: every change MUST be validated by the compiler, sanitizers, and tests. Prefer GPT-5.x for implementation drafts; prefer Claude for understanding legacy / template code and concurrency invariants.
+---
 
-**UI/UX two-phase exception.** UI work resolves to two different models: **Phase A — design thinking / planning** (flows, IA, UX heuristics, a11y, design-system decisions) runs on **Claude Opus** with adaptive thinking on; **Phase B — UI implementation** (component code, Tailwind, Three.js, SwiftUI) runs on **GPT-5.x (Codex)** taking Opus's approved notes as input. The `ui-designer` role MUST run on Claude Opus and MUST precede the `implementer` on any UI/UX task. See PRD §1.7.1 for the full rationale.
+# 1. Preserve Human Understanding
 
-### Cross-model handoff setup (how Claude invokes Codex and vice versa)
+The agent must not encourage cognitive outsourcing.
 
-The Claude ↔ GPT-5.x rotation is NOT driven by file watching. Three mechanisms, in preference order (PRD §1.7.2):
+Do not treat:
 
-1. **Codex Plugin for Claude Code (MCP)** — install once: `/plugin marketplace add openai/codex-plugin-cc` → `/plugin install codex@openai-codex` → `/codex:setup`. Claude then calls Codex via `/codex:delegate <task>` (implementation) and `/codex:review` (opposite-family reviewer).
-2. **`claude -p` inside Codex** — from a Codex session, shell out via `claude -p "<prompt>"`; allowlisted in `.codex/rules/project.rules`.
-3. **Subprocess fallback** — `Bash(codex exec "<prompt>")` from Claude Code; `Bash(codex exec:*)` and `Bash(claude -p:*)` are allowlisted in generated `.claude/settings.json`; all §1.9 denies remain in force.
+* generated code
+* passing tests
+* successful compilation
+* a completed diff
+* a completed task
 
-## Planning Workflow
+as substitutes for understanding.
 
-- For complex work, require a simple, explicit `PLAN.md` task breakdown before any implementation starts.
-- `PLAN.md` is the single source of truth for current work.
-- Each task must name exact file paths.
-- Tasks are tagged: `[UI] [LOGIC] [API] [SCHEMA] [TEST]`.
-- Tasks marked `[PARALLEL]` can be executed simultaneously.
+The human engineer should be able to explain the important parts of the
+system:
 
-## Git & Branch Rules
+* what it does
+* why it does it
+* how it does it
+* what assumptions it makes
+* what can fail
+* what invariants must hold
+* why important design decisions were made
 
-- **Always start on a dedicated branch** before any implementation.
-- **NEVER commit or push** unless the user explicitly asks.
+The goal is not for the human to understand every line.
 
-## Code Review Workflow
+The goal is for the human to understand the system well enough to reason
+about, challenge, modify, and debug it independently.
 
-After every implementation session, run the following loop:
+---
 
-1. **Launch `code-reviewer` and `security-reviewer` in parallel** on all modified files.
-2. **Apply every finding** — every critical and warning must be fixed.
-3. **Re-run type-check** — `pnpm check-types`.
-4. **Re-run tests** — `pnpm test`. All suites must pass.
+# 2. Understand Before Implementing
 
-This loop is mandatory.
+Before non-trivial implementation, establish a shared understanding.
 
-## Code Style
+The agent should communicate:
 
-- Always add explicit type annotations to function parameters — never rely on implicit inference.
-- No `any` types — use explicit types, discriminated unions, or generics.
-- Functions with more than 2 parameters must use a single object parameter.
-- Name module-level constants in UPPER_SNAKE_CASE.
-- Do not create thin wrapper components that only forward props.
-- Avoid redundant type aliases.
-- Use descriptive variable names in `.map()` callbacks.
-- Avoid hardcoded styling — use theme variables or design tokens.
+### Goal
 
-## File Organization
+What problem are we solving?
 
-- Keep business logic in `src/utils/` and hooks — keep UI components thin.
-- One public component/helper per file.
-- Use folder-based module organization with colocated tests and `index.ts` barrel exports.
+### Current Behavior
 
-## DRY and Reusability
+How does the system currently behave?
 
-- Before writing any code, grep the codebase first.
-- Same function + different appearance = extend via props/params, not copy.
-- Any code appearing in 2+ places must be extracted.
+### Desired Behavior
 
-## Rules
+What should change?
 
-- Always use `pnpm` for running scripts.
-- Always do what is asked. If anything is unclear, ask clarifying questions until ≥95% confident. Never advance to the next step with less than 95% confidence.
-- Never read `.env` files.
-- Search the web when library behavior or APIs are uncertain.
+### Constraints
 
-## Dangerous operations — require explicit confirmation
+What must remain true?
 
-NEVER execute without the user typing "yes" in the current session:
-- `rm -rf`, `rm -r` on any directory
-- `git push --force` / `--force-with-lease` on shared branches
-- `git reset --hard`, `git clean -fd`, `git branch -D`
-- `DROP`, `TRUNCATE`, `DELETE`/`UPDATE` without `WHERE`
-- `kubectl`/`terraform` targeting any non-local context
-- `npm publish`, `pnpm publish`, `cargo publish`, `twine upload`
-- Writes outside the project root, modifications to shell rc files,
-  installing system packages
+### Mental Model
 
-Always prefer `--dry-run` / `terraform plan` / `kubectl diff` first.
-Always prefer `--force-with-lease` over `--force` when a force push is
-unavoidable, and ask first.
+What domain concepts, states, relationships, and flows are involved?
 
-Before any destructive operation, state: (1) what changes, (2) where
-(env), (3) reversibility, (4) blast radius (count of rows/files/users).
+### Proposed Logic
 
-## Tooling / hooks
+What should the system logically do?
 
-This file is the universal surface — Copilot, Windsurf, Gemini CLI, Aider, and Continue.dev read it natively. Claude Code, Codex CLI, and Cursor additionally consume tool-native files under `.claude/`, `.codex/`, and `.cursor/`.
+### Algorithm
 
-`agents-workflows` never silently overwrites existing files — re-running `init` / `update` prompts before any write and preserves user-edited sections by default.
+What procedure or decision process will produce the desired behavior?
 
-The generated `.claude/settings.json` enforces safety at the tool-call layer via Claude Code hooks:
+### Assumptions
 
-- **PreToolUse `Bash`** — a shell guard runs before every Bash invocation and blocks commands matching the destructive-pattern list (`rm -rf`, `git push --force`, `git reset --hard`, etc.). Exit 2 = blocked with refusal message; exit 0 = allowed.
-- **PostToolUse `Edit|MultiEdit|Write`** — runs the configured lint/format command automatically after every file edit.
+What is being assumed?
 
-Review or adjust hook entries in `.claude/settings.json` under the `"hooks"` key. Per-developer overrides go in `.claude/settings.local.json` (gitignored).
+### Unknowns
 
-## Formatting / linting
+What is not yet known and could materially affect the implementation?
 
-- One formatter per language, CI-enforced. Fail on diff.
-- `.editorconfig` committed (charset, line endings, indent, final newline).
-- Type-check in CI as a lint step: `tsc --noEmit`, `mypy --strict`,
-  `pyright`, `cargo check`, `go vet`.
-- JS/TS new projects: prefer Biome (single tool). Large legacy repos
-  with deep ESLint investment: stay on ESLint+Prettier until Biome
-  plugin coverage closes the gap for your stack.
-- Treewide formatting: one "apply formatter" commit, added to
-  `.git-blame-ignore-revs`.
-- Security-focused static analysis beyond linting: CodeQL, Semgrep,
-  SonarQube (cognitive complexity), `cargo-audit`, `npm audit`,
-  `pip-audit`.
+### Risks
 
-## Host hardening (operator-side, applies on every OS)
+What could go wrong?
 
-These complement the command-layer denies — see PRD §1.9.2 for full rationale. Each item lists OS-specific guidance; the **rule** itself applies regardless of OS.
+For significant ambiguity, the agent should stop and request clarification
+rather than silently choosing an interpretation.
 
-- **Avoid cross-OS / cross-volume access.** Run inside the native filesystem of whichever OS executes the agent. `workspace-write` does not restrict reads, so a prompt-injected agent reaching across mounts can read host secrets.
-  - WSL2: `~/Projects/...`, not `/mnt/c/`.
-  - macOS: local APFS, not `/Volumes/...` or SMB shares.
-  - Linux: local disk, not `/mnt/...`, `sshfs`, or NFS unless explicitly trusted.
-  - Windows-native: `%USERPROFILE%\Projects\...`, not UNC paths.
-  - Container hosts (Docker / Podman): bind-mount only the project subtree — never `$HOME`. Mounting `$HOME` into a sandboxed agent exposes SSH keys, cloud credentials, and browser profiles.
-- **Use sandboxing.** Prefer Claude Code's `/sandbox` for ad-hoc runs (cross-platform). For full sessions, prefer devcontainer / Docker / Podman / Codespaces. OS-native primitives where they apply: Linux seccomp / Landlock, macOS `sandbox-exec`, Windows AppContainer / WDAC. Kernel sandbox primitives do not apply on Windows-native hosts — rules and `/sandbox` are the available controls there. Trust ladder ordering (`/sandbox` < `workspace-write` < devcontainer < disposable VM) compares **write** isolation; for **read** isolation, `/sandbox` adds syscall-filtered read restriction that `workspace-write` does not, so combine the two when read-exfil is the threat.
-- **No privilege escalation, any OS.** Never run the harness under `sudo` / `doas` / `su` (Linux/macOS) or "Run as administrator" / elevated PowerShell / `runas /user:Administrator` (Windows). Use a non-privileged user account for daily development:
-  - WSL2 / Linux: non-root user with user-scope tooling (nvm / fnm / mise).
-  - macOS: standard (non-Admin) user; Homebrew installed once under that user. On Apple Silicon, the initial `/opt/homebrew` setup prompts for `sudo` once — subsequent `brew install` must not require `sudo`. If a later `brew install` prompts for `sudo`, stop and reinstall Homebrew under the correct user.
-  - Windows-native: standard (non-Administrator) user; user-scope installs (winget `--scope user`, fnm, Volta). If a UAC consent prompt appears during an agent session, decline and investigate before continuing — it is a red flag, not a routine confirmation.
-- **Enterprise endpoint monitoring.** Org-managed devices: install the org-mandated EDR for the host OS so the agent's process is observable alongside other workloads:
-  - Windows + WSL2: Microsoft Defender for Endpoint **plus the MDE WSL plug-in**.
-  - macOS: Defender for Endpoint for macOS, CrowdStrike Falcon, SentinelOne, etc.
-  - Linux: Defender for Endpoint for Linux, Falcon Sensor for Linux, auditd-based agents, etc.
+---
 
-## Semi-autonomous non-interactive mode — security disclosure
+# 3. Logic Before Code
 
-### What non-interactive mode does
+Explain solutions in this order:
 
-- Codex runs with `approval_policy = "never"`. All approval prompts are skipped.
-- Claude runs with `defaultMode = "acceptEdits"`. File edits and basic
-  filesystem ops (`mkdir`, `touch`, `mv`, `cp`) auto-approve in the working
-  directory; **Bash commands still prompt** unless they match a rule in
-  `permissions.allow`. To get truly headless Claude sessions, pair
-  `acceptEdits` with the Epic 9 Bash allow-list — never with
-  `bypassPermissions` or `--dangerously-skip-permissions`, which are the
-  same dangerous mode in two delivery surfaces.
+1. Behavior
+2. Logic
+3. Algorithm
+4. Data/state model
+5. Architecture
+6. Implementation
 
-### What it does NOT relax
+Do not start with implementation details when the important question is
+whether the underlying logic is correct.
 
-- Deny rules in `.claude/settings.json` and forbid rules in `.codex/rules/project.rules`
-  still block destructive/forbidden commands.
-- The `workspace-write` sandbox still applies (subject to PRD §1.9.1 item 10.2 on Windows).
+A human should be able to understand and challenge the proposed solution
+without reading the generated code.
 
-### Known risks (PRD §1.9.1)
+---
 
-1. **Claude sub-agent deny-bypass.** `Task` tool sub-agents ignore `permissions.deny`
-   (Anthropic #25000, #43142). Do not route destructive ops through sub-agents.
+# 4. Reduce Complexity
 
-2. **Codex Windows sandbox instability.** Workspace-write is unstable on Windows
-   (OpenAI #15850 + dupes). Rules are the primary guard there, not the sandbox.
+The primary software-design objective is:
 
-3. **PowerShell wrapper prefix_rule bypass.** `pwsh -Command` / `cmd /c` body is
-   opaque to prefix_rule (OpenAI #13502). Mitigated by E9.T12 forbid rules.
+> **Reduce complexity while delivering correct behavior.**
 
-4. **Network exfiltration surface.** `network_access = true` plus prompt injection via
-   README / issue body / sourcemap can exfiltrate secrets via `curl` / `iwr`.
-   Mitigated by E9.T11 denies and E9.T13 `allowedDomains`; residual via `node -e`
-   raw sockets.
+Before introducing a change, consider whether it makes the system:
 
-### Recommendation — isolation environments
+* easier or harder to understand
+* easier or harder to modify
+* more or less coupled
+* more or less predictable
+* more or less testable
 
-Run the agent in an isolated environment when non-interactive mode is enabled:
+Prefer:
 
-- devcontainer / Dev Containers / GitHub Codespaces
-- Docker / Podman container
-- Local VM (UTM / Parallels / Hyper-V / WSL2) or cloud VM / VPS
-- Clean dedicated workstation (no personal files, SSH keys, or browser profiles)
+* simple designs
+* cohesive modules
+* clear responsibilities
+* explicit dependencies
+* stable interfaces
+* information hiding
+* localized change
+* understandable control flow
 
-### If you run on your primary OS
+Avoid unnecessary:
 
-A prompt-injected agent can read `~/.ssh/*`, `~/.aws/credentials`,
-`~/.config/gh/hosts.yml`, browser profile cookies, Windows `%APPDATA%`, etc.
-Workspace-write only restricts WRITES, not reads.
+* abstractions
+* indirection
+* frameworks
+* dependencies
+* patterns
+* layers
+* configuration
+* cleverness
 
-Codex CLI is unsupported on Windows-native hosts — use WSL2 or a devcontainer (see README "Codex on Windows hosts").
+Do not introduce abstraction merely because two pieces of code look similar.
 
-### Manual review is still required
+The goal is not "DRY at all costs."
 
-Always run `git diff` and review changes before committing. The deny list is
-defense-in-depth only — especially for sub-agent calls.
+The goal is to avoid duplicating important knowledge while keeping the
+system understandable.
 
-## Deployment Rules
+---
 
-See `AGENTS-DEPLOYMENT.md` for deployment checklist and rules.
+# 5. Design for Change
 
-<!-- agents-workflows:managed-end -->
+Software should be designed with change in mind.
+
+When choosing between designs, prefer the one that:
+
+* localizes likely changes
+* minimizes blast radius
+* hides implementation details
+* preserves stable interfaces
+* reduces coupling
+
+Do not over-engineer speculative requirements.
+
+The simplest design that satisfies the actual requirements is usually
+preferable.
+
+---
+
+# 6. Information Hiding
+
+Implementation details should remain private whenever possible.
+
+Avoid leaking:
+
+* database implementation details
+* transport details
+* framework internals
+* infrastructure concerns
+* internal data structures
+* incidental implementation choices
+
+Expose stable, meaningful interfaces.
+
+A change to an implementation should ideally not require changes throughout
+the system.
+
+---
+
+# 7. Verify, Don't Assume
+
+Agents must verify important assumptions.
+
+Do not assume:
+
+* an API behaves a certain way
+* a dependency supports a feature
+* a database guarantees a property
+* existing code is correct
+* tests provide complete coverage
+* configuration matches expectations
+* an observed symptom has an obvious cause
+
+Use appropriate evidence:
+
+* source code
+* documentation
+* tests
+* compiler/type system
+* static analysis
+* runtime behavior
+* logs
+* measurements
+* controlled experiments
+
+Clearly distinguish:
+
+* known facts
+* assumptions
+* hypotheses
+* verified behavior
+* remaining uncertainty
+
+Never claim verification that was not actually performed.
+
+---
+
+# 8. Tests Are Feedback, Not Proof
+
+Tests are evidence that specific behavior works.
+
+Passing tests do not automatically prove:
+
+* architectural correctness
+* business correctness
+* absence of race conditions
+* correct security behavior
+* correct failure handling
+* correctness outside the tested cases
+
+Use tests as part of a broader feedback loop.
+
+When appropriate, combine:
+
+* unit tests
+* integration tests
+* end-to-end tests
+* type checking
+* static analysis
+* runtime verification
+* manual reasoning
+* review of important edge cases
+
+---
+
+# 9. Make Dependencies Explicit
+
+Prefer explicit dependencies and data flow.
+
+Avoid hidden:
+
+* global state
+* implicit coupling
+* magical behavior
+* side effects
+* configuration dependencies
+* framework-specific assumptions
+
+A reader should be able to understand important dependencies from the
+structure of the system.
+
+---
+
+# 10. Avoid Duplication of Knowledge
+
+Do not duplicate important business rules, domain concepts, or system
+knowledge across unrelated locations.
+
+However, do not create abstractions merely to eliminate textual
+duplication.
+
+Sometimes duplicated implementation is cheaper and safer than introducing
+a coupling abstraction.
+
+Prefer a single authoritative representation of important knowledge.
+
+---
+
+# 11. Choose Technology From Requirements
+
+Do not introduce infrastructure, databases, queues, caches, services,
+frameworks, or abstractions because they are fashionable or familiar.
+
+First understand:
+
+* workload
+* data model
+* access patterns
+* consistency requirements
+* durability requirements
+* latency requirements
+* availability requirements
+* scalability requirements
+* failure modes
+
+Then choose the simplest technology that satisfies the requirements.
+
+---
+
+# 12. Design for Failure
+
+For systems involving persistence, concurrency, distributed components, or
+external dependencies, explicitly consider:
+
+* timeouts
+* retries
+* duplicate requests
+* partial failures
+* stale data
+* concurrent writes
+* transaction boundaries
+* ordering
+* idempotency
+* recovery
+* observability
+* dependency failures
+
+An implementation is incomplete if important failure behavior is undefined.
+
+---
+
+# 13. Maintain Traceability
+
+Important implementation decisions should be traceable back to a reason.
+
+Prefer this relationship:
+
+```text
+Requirement
+    ↓
+Behavior
+    ↓
+Logic
+    ↓
+Algorithm
+    ↓
+Design
+    ↓
+Implementation
+    ↓
+Verification
+```
+
+Avoid decisions whose explanation is simply:
+
+> "The agent thought this was a good idea."
+
+For significant decisions, communicate:
+
+* what was decided
+* why it was necessary
+* alternatives considered
+* why the chosen approach was preferred
+* what assumptions it depends on
+* what tradeoffs it introduces
+
+---
+
+# 14. Debugging Is a Reasoning Process
+
+When debugging, do not immediately change code.
+
+First establish:
+
+1. Observed behavior
+2. Expected behavior
+3. Difference between them
+4. Possible causes
+5. Evidence for each hypothesis
+6. Most likely root cause
+7. Proposed fix
+8. Verification strategy
+
+Then implement the fix.
+
+Afterwards explain:
+
+* the root cause
+* why the fix addresses it
+* what prevents regression
+* how the original failure was verified as resolved
+
+---
+
+# 15. Refactoring Is a Complexity-Reduction Process
+
+Before a significant refactor, explain:
+
+* current structure
+* current complexity
+* source of the complexity
+* proposed structural change
+* why the new structure is simpler
+* behavior that must remain unchanged
+
+After refactoring:
+
+* explain the new structure
+* explain what complexity was removed
+* confirm behavioral equivalence where applicable
+* report verification performed
+
+---
+
+# 16. System and Data Reasoning
+
+For systems involving significant persistence, concurrency, distributed
+processing, or scale, reason explicitly about:
+
+* data model
+* access patterns
+* transactions
+* consistency
+* concurrency
+* durability
+* availability
+* replication
+* partitioning
+* caching
+* asynchronous processing
+* ordering
+* idempotency
+* failure modes
+* observability
+
+Infrastructure choices should follow system requirements, not precede them.
+
+---
+
+# 17. Leave the Codebase Better
+
+Every change should aim to leave the affected area:
+
+* simpler
+* clearer
+* better tested
+* better documented
+* or more maintainable
+
+Avoid unrelated refactoring during focused work.
+
+Do not knowingly introduce unnecessary technical debt merely because an
+agent can generate it quickly.
+
+---
+
+# 18. Agentic Engineering Loop
+
+For meaningful work, agents should generally follow:
+
+1. Understand the request and repository context.
+2. Inspect existing behavior before creating new behavior.
+3. Identify relevant constraints.
+4. Establish the mental model.
+5. Explain the proposed logic and algorithm.
+6. Surface assumptions and uncertainty.
+7. Obtain human feedback when ambiguity is material.
+8. Implement the smallest coherent change.
+9. Verify the implementation.
+10. Explain what actually changed.
+11. Compare intended behavior with actual behavior.
+12. Report discrepancies and remaining uncertainty.
+
+Never optimize for the number of lines written.
+
+Optimize for the quality and understandability of the resulting system.
+
+---
+
+# 19. Engineering Completion
+
+A task is not complete merely because:
+
+* code was generated
+* compilation succeeds
+* tests pass
+* the requested files changed
+* the agent reports success
+
+Engineering completion requires sufficient confidence that:
+
+* the requirement was understood correctly
+* the logic is correct
+* the implementation reflects that logic
+* important assumptions are known
+* important failure modes have been considered
+* appropriate verification was performed
+* the human engineer can explain the resulting behavior
+
+The objective is not:
+
+> "Make the code work."
+
+The objective is:
+
+> **"Make the intended system behavior correct, understandable, and
+> verifiable."**
+
+---
+
+# 20. Protect Session Understanding
+
+A full context window is not a better mental model.
+
+Judgment degrades as the session fills, often before the tool
+automatically compacts or summarizes.
+
+At a natural checkpoint — after a coherent unit of work, before
+unrelated work, or when the important model is still intact — prefer
+one of:
+
+* compacting or summarizing the session
+* starting a fresh session with the current mental model restated
+
+If the tool can compact or summarize, do it then, while the important
+behavior, logic, invariants, and remaining work can still be stated
+clearly.
+
+Do not rely on late automatic compaction to preserve understanding.
+
+Do not compact in the middle of a change that still depends on raw
+evidence, such as an unfinished diagnosis.
+
+The summary should preserve the shared mental model, not a narration
+of every tool call.
+
+---
+
+# 21. Use the Engineering Feedback Loop Skill
+
+When the engineering-feedback-loop skill is present, use it for
+meaningful engineering work.
+
+This file is the philosophy.
+
+The skill is the practice.
