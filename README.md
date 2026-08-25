@@ -43,6 +43,9 @@ the system after agent work, the loop has failed.
 ```text
 AGENTS.md
 .agents/skills/engineering-feedback-loop/SKILL.md
+.agents/skills/architecture-picture/SKILL.md
+.agents/skills/architecture-picture/HTML-PAGE.md
+.agents/skills/frontend-interview-drill/SKILL.md
 ```
 
 - `AGENTS.md` is the philosophy. Drop it at the project root. Many
@@ -50,6 +53,13 @@ AGENTS.md
 - `engineering-feedback-loop` is the practice. It tells the agent when
   and how to keep the feedback loop, scaled to small, medium, and large
   changes.
+- `architecture-picture` produces a visual HTML page (big picture,
+  architecture, flow, modules) for large or architectural work before
+  implementation. Temp file, open in browser — nothing committed to the
+  repo.
+- `frontend-interview-drill` is the interviewer. Use it in a practice
+  workspace (`interviews`) to assign TypeScript, React, or Next.js
+  challenges, hint without spoiling, and verify by running tests.
 
 This repository intentionally contains no vendor-specific tooling: no
 package manager, CI, MCP config, or Claude / Codex / Cursor setup.
@@ -59,10 +69,17 @@ package manager, CI, MCP config, or Claude / Codex / Cursor setup.
 1. Copy `AGENTS.md` to the other project's root.
 2. Copy `.agents/skills/engineering-feedback-loop/` into that project's
    `.agents/skills/` directory (create the folders if needed).
-3. Point the agent at both files if it does not load them by default.
+3. Copy `.agents/skills/architecture-picture/` into that project's
+   `.agents/skills/` directory.
+4. For interview practice, also copy
+   `.agents/skills/frontend-interview-drill/` into the exam-room repo
+   (`interviews`).
+5. Point the agent at the copied files if it does not load them by
+   default.
 
 Keep project-specific conventions in the host repository. Do not add
-stack, vendor, or product rules to these two files.
+stack, vendor, or product rules to `AGENTS.md`,
+`engineering-feedback-loop`, or `architecture-picture`.
 
 ## What this is not
 

@@ -129,7 +129,7 @@ Understand
     ↓
 Model
     ↓
-Explain
+Architecture Picture
     ↓
 Human Feedback
     ↓
@@ -141,6 +141,10 @@ Verify
     ↓
 Compare
 ```
+
+When the `architecture-picture` skill is present, produce and open the
+architecture picture before the human feedback checkpoint. That page is
+the shared mental model for large or architectural work.
 
 Do not add ceremony merely for its own sake.
 
@@ -264,6 +268,12 @@ the code.
 
 For large or materially ambiguous changes, explicitly communicate the
 proposed model before implementation.
+
+When the `architecture-picture` skill is present and the change is large
+or architectural, produce and open the architecture picture first. That
+page is the checkpoint artifact — big picture, architecture, flow, and
+modules. Use the text structure below for medium ambiguity or when the
+skill is absent.
 
 Use a concise structure:
 
@@ -547,6 +557,10 @@ Why is the new structure better?
 
 What must remain unchanged?
 
+When the `architecture-picture` skill is present and the refactor is
+large or architectural, produce and open the architecture picture before
+implementing.
+
 After refactoring, explain:
 
 * the resulting structure
@@ -588,6 +602,9 @@ explicitly reason about relevant properties such as:
 * idempotency
 * failure modes
 * observability
+
+When the `architecture-picture` skill is present, produce and open the
+architecture picture before implementing these changes.
 
 Do not select infrastructure first and invent requirements afterward.
 

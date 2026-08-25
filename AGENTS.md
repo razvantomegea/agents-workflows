@@ -621,3 +621,15 @@ meaningful engineering work.
 This file is the philosophy.
 
 The skill is the practice.
+
+---
+
+# 22. Use the Architecture Picture Skill
+
+When the architecture-picture skill is present, use it for large,
+architectural, module, or big-feature work before implementation.
+
+Produce and open the visual HTML page so the human can review the big
+picture, architecture, flow, and modules before code is written.
+
+Skip small and medium changes. Do not invent ceremony for trivial work.
