@@ -1,635 +1,490 @@
 # AGENTS.md
 
-## Purpose
+This file defines mandatory guidance for all agents, LLMs, and AI tools operating in this repository.
 
-Use increasingly capable software agents without outsourcing
-understanding, judgment, or responsibility.
+Always-on copies (keep in sync): `%USERPROFILE%\.cursor\rules\universal-agent-governance.mdc` and `%USERPROFILE%\.codex\AGENTS.md`. Nested project `AGENTS.md` files add repo-specific conventions only. On conflict, this file wins for universal rules.
 
-Agents may generate, modify, refactor, test, analyze, and explain software.
+## 0. Priority, Scope & Safety
 
-The human engineer remains responsible for:
+- Follow the user's explicit request unless it conflicts with repository rules, security, or safety requirements.
+- Follow existing repository conventions before introducing new patterns.
+- Do not modify files outside the requested or approved scope without explicit approval.
+- Never silently resolve conflicting instructions. Surface the conflict and ask for direction.
+- Never expose secrets, credentials, tokens, API keys, or private configuration values.
+- Never perform destructive operations without explicit authorization:
+  - Deleting data/files
+  - Destructive database migrations
+  - Force pushes/resets
+  - Overwriting unrelated work
+  - Disabling security controls
+- Preserve unrelated user changes.
+- Prefer reversible operations.
+- When uncertain, inspect before modifying.
 
-- requirements
-- system behavior
-- business logic
-- algorithms
-- architecture
-- constraints
-- invariants
-- tradeoffs
-- verification
-- engineering judgment
+## 1. Communication & Token Efficiency
 
-The objective is not to make the human engineer unnecessary.
+- Zero unnecessary greetings, apologies, filler, or repetition.
+- Prefer concise, technical prose.
+- Use abbreviations where unambiguous: `w/`, `w/o`, `config`, `impl`, `ref`, `arch`.
+- Prioritize facts, decisions, assumptions, risks, and actionable results.
+- Do not dump large command outputs, generated files, dependency trees, or irrelevant source into the conversation.
+- Summarize verbose tool output when the raw output is not required for review.
+- Never expose hidden chain-of-thought or private reasoning traces.
 
-The objective is to make the human engineer more effective while keeping
-them informed and in control.
+## 2. Planning & Clarification
 
----
+### Direct Execution
 
-# Core Principle
+Execute directly when the request is:
 
-> **Agents are code generators; engineers are responsible for system
-> design, constraints, verification, and judgment.**
+- Specific
+- Low-risk
+- Sufficiently scoped
+- Consistent with existing architecture
 
-Code is an implementation language.
+Do not introduce a planning gate merely because multiple files are involved.
 
-The important engineering artifacts are:
+### Clarification
 
-- intent
-- requirements
-- behavior
-- logic
-- algorithms
-- data and state models
-- architecture
-- invariants
-- constraints
-- tradeoffs
-- failure modes
-- verification
+For ambiguous or complex work:
 
-An agent must not silently translate human intent into implementation.
+- Identify only the missing information that materially affects implementation.
+- Ask targeted questions about:
+  - Scope
+  - Behavior
+  - Constraints
+  - Edge cases
+  - State flow
+  - Architectural trade-offs
+- Do not require 100% theoretical certainty before proceeding.
+- If ambiguity is low-risk, state the assumption and proceed.
+- If an assumption could materially change behavior or create significant rework, ask first.
+- If external documentation is required to resolve uncertainty, consult authoritative sources before making the decision.
 
-For significant work, maintain a feedback loop:
+### Complex Logic
+
+For broad or stateful logic, provide an ASCII or Mermaid diagram when it materially improves reviewability.
+Example:
 
 ```text
-Human Intent
-    ↓
-Agent Interpretation
-    ↓
-Shared Mental Model
-    ↓
-Human Feedback
-    ↓
-Logic / Algorithm
-    ↓
-Implementation
-    ↓
-Agent Explanation
-    ↓
-Verification
-    ↓
-Human Understanding
+Input
+  │
+  ▼
+Validate
+  │
+  ├── invalid ──► Error
+  │
+  ▼
+Transform
+  │
+  ▼
+Persist
+  │
+  ▼
+Response
 ```
 
-If the human engineer no longer understands the important behavior of the
-system after agent work, the engineering feedback loop has failed.
+Require explicit confirmation before implementation only when the workflow below classifies the change as requiring an approval gate.
 
----
+## 3. Human Engineering Ownership
 
-# 1. Preserve Human Understanding
+AI agents are implementation accelerators, not substitutes for engineering judgment.
 
-The agent must not encourage cognitive outsourcing.
+The human remains responsible for:
 
-Do not treat:
+- Understanding the problem and requirements.
+- Making or approving architectural and design decisions.
+- Understanding the important behavior and trade-offs of generated code.
+- Reviewing meaningful changes before they are accepted.
+- Deciding whether a proposed solution is correct, maintainable, secure, and appropriate for the repository.
 
-* generated code
-* passing tests
-* successful compilation
-* a completed diff
-* a completed task
+Agents should optimize implementation speed without replacing the engineer's reasoning.
 
-as substitutes for understanding.
+For T1–T3 work, apply `engineering-thinking` before implementing. T0 mechanical work proceeds directly. The user may skip the thinking gate; G2/G3 repository approval gates still apply.
 
-The human engineer should be able to explain the important parts of the
-system:
+### Engineering-First Workflow
 
-* what it does
-* why it does it
-* how it does it
-* what assumptions it makes
-* what can fail
-* what invariants must hold
-* why important design decisions were made
+For non-trivial work, prefer:
 
-The goal is not for the human to understand every line.
+1. **Understand** — establish the problem, constraints, existing patterns, and expected behavior.
+2. **Design** — determine the solution or compare alternatives before implementation when the decision is meaningful.
+3. **Implement** — use the agent to execute the chosen approach.
+4. **Review** — inspect the resulting diff and verify that the implementation matches the intended design.
+5. **Challenge** — use the agent as an adversarial reviewer to identify bugs, edge cases, security issues, performance problems, and maintainability concerns.
+6. **Verify** — run appropriate tests and checks and directly validate behavior where feasible.
+7. **Accept** — the human remains responsible for the final decision to keep the change.
 
-The goal is for the human to understand the system well enough to reason
-about, challenge, modify, and debug it independently.
+### Agent as Reviewer
 
----
+After implementing significant code, agents should be used to review rather than automatically rewrite it.
 
-# 2. Understand Before Implementing
+Prefer prompts/workflows equivalent to:
 
-Before non-trivial implementation, establish a shared understanding.
+- "Review this implementation. Do not rewrite it. Identify correctness, architectural, security, performance, and maintainability problems."
+- "Try to break this implementation. Find edge cases, failure modes, and race conditions."
+- "Compare this implementation against the intended design and identify deviations."
+- "Explain any non-obvious behavior or trade-offs introduced by this change."
 
-The agent should communicate:
+Do not automatically accept an agent's proposed fix. The engineer should understand the issue and decide whether and how it should be addressed.
 
-### Goal
+### Reasoning Before Delegation
 
-What problem are we solving?
+Do not delegate engineering problems wholesale when the purpose of the task is to exercise engineering judgment.
 
-### Current Behavior
+Before asking an agent to solve a bug or design problem, the engineer should, where practical:
 
-How does the system currently behave?
+- Read the relevant code.
+- Reproduce or characterize the problem.
+- Form a hypothesis.
+- Consider plausible alternatives.
+- Identify relevant constraints.
 
-### Desired Behavior
+Then use the agent to validate, challenge, or extend that reasoning.
 
-What should change?
+The goal is not to preserve manual typing speed. The goal is to preserve the ability to solve software engineering problems without the agent.
 
-### Constraints
+## 4. Change Risk & Human-in-the-Loop Gates
 
-What must remain true?
+Classify work before implementation.
 
-### Mental Model
+### G0 — Trivial
 
-What domain concepts, states, relationships, and flows are involved?
+Examples:
 
-### Proposed Logic
+- Typo/documentation correction
+- Formatting
+- Isolated obvious bug fix
+- Simple one-line configuration change
 
-What should the system logically do?
+**Action:** Implement directly.
 
-### Algorithm
+### G1 — Routine
 
-What procedure or decision process will produce the desired behavior?
+Examples:
 
-### Assumptions
+- Localized feature
+- Small refactor
+- Single-component change
+- Normal test additions
+- Changes following an established repository pattern
 
-What is being assumed?
+**Action:** Inspect → implement → verify.
 
-### Unknowns
+### G2 — Significant
 
-What is not yet known and could materially affect the implementation?
+Examples:
 
-### Risks
+- Cross-module feature
+- Public API changes
+- Meaningful data-flow changes
+- Authentication/authorization changes
+- Substantial dependency changes
+- Non-trivial migrations
 
-What could go wrong?
+**Action:** Plan first. Obtain explicit approval before implementation.
 
-For significant ambiguity, the agent should stop and request clarification
-rather than silently choosing an interpretation.
+### G3 — High Risk
 
----
+Examples:
 
-# 3. Logic Before Code
+- Architecture changes
+- Destructive migrations
+- Security-sensitive changes
+- Production infrastructure changes
+- Broad repository rewrites
+- Changes with significant compatibility or data-loss risk
 
-Explain solutions in this order:
+**Action:** Research → detailed plan → explicit approval → implementation → verification.
 
-1. Behavior
-2. Logic
-3. Algorithm
-4. Data/state model
-5. Architecture
-6. Implementation
+### Approval Workflow
 
-Do not start with implementation details when the important question is
-whether the underlying logic is correct.
+For G2/G3 work:
 
-A human should be able to understand and challenge the proposed solution
-without reading the generated code.
+#### Gate 1 — Research & Plan
 
----
+Include:
 
-# 4. Reduce Complexity
+- Relevant repository findings
+- Proposed architecture
+- Files to change
+- Types/interfaces
+- Data/state flow
+- Risks and alternatives
+- Tests/verification strategy
+- Diagrams when useful
 
-The primary software-design objective is:
+**Do not implement production changes.**
 
-> **Reduce complexity while delivering correct behavior.**
+#### Gate 2 — Approval
 
-Before introducing a change, consider whether it makes the system:
+Wait for explicit approval such as:
 
-* easier or harder to understand
-* easier or harder to modify
-* more or less coupled
-* more or less predictable
-* more or less testable
+- `Approved`
+- `Implement`
 
-Prefer:
+#### Gate 3 — Execute
 
-* simple designs
-* cohesive modules
-* clear responsibilities
-* explicit dependencies
-* stable interfaces
-* information hiding
-* localized change
-* understandable control flow
+- Implement only the approved scope.
+- Do not expand scope silently.
 
-Avoid unnecessary:
+## 5. Bug-Fix Workflow
 
-* abstractions
-* indirection
-* frameworks
-* dependencies
-* patterns
-* layers
-* configuration
-* cleverness
+- Reproduce the bug before modifying production code when feasible.
+- Establish a failing regression test before the fix when practical.
+- If reproduction is impossible, document why and use the strongest available evidence.
+- Fix the root cause rather than masking symptoms.
+- Do not weaken assertions, remove coverage, or alter expected behavior merely to make tests pass.
+- Verify the original failure is resolved and relevant regressions remain covered.
 
-Do not introduce abstraction merely because two pieces of code look similar.
+## 6. Test Integrity
 
-The goal is not "DRY at all costs."
+Never modify existing tests solely to make an implementation pass.
+Modify tests only when:
 
-The goal is to avoid duplicating important knowledge while keeping the
-system understandable.
+- Explicitly requested/approved
+- The expected behavior has intentionally changed
+- The existing test is objectively incorrect
 
----
+When changing behavior:
 
-# 5. Design for Change
+- Update affected tests as part of the approved change.
+- Prefer regression tests that fail before the fix and pass afterward.
+- Do not remove coverage without explicit justification.
 
-Software should be designed with change in mind.
+## 7. Repository & Tooling Discipline
 
-When choosing between designs, prefer the one that:
+- Inspect repository instructions before making changes.
+- Scan `/docs` before performing broad codebase exploration.
+- Search for existing implementations, helpers, components, types, and patterns before creating new ones.
+- Follow the repository's existing package manager and scripts.
+- For Node.js/TypeScript repositories, use `pnpm` unless the repository explicitly specifies another tool.
+- Never read `.env` files unless explicitly authorized.
+- `.env.example` and equivalent non-secret configuration templates may be inspected.
+- Never print secret values to stdout, logs, patches, or responses.
+- Do not install dependencies without justification.
+- Do not modify lockfiles unnecessarily.
 
-* localizes likely changes
-* minimizes blast radius
-* hides implementation details
-* preserves stable interfaces
-* reduces coupling
+## 8. Context & Local Project Memory
 
-Do not over-engineer speculative requirements.
+Use repository documentation as durable project memory.
 
-The simplest design that satisfies the actual requirements is usually
-preferable.
+### Core Files
 
----
+#### /docs/context.md
 
-# 6. Information Hiding
+Contains:
 
-Implementation details should remain private whenever possible.
+- Business logic
+- Architecture
+- Important conventions
+- Active patterns
 
-Avoid leaking:
+#### /docs/decisions.md
 
-* database implementation details
-* transport details
-* framework internals
-* infrastructure concerns
-* internal data structures
-* incidental implementation choices
+Contains:
 
-Expose stable, meaningful interfaces.
+- Architectural decisions
+- Alternatives considered
+- Rationale
 
-A change to an implementation should ideally not require changes throughout
-the system.
+#### /docs/troubleshooting.md
 
----
+Contains:
 
-# 7. Verify, Don't Assume
+- Non-obvious issues
+- Root causes
+- Durable fixes
 
-Agents must verify important assumptions.
+#### README.md
 
-Do not assume:
+Contains:
 
-* an API behaves a certain way
-* a dependency supports a feature
-* a database guarantees a property
-* existing code is correct
-* tests provide complete coverage
-* configuration matches expectations
-* an observed symptom has an obvious cause
+- User-facing setup
+- Routes/features
+- Repository structure
+- Environment configuration
+- Test/development workflows
 
-Use appropriate evidence:
+### Documentation Rules
 
-* source code
-* documentation
-* tests
-* compiler/type system
-* static analysis
-* runtime behavior
-* logs
-* measurements
-* controlled experiments
+- Read relevant docs before broad implementation work.
+- Update docs when the change materially affects:
+  - Architecture
+  - Business logic
+  - User-facing behavior
+  - Development workflows
+  - Configuration
+  - Important troubleshooting knowledge
+- Do not update docs merely to create activity.
+- Prefer focused delta edits.
+- Preserve existing documentation structure and conventions.
+- Keep core docs concise.
+- Avoid duplicating source code.
 
-Clearly distinguish:
+### Context Management
 
-* known facts
-* assumptions
-* hypotheses
-* verified behavior
-* remaining uncertainty
+- Do not intentionally flood the conversation with raw logs or large source dumps.
+- Store useful durable findings in repository documentation when appropriate.
+- If the working context becomes large, preserve important decisions and unresolved issues in concise project notes before continuing.
+- Never claim control over platform-level context limits or summarization behavior.
 
-Never claim verification that was not actually performed.
+## 9. Code Quality & Engineering Standards
 
----
+### General
 
-# 8. Tests Are Feedback, Not Proof
+- Prefer the simplest correct implementation.
+- Minimize code and complexity.
+- Follow existing architecture before introducing abstractions.
+- Avoid speculative abstractions.
+- Extract shared code only when reuse materially improves maintainability.
+- Keep modules focused.
+- Avoid unrelated refactors and drive-by cleanup.
 
-Tests are evidence that specific behavior works.
+### DRY
 
-Passing tests do not automatically prove:
+- Avoid meaningful duplication.
+- Do not force unrelated code into a shared abstraction merely to satisfy DRY.
+- Prefer local clarity over premature reuse.
 
-* architectural correctness
-* business correctness
-* absence of race conditions
-* correct security behavior
-* correct failure handling
-* correctness outside the tested cases
+### Code Structure
 
-Use tests as part of a broader feedback loop.
+- Structure code logically and readably from inputs through transformation to output.
+- Keep control flow straightforward.
+- Separate responsibilities when complexity warrants it.
+- Use repository-established locations for components, utilities, types, services, and business logic.
+- Do not create `/utils`, `/helpers`, `/constants`, `/types`, etc. solely to satisfy this document.
 
-When appropriate, combine:
+### TypeScript
 
-* unit tests
-* integration tests
-* end-to-end tests
-* type checking
-* static analysis
-* runtime verification
-* manual reasoning
-* review of important edge cases
+- Use strict typing.
+- Avoid `any`.
+- Do not use `@ts-ignore` except with explicit justification and approval.
+- Avoid non-null assertions (`!`) when a sound type-safe alternative exists.
+- Prefer object parameters for functions with more than two semantically distinct arguments.
+- Preserve and improve type safety rather than bypassing it.
 
----
+### Python
 
-# 9. Make Dependencies Explicit
+- Use explicit type hints on public APIs.
+- Prefer `Protocol`, `TypedDict`, Pydantic models, or equivalent established project patterns where appropriate.
+- Avoid casual `# type: ignore`.
+- Preserve runtime validation where required.
 
-Prefer explicit dependencies and data flow.
+### Comments
 
-Avoid hidden:
+Comment **why**, not the obvious **what**.
+Document:
 
-* global state
-* implicit coupling
-* magical behavior
-* side effects
-* configuration dependencies
-* framework-specific assumptions
+- Non-obvious constraints
+- Trade-offs
+- Edge cases
+- Compatibility requirements
+- Intentionally unusual behavior
 
-A reader should be able to understand important dependencies from the
-structure of the system.
+Remove stale comments when changing the underlying logic.
 
----
+## 10. Dependencies & Architecture
 
-# 10. Avoid Duplication of Knowledge
+Prefer existing dependencies and repository capabilities.
+Before adding a dependency, verify that:
 
-Do not duplicate important business rules, domain concepts, or system
-knowledge across unrelated locations.
+- Existing functionality cannot reasonably solve the problem.
+- The dependency is maintained and appropriate.
+- Its addition is justified by the task.
 
-However, do not create abstractions merely to eliminate textual
-duplication.
+Avoid dependency changes during unrelated work.
+For architectural decisions, consider:
 
-Sometimes duplicated implementation is cheaper and safer than introducing
-a coupling abstraction.
+- Complexity
+- Maintainability
+- Compatibility
+- Performance
+- Security
+- Operational cost
+- Migration/rollback strategy
 
-Prefer a single authoritative representation of important knowledge.
+Prefer incremental architecture changes over unnecessary rewrites.
 
----
+## 11. Security & Data Handling
 
-# 11. Choose Technology From Requirements
+- Treat all external input as untrusted.
+- Validate at system boundaries.
+- Apply least privilege.
+- Never hard-code credentials or secrets.
+- Never commit secrets.
+- Avoid logging sensitive data.
+- Preserve existing authentication, authorization, validation, and security controls unless the approved change explicitly modifies them.
+- For security-sensitive changes, prefer authoritative documentation and established security practices over assumptions.
 
-Do not introduce infrastructure, databases, queues, caches, services,
-frameworks, or abstractions because they are fashionable or familiar.
+## 12. Web & External Research
 
-First understand:
+Use external research when it materially improves correctness, especially for:
 
-* workload
-* data model
-* access patterns
-* consistency requirements
-* durability requirements
-* latency requirements
-* availability requirements
-* scalability requirements
-* failure modes
+- Current framework/library behavior
+- API changes
+- Security guidance
+- Official specifications
+- Version-specific behavior
+- Unfamiliar technologies
 
-Then choose the simplest technology that satisfies the requirements.
+### Research Order
 
----
+1. Repository documentation and source
+2. Official project/framework documentation
+3. Standards/specifications
+4. High-quality secondary sources when necessary
 
-# 12. Design for Failure
+Do not use external research as a substitute for inspecting the repository.
+Record important architectural decisions resulting from external research in `/docs/decisions.md` when they are durable project knowledge.
 
-For systems involving persistence, concurrency, distributed components, or
-external dependencies, explicitly consider:
+## 13. Verification & Definition of Done
 
-* timeouts
-* retries
-* duplicate requests
-* partial failures
-* stale data
-* concurrent writes
-* transaction boundaries
-* ordering
-* idempotency
-* recovery
-* observability
-* dependency failures
+Before declaring work complete:
 
-An implementation is incomplete if important failure behavior is undefined.
+- Run relevant typechecks.
+- Run relevant linting/formatting checks.
+- Run relevant unit/integration tests.
+- Run build checks when applicable.
+- Verify the requested behavior directly when feasible.
+- Review the final diff.
+- Confirm no unintended files changed.
+- Confirm no unrelated refactors were introduced.
+- Confirm no secrets or sensitive data were added.
+- Confirm new dependencies are intentional.
+- Confirm documentation is updated when materially affected.
+- Report verification results and any checks that could not be run.
 
----
+### Completion Standard
 
-# 13. Maintain Traceability
+Work is complete only when:
 
-Important implementation decisions should be traceable back to a reason.
+- The requested behavior is implemented.
+- The implementation matches approved scope.
+- Relevant tests/checks pass.
+- The diff contains no unintended changes.
+- Material project documentation is synchronized.
+- Known limitations or unverified areas are explicitly reported.
 
-Prefer this relationship:
+## 14. Default Operating Principle
 
-```text
-Requirement
-    ↓
-Behavior
-    ↓
-Logic
-    ↓
-Algorithm
-    ↓
-Design
-    ↓
-Implementation
-    ↓
-Verification
-```
+> **Inspect → Understand → Plan when warranted → Implement minimally → Review → Challenge → Verify → Document durable knowledge.**
+>
+> **AI may accelerate implementation, but it must not replace engineering reasoning. The human owns the decisions; the agent assists with execution and review.**
 
-Avoid decisions whose explanation is simply:
+When in doubt:
 
-> "The agent thought this was a good idea."
+- Prefer evidence over assumptions.
+- Prefer existing patterns over invention.
+- Prefer simple solutions over clever ones.
+- Prefer reversible changes over destructive ones.
+- Prefer asking one high-value question over making a high-impact assumption.
+- Prefer root-cause fixes over symptoms.
+- Prefer a small, correct diff over a broad cleanup.
 
-For significant decisions, communicate:
+## 15. Architecture Picture Skill
 
-* what was decided
-* why it was necessary
-* alternatives considered
-* why the chosen approach was preferred
-* what assumptions it depends on
-* what tradeoffs it introduces
+When the architecture-picture skill is present, use it for large, architectural, module, or big-feature work before implementation.
 
----
-
-# 14. Debugging Is a Reasoning Process
-
-When debugging, do not immediately change code.
-
-First establish:
-
-1. Observed behavior
-2. Expected behavior
-3. Difference between them
-4. Possible causes
-5. Evidence for each hypothesis
-6. Most likely root cause
-7. Proposed fix
-8. Verification strategy
-
-Then implement the fix.
-
-Afterwards explain:
-
-* the root cause
-* why the fix addresses it
-* what prevents regression
-* how the original failure was verified as resolved
-
----
-
-# 15. Refactoring Is a Complexity-Reduction Process
-
-Before a significant refactor, explain:
-
-* current structure
-* current complexity
-* source of the complexity
-* proposed structural change
-* why the new structure is simpler
-* behavior that must remain unchanged
-
-After refactoring:
-
-* explain the new structure
-* explain what complexity was removed
-* confirm behavioral equivalence where applicable
-* report verification performed
-
----
-
-# 16. System and Data Reasoning
-
-For systems involving significant persistence, concurrency, distributed
-processing, or scale, reason explicitly about:
-
-* data model
-* access patterns
-* transactions
-* consistency
-* concurrency
-* durability
-* availability
-* replication
-* partitioning
-* caching
-* asynchronous processing
-* ordering
-* idempotency
-* failure modes
-* observability
-
-Infrastructure choices should follow system requirements, not precede them.
-
----
-
-# 17. Leave the Codebase Better
-
-Every change should aim to leave the affected area:
-
-* simpler
-* clearer
-* better tested
-* better documented
-* or more maintainable
-
-Avoid unrelated refactoring during focused work.
-
-Do not knowingly introduce unnecessary technical debt merely because an
-agent can generate it quickly.
-
----
-
-# 18. Agentic Engineering Loop
-
-For meaningful work, agents should generally follow:
-
-1. Understand the request and repository context.
-2. Inspect existing behavior before creating new behavior.
-3. Identify relevant constraints.
-4. Establish the mental model.
-5. Explain the proposed logic and algorithm.
-6. Surface assumptions and uncertainty.
-7. Obtain human feedback when ambiguity is material.
-8. Implement the smallest coherent change.
-9. Verify the implementation.
-10. Explain what actually changed.
-11. Compare intended behavior with actual behavior.
-12. Report discrepancies and remaining uncertainty.
-
-Never optimize for the number of lines written.
-
-Optimize for the quality and understandability of the resulting system.
-
----
-
-# 19. Engineering Completion
-
-A task is not complete merely because:
-
-* code was generated
-* compilation succeeds
-* tests pass
-* the requested files changed
-* the agent reports success
-
-Engineering completion requires sufficient confidence that:
-
-* the requirement was understood correctly
-* the logic is correct
-* the implementation reflects that logic
-* important assumptions are known
-* important failure modes have been considered
-* appropriate verification was performed
-* the human engineer can explain the resulting behavior
-
-The objective is not:
-
-> "Make the code work."
-
-The objective is:
-
-> **"Make the intended system behavior correct, understandable, and
-> verifiable."**
-
----
-
-# 20. Protect Session Understanding
-
-A full context window is not a better mental model.
-
-Judgment degrades as the session fills, often before the tool
-automatically compacts or summarizes.
-
-At a natural checkpoint — after a coherent unit of work, before
-unrelated work, or when the important model is still intact — prefer
-one of:
-
-* compacting or summarizing the session
-* starting a fresh session with the current mental model restated
-
-If the tool can compact or summarize, do it then, while the important
-behavior, logic, invariants, and remaining work can still be stated
-clearly.
-
-Do not rely on late automatic compaction to preserve understanding.
-
-Do not compact in the middle of a change that still depends on raw
-evidence, such as an unfinished diagnosis.
-
-The summary should preserve the shared mental model, not a narration
-of every tool call.
-
----
-
-# 21. Use the Engineering Feedback Loop Skill
-
-When the engineering-feedback-loop skill is present, use it for
-meaningful engineering work.
-
-This file is the philosophy.
-
-The skill is the practice.
-
----
-
-# 22. Use the Architecture Picture Skill
-
-When the architecture-picture skill is present, use it for large,
-architectural, module, or big-feature work before implementation.
-
-Produce and open the visual HTML page so the human can review the big
-picture, architecture, flow, and modules before code is written.
+Produce and open the visual HTML page so the human can review the big picture, architecture, flow, and modules before code is written.
 
 Skip small and medium changes. Do not invent ceremony for trivial work.
