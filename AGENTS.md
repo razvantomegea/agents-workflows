@@ -102,6 +102,8 @@ Agents should optimize implementation speed without replacing the engineer's rea
 
 For T1–T3 work, apply `engineering-thinking` before implementing. T0 mechanical work proceeds directly. The user may skip the thinking gate; G2/G3 repository approval gates still apply.
 
+When the `engineering-feedback-loop` skill is present, apply it for medium and larger / non-trivial work, scaled by change size. It operationalizes this section’s Engineering-First Workflow and Agent-as-Reviewer intent without replacing G0–G3 gates.
+
 ### Engineering-First Workflow
 
 For non-trivial work, prefer:
@@ -226,6 +228,7 @@ Wait for explicit approval such as:
 
 - Implement only the approved scope.
 - Do not expand scope silently.
+- After implement and verify for G2/G3, run the post-impl teach-back per §16 before treating the work as fully closed.
 
 ## 5. Bug-Fix Workflow
 
@@ -488,3 +491,11 @@ When the architecture-picture skill is present, use it for large, architectural,
 Produce and open the visual HTML page so the human can review the big picture, architecture, flow, and modules before code is written.
 
 Skip small and medium changes. Do not invent ceremony for trivial work.
+
+## 16. Engineering Feedback Loop Skill
+
+When the `engineering-feedback-loop` skill is present, use it for non-trivial work so the agent accelerates implementation without replacing the engineer’s understanding of requirements, logic, algorithms, architecture, or verification.
+
+After **complex plan implementation** (G2/G3 approved plans, or large/architectural changes), ask 2–4 short teach-back questions on the important topics (behavior, logic/algorithm, invariants, trade-offs, failure modes, verification). Wait for human answers; correct misunderstandings briefly. Do not quiz on file diffs or trivial edits.
+
+Skip teach-back for G0/G1 and small changes. Do not invent ceremony for trivial work.

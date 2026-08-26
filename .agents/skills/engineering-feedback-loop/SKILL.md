@@ -140,6 +140,8 @@ Explain
 Verify
     ↓
 Compare
+    ↓
+Teach-back
 ```
 
 When the `architecture-picture` skill is present, produce and open the
@@ -409,6 +411,41 @@ REMAINING UNCERTAINTY
 
 The explanation should describe behavior and reasoning rather than provide
 a line-by-line narration of the code.
+
+---
+
+# 7a. Human Understanding Check (Teach-back)
+
+After large/architectural work, or after executing an approved complex
+plan (G2/G3-equivalent), do not treat the task as fully closed after
+Explain and Verify alone.
+
+Ask **2–4 short teach-back questions** on topics the human must own:
+
+* resulting behavior
+* logic / algorithm
+* invariants
+* important trade-offs
+* failure modes
+* what was verified (and what was not)
+
+Do **not** quiz on file diffs, renames, or trivial edits.
+
+Flow:
+
+```text
+Ask
+    ↓
+Wait for human answers
+    ↓
+Correct misunderstandings briefly
+```
+
+Do not mark the complex change complete until the human has engaged, or
+has explicitly declined the check.
+
+Skip teach-back for small changes and for routine medium work that does
+not rise to complex-plan / large scope.
 
 ---
 
@@ -716,6 +753,8 @@ For medium and large changes, consider the task complete only when:
 * appropriate verification was performed
 * intended behavior was compared with actual behavior
 * remaining uncertainty was communicated
+* for complex / large work: the Human Understanding Check (teach-back)
+  was run, or the human explicitly declined it
 
 The final question is not:
 
@@ -724,6 +763,9 @@ The final question is not:
 It is:
 
 > **"Can the human engineer understand and reason about what now exists?"**
+
+For complex work, that answer is evidenced by teach-back—not by the
+agent’s explanation alone.
 
 If not, the feedback loop has failed.
 

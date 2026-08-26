@@ -49,7 +49,9 @@ AGENTS.md
 ```
 
 - `AGENTS.md` is the philosophy. Drop it at the project root. Many
-  coding agents read this file automatically.
+  coding agents read this file automatically. It points at
+  `engineering-feedback-loop` and requires post-complex teach-back
+  after G2/G3 / large implementations.
 - `engineering-feedback-loop` is the practice. It tells the agent when
   and how to keep the feedback loop, scaled to small, medium, and large
   changes.
