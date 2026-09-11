@@ -100,9 +100,7 @@ The human remains responsible for:
 
 Agents should optimize implementation speed without replacing the engineer's reasoning.
 
-For T1–T3 work, apply `engineering-thinking` before implementing. T0 mechanical work proceeds directly. The user may skip the thinking gate; G2/G3 repository approval gates still apply.
-
-When the `engineering-feedback-loop` skill is present, apply it for medium and larger / non-trivial work, scaled by change size. It operationalizes this section’s Engineering-First Workflow and Agent-as-Reviewer intent without replacing G0–G3 gates.
+For G1–G3 work, apply `engineering-thinking` before implementing. G0 work proceeds directly. The user may skip the thinking gate; G2/G3 repository approval gates still apply.
 
 ### Engineering-First Workflow
 
@@ -215,6 +213,12 @@ Include:
 - Tests/verification strategy
 - Diagrams when useful
 
+For G2/G3 work involving a new module, cross-module feature, big feature,
+subsystem, or architectural/data-model change: when the
+`architecture-picture` skill is present, produce and open the visual HTML
+architecture picture before seeking approval. Leave G0/G1 and chat
+ASCII/Mermaid for smaller stateful logic.
+
 **Do not implement production changes.**
 
 #### Gate 2 — Approval
@@ -228,7 +232,6 @@ Wait for explicit approval such as:
 
 - Implement only the approved scope.
 - Do not expand scope silently.
-- After implement and verify for G2/G3, run the post-impl teach-back per §16 before treating the work as fully closed.
 
 ## 5. Bug-Fix Workflow
 
@@ -260,12 +263,28 @@ When changing behavior:
 - Scan `/docs` before performing broad codebase exploration.
 - Search for existing implementations, helpers, components, types, and patterns before creating new ones.
 - Follow the repository's existing package manager and scripts.
-- For Node.js/TypeScript repositories, use `pnpm` unless the repository explicitly specifies another tool.
 - Never read `.env` files unless explicitly authorized.
 - `.env.example` and equivalent non-secret configuration templates may be inspected.
 - Never print secret values to stdout, logs, patches, or responses.
-- Do not install dependencies without justification.
+- Do not install dependencies.
 - Do not modify lockfiles unnecessarily.
+
+### Human-Run Script Policy
+
+Agents must not run project scripts or package-manager commands unless the user explicitly asks for that exact command or command category in the current task.
+
+This includes:
+
+- Type checks, tests, linting, formatting, builds, dev servers, preview servers, codegen, migrations, seed scripts, and any `package.json` script.
+- `pnpm`, `npm`, `yarn`, `bun`, `npx`, `corepack`, `pip`, `poetry`, `uv`, `cargo`, `go`, `dotnet`, `gradle`, `mvn`, and equivalent toolchain commands when they install dependencies or run project checks/scripts.
+
+Default workflow:
+
+- Ask the user to run the relevant command themselves.
+- Tell the user exactly which command to run and what output to send back.
+- Continue from the user's supplied output.
+
+Agents may still run non-script inspection commands such as file reads, `rg`, `git status`, `git diff`, `git show`, and directory listings when needed.
 
 ## 8. Context & Local Project Memory
 
@@ -444,18 +463,16 @@ Record important architectural decisions resulting from external research in `/d
 
 Before declaring work complete:
 
-- Run relevant typechecks.
-- Run relevant linting/formatting checks.
-- Run relevant unit/integration tests.
-- Run build checks when applicable.
-- Verify the requested behavior directly when feasible.
+- Review the final diff directly.
+- Verify requested behavior by inspection or non-script commands where feasible.
+- For typechecks, linting/formatting checks, tests, builds, installs, dev servers, previews, codegen, migrations, seed scripts, and other project scripts, ask the user to run the relevant command and provide the output unless the user explicitly asked the agent to run it.
 - Review the final diff.
 - Confirm no unintended files changed.
 - Confirm no unrelated refactors were introduced.
 - Confirm no secrets or sensitive data were added.
 - Confirm new dependencies are intentional.
 - Confirm documentation is updated when materially affected.
-- Report verification results and any checks that could not be run.
+- Report inspection results plus any human-run checks still needed.
 
 ### Completion Standard
 
@@ -463,7 +480,7 @@ Work is complete only when:
 
 - The requested behavior is implemented.
 - The implementation matches approved scope.
-- Relevant tests/checks pass.
+- Relevant tests/checks pass when the user has explicitly asked the agent to run them or has provided passing output; otherwise, the agent must report the exact checks the user should run.
 - The diff contains no unintended changes.
 - Material project documentation is synchronized.
 - Known limitations or unverified areas are explicitly reported.
@@ -483,19 +500,3 @@ When in doubt:
 - Prefer asking one high-value question over making a high-impact assumption.
 - Prefer root-cause fixes over symptoms.
 - Prefer a small, correct diff over a broad cleanup.
-
-## 15. Architecture Picture Skill
-
-When the architecture-picture skill is present, use it for large, architectural, module, or big-feature work before implementation.
-
-Produce and open the visual HTML page so the human can review the big picture, architecture, flow, and modules before code is written.
-
-Skip small and medium changes. Do not invent ceremony for trivial work.
-
-## 16. Engineering Feedback Loop Skill
-
-When the `engineering-feedback-loop` skill is present, use it for non-trivial work so the agent accelerates implementation without replacing the engineer’s understanding of requirements, logic, algorithms, architecture, or verification.
-
-After **complex plan implementation** (G2/G3 approved plans, or large/architectural changes), ask 2–4 short teach-back questions on the important topics (behavior, logic/algorithm, invariants, trade-offs, failure modes, verification). Wait for human answers; correct misunderstandings briefly. Do not quiz on file diffs or trivial edits.
-
-Skip teach-back for G0/G1 and small changes. Do not invent ceremony for trivial work.
